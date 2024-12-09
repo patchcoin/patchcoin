@@ -2206,6 +2206,29 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
     // peercoin: coinbase reward check relocated to CheckBlock()
 
+    /* patchcoin todo: account for nStakeReward / fees
+    CAmount nStakeReward = tx.GetValueOut() - nValueIn;
+    CAmount nCoinstakeCost = (GetMinFee(tx, nTimeTx) < PERKB_TX_FEE) ? 0 : (GetMinFee(tx, nTimeTx) - PERKB_TX_FEE);
+    if (nMoneySupply && nStakeReward > GetProofOfStakeReward(nCoinAge, nTimeTx, nMoneySupply) - nCoinstakeCost)
+        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-coinstake-too-large");
+    */
+
+    /*
+     * PATCHCOIN todo: THERE NEEDS TO BE A CEILING: IF BLOCK REWARD IS OVER TOTAL ALLOWED NUMBER OF COINS (21M) WE ERROR OUT
+     */
+    /*if (block.IsProofOfStake()) {
+        if (block.vtx[1]->GetValueOut() > nFees) {
+            LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
+        }
+    } else {
+        if (block.vtx[0]->GetValueOut() > nFees) {
+            LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
+        }
+    }
+    */
+
     if (!control.Wait()) {
         LogPrintf("ERROR: %s: CheckQueue failed\n", __func__);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "block-validation-failed");
@@ -3419,11 +3442,13 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     CAmount nCoinbaseCost = 0;
     if (block.IsProofOfWork())
         nCoinbaseCost = (GetMinFee(*block.vtx[0], block.nTime) < PERKB_TX_FEE)? 0 : (GetMinFee(*block.vtx[0], block.nTime) - PERKB_TX_FEE);
+    /*
     if (block.vtx[0]->GetValueOut() > (block.IsProofOfWork()? (GetProofOfWorkReward(block.nBits, block.GetBlockTime()) - nCoinbaseCost) : 0))
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount",
                 strprintf("CheckBlock() : coinbase reward exceeded %s > %s",
                    FormatMoney(block.vtx[0]->GetValueOut()),
                    FormatMoney(block.IsProofOfWork()? GetProofOfWorkReward(block.nBits, block.GetBlockTime()) : 0)));
+    */
     // Check transactions
     // Must check for duplicate inputs (see CVE-2018-17144)
     for (const auto& tx : block.vtx) {
@@ -4953,7 +4978,7 @@ typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
 {
     std::vector<valtype> vSolutions;
-    const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+    const CTxOut& txout = block.vtx[1]->vout[1];//block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;

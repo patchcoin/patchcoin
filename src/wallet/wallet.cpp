@@ -3567,7 +3567,7 @@ double SecurityToOptimalFraction(double security, bool isTestnet) {
 
 // peercoin: create coin stake transaction
 typedef std::vector<unsigned char> valtype;
-bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, CTxDestination destination)
+bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, CTxDestination destination, CAmount nFees)
 {
     bool bDebug = (gArgs.GetBoolArg("-debug", false) && gArgs.GetBoolArg("-printcoinstake", false));
 
@@ -3856,9 +3856,9 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         if (!GetCoinAge((const CTransaction)txNew, view, nCoinAge, txNew.nTime, true))
             return error("CreateCoinStake : failed to calculate coin age");
 
-        CAmount nReward = GetProofOfStakeReward(nCoinAge, txNew.nTime, chainman.ActiveChain().Tip()->nMoneySupply);
+        CAmount nReward = nFees; // GetProofOfStakeReward(nCoinAge, txNew.nTime, chainman.ActiveChain().Tip()->nMoneySupply);
         // Refuse to create mint that has zero or negative reward
-        if(nReward <= 0) {
+        if(nReward < 0) {
             return false;
         }
         nCredit += nReward;
