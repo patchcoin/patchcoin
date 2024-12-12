@@ -3856,8 +3856,8 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         if (!GetCoinAge((const CTransaction)txNew, view, nCoinAge, txNew.nTime, true))
             return error("CreateCoinStake : failed to calculate coin age");
 
-        CAmount nReward = nFees; // GetProofOfStakeReward(nCoinAge, txNew.nTime, chainman.ActiveChain().Tip()->nMoneySupply);
-        // Refuse to create mint that has zero or negative reward
+        CAmount nReward = nFees; // GetProofOfStakeReward(nCoinAge, txNew.nTime, chainman.ActiveChain().Tip()->nMoneySupply); patchcoin todo
+        // Refuse to create mint that has negative reward
         if(nReward < 0) {
             return false;
         }

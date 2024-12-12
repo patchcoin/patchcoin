@@ -1382,6 +1382,7 @@ PackageMempoolAcceptResult ProcessNewPackage(Chainstate& active_chainstate, CTxM
 
 int64_t GetProofOfWorkReward(unsigned int nBits, uint32_t nTime)
 {
+    // patchcoin todo
     CBigNum bnSubsidyLimit = MAX_MINT_PROOF_OF_WORK;
     CBigNum bnTarget;
     bnTarget.SetCompact(nBits);
@@ -1418,6 +1419,7 @@ int64_t GetProofOfWorkReward(unsigned int nBits, uint32_t nTime)
 // peercoin: miner's coin stake is rewarded based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int64_t nCoinAge, uint32_t nTime, uint64_t nMoneySupply)
 {
+    // patchcoin todo
     static int64_t nRewardCoinYear = CENT;  // creation amount per coin-year
     int64_t nSubsidy = nCoinAge * 33 / (365 * 33 + 8) * nRewardCoinYear;
 
@@ -2028,7 +2030,8 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     // is enforced in ContextualCheckBlockHeader(); we wouldn't want to
     // re-enforce that rule here (at least until we make it impossible for
     // m_adjusted_time_callback() to go backward).
-    if (!CheckBlock(block, state, params.GetConsensus(), !fJustCheck, !fJustCheck)) {
+    // patchcoin todo: drop nHeight check
+    if (pindex->nHeight > 1 && !CheckBlock(block, state, params.GetConsensus(), !fJustCheck, !fJustCheck)) {
         if (state.GetResult() == BlockValidationResult::BLOCK_MUTATED) {
             // We don't write down blocks to disk if they may have been
             // corrupted, so this should be impossible unless we're having hardware
@@ -2119,6 +2122,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int64_t nValueIn = 0;
+    int64_t nValueStakeIn = 0;
     int64_t nValueOut = 0;
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
@@ -2131,6 +2135,9 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
         if (tx.IsCoinBase())
             nValueOut += tx.GetValueOut();
+            // TODO PATCHCOIN:
+            // PROBABLY JUST REJECT COINBASES YES?
+            // IF WE GET ALL RELEVANT UTXOS FROM PREV BLOCK + MEMPOOL THEN WE COULD STILL CHECK IT
         else
         {
             CAmount txfee = 0;
@@ -2141,8 +2148,11 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
-            for (unsigned int i = 0; i < tx.vin.size(); i++)
+            for (unsigned int i = 0; i < tx.vin.size(); i++) {
                 nValueIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
+                if (tx.IsCoinStake())
+                    nValueStakeIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
+            }
             nValueOut += tx.GetValueOut();
             if (!tx.IsCoinStake())
                 nFees += txfee;
@@ -2196,6 +2206,23 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         }
         UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, IsProtocolV12(pindex));
     }
+
+    // patchcoin todo: drop nHeight check
+    if (pindex->nHeight > 3 && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
+        LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
+        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
+    }
+
+    // patchcoin todo: drop nHeight check
+    if (pindex->nHeight > 3 && block.IsProofOfStake()) {
+        const int64_t nReward = block.vtx[1]->GetValueOut() - nValueStakeIn;
+        assert(MoneyRange(nReward)); // todo patchcoin kill, yes or no
+        if (nReward > nFees) {
+            LogPrintf("ERROR: ConnectBlock(): coinstake pays too much (actual=%d vs limit=%d)\n", block.vtx[1]->GetValueOut(), nFees);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
+        }
+    }
+
     const auto time_3{SteadyClock::now()};
     time_connect += time_3 - time_2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(),
@@ -2206,28 +2233,9 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
     // peercoin: coinbase reward check relocated to CheckBlock()
 
-    /* patchcoin todo: account for nStakeReward / fees
-    CAmount nStakeReward = tx.GetValueOut() - nValueIn;
-    CAmount nCoinstakeCost = (GetMinFee(tx, nTimeTx) < PERKB_TX_FEE) ? 0 : (GetMinFee(tx, nTimeTx) - PERKB_TX_FEE);
-    if (nMoneySupply && nStakeReward > GetProofOfStakeReward(nCoinAge, nTimeTx, nMoneySupply) - nCoinstakeCost)
-        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-coinstake-too-large");
-    */
-
     /*
      * PATCHCOIN todo: THERE NEEDS TO BE A CEILING: IF BLOCK REWARD IS OVER TOTAL ALLOWED NUMBER OF COINS (21M) WE ERROR OUT
      */
-    /*if (block.IsProofOfStake()) {
-        if (block.vtx[1]->GetValueOut() > nFees) {
-            LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
-            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
-        }
-    } else {
-        if (block.vtx[0]->GetValueOut() > nFees) {
-            LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
-            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
-        }
-    }
-    */
 
     if (!control.Wait()) {
         LogPrintf("ERROR: %s: CheckQueue failed\n", __func__);
@@ -3439,6 +3447,7 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-time", "coinstake timestamp violation");
 
     // Check coinbase reward
+    /* PATCHCOIN TODO
     CAmount nCoinbaseCost = 0;
     if (block.IsProofOfWork())
         nCoinbaseCost = (GetMinFee(*block.vtx[0], block.nTime) < PERKB_TX_FEE)? 0 : (GetMinFee(*block.vtx[0], block.nTime) - PERKB_TX_FEE);
@@ -3929,7 +3938,8 @@ bool Chainstate::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockV
 
     const CChainParams& params{m_chainman.GetParams()};
 
-    if (!CheckBlock(block, state, params.GetConsensus()) ||
+    // todo patchcoin drop nHeight check
+    if (pindex->nHeight > 1 && !CheckBlock(block, state, params.GetConsensus()) ||
         !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -3988,7 +3998,8 @@ bool ChainstateManager::ProcessNewBlock(const std::shared_ptr<const CBlock>& blo
         // malleability that cause CheckBlock() to fail; see e.g. CVE-2012-2459 and
         // https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2019-February/016697.html.  Because CheckBlock() is
         // not very expensive, the anti-DoS benefits of caching failure (of a definitely-invalid block) are not substantial.
-        bool ret = CheckBlock(*block, state, GetConsensus());
+        // todo patchcoin drop nHeight check
+        bool ret = ActiveChainstate().m_chain[0]->nHeight < 2 || CheckBlock(*block, state, GetConsensus());
         if (ret) {
             // Store to disk
             ret = ActiveChainstate().AcceptBlock(block, state, &pindex, force_processing, nullptr, new_block, min_pow_checked);
@@ -4053,11 +4064,13 @@ bool TestBlockValidity(BlockValidationState& state,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, pindexPrev, adjusted_time_callback()))
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, state.ToString());
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
+    // patchcoin todo: drop nHeight check
+    if (pindexPrev->nHeight > 0 && !CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
         return error("%s: Consensus::CheckBlock: %s", __func__, state.ToString());
     if (!ContextualCheckBlock(block, state, pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, state.ToString());
-    if (!chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
+    // patchcoin todo: drop nHeight check
+    if (pindexPrev->nHeight > 0 && !chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
         return false;
     }
     assert(state.IsValid());
