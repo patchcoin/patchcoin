@@ -2208,19 +2208,29 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     }
 
     // patchcoin todo: drop nHeight check
-    if (pindex->nHeight > 3 && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
-        LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), nFees);
+    if (pindex->nHeight > 1 && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
+        LogPrintf("ERROR: %s: coinbase pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[0]->GetValueOut(), nFees);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
     }
 
     // patchcoin todo: drop nHeight check
-    if (pindex->nHeight > 3 && block.IsProofOfStake()) {
-        const int64_t nReward = block.vtx[1]->GetValueOut() - nValueStakeIn;
-        assert(MoneyRange(nReward)); // todo patchcoin kill, yes or no
+    if (pindex->nHeight > 1 && block.IsProofOfStake()) {
+        CAmount nReward = block.vtx[1]->GetValueOut() - nValueStakeIn;
+        if (!MoneyRange(nReward)) {
+            LogPrintf("ERROR: %s: reward in the block out of range\n", __func__);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-txns-reward-outofrange");
+        }
         if (nReward > nFees) {
-            LogPrintf("ERROR: ConnectBlock(): coinstake pays too much (actual=%d vs limit=%d)\n", block.vtx[1]->GetValueOut(), nFees);
+            LogPrintf("ERROR: %s: coinstake pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[1]->GetValueOut(), nFees);
             return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
         }
+    }
+
+    int64_t nMoneySupply = (pindex->pprev ? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+
+    if (!MoneyRange(nMoneySupply)) {
+        LogPrintf("ERROR: %s: total network value would exceed %d %s\n", __func__, FormatMoney(MAX_MONEY), CURRENCY_UNIT);
+        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-ms-amount");
     }
 
     const auto time_3{SteadyClock::now()};
@@ -2232,10 +2242,6 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
              Ticks<MillisecondsDouble>(time_connect) / num_blocks_total);
 
     // peercoin: coinbase reward check relocated to CheckBlock()
-
-    /*
-     * PATCHCOIN todo: THERE NEEDS TO BE A CEILING: IF BLOCK REWARD IS OVER TOTAL ALLOWED NUMBER OF COINS (21M) WE ERROR OUT
-     */
 
     if (!control.Wait()) {
         LogPrintf("ERROR: %s: CheckQueue failed\n", __func__);
@@ -2254,7 +2260,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
     // peercoin: track money supply and mint amount info
     pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+    pindex->nMoneySupply = nMoneySupply;
 
     // peercoin increment nHeightStake if block is proof of stake
     pindex->nHeightStake = (pindex->pprev ? pindex->pprev->nHeightStake : 0) + block.IsProofOfStake();
@@ -4991,7 +4997,7 @@ typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
 {
     std::vector<valtype> vSolutions;
-    const CTxOut& txout = block.vtx[1]->vout[1];//block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+    const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;

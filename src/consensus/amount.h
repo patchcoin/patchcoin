@@ -21,7 +21,7 @@ static const CAmount PERKB_TX_FEE = CENT;
 static const CAmount MIN_TXOUT_AMOUNT = CENT;
 static const CAmount MAX_MINT_PROOF_OF_WORK = 9999 * COIN;
 static const CAmount MAX_MINT_PROOF_OF_WORK_V10 = 50 * COIN;
-static const std::string CURRENCY_UNIT = "PPC";
+static const std::string CURRENCY_UNIT = "PTC";
 static const std::string CURRENCY_ATOM = "sat"; // One indivisible minimum value unit
 
 /** No amount larger than this (in satoshi) is valid.
@@ -33,6 +33,7 @@ static const std::string CURRENCY_ATOM = "sat"; // One indivisible minimum value
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
  * for the creation of coins out of thin air modification could lead to a fork.
  * */
+// patchcoin: here, it indeed refers to the total money supply
 static constexpr CAmount MAX_MONEY = 21000000 * COIN;
 inline bool MoneyRange(const CAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
