@@ -2208,10 +2208,12 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     }
 
     // patchcoin todo: drop nHeight check
+    /*
     if (pindex->nHeight > 1 && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
         LogPrintf("ERROR: %s: coinbase pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[0]->GetValueOut(), nFees);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
     }
+    */
 
     // patchcoin todo: drop nHeight check
     if (pindex->nHeight > 1 && block.IsProofOfStake()) {
@@ -4970,7 +4972,7 @@ bool GetCoinAge(const CTransaction& tx, const CCoinsViewCache &view, uint64_t& n
         if (txPrev->GetHash() != prevout.hash)
             return error("%s() : txid mismatch in GetCoinAge()", __PRETTY_FUNCTION__);
 
-        if (header.GetBlockTime() + Params().GetConsensus().nStakeMinAge > nTimeTx)
+        if (header.GetBlockTime() + Params().GetConsensus().GetnStakeMinAge(coin.nHeight) > nTimeTx)
             continue; // only count coins meeting min age requirement
 
         int64_t nValueIn = txPrev->vout[txin.prevout.n].nValue;

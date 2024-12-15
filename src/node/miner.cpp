@@ -183,9 +183,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (pwallet == nullptr) {
         pblock->nBits = GetNextTargetRequired(pindexPrev, false, chainparams.GetConsensus());
         coinbaseTx.vout[0].nValue = nHeight == 1 ? MAX_MONEY - 50 * COIN + nFees : nFees;
-        if (nHeight > 1) {
-            coinbaseTx.vout[0].nValue = 10 * COIN + nFees;
-        }
     }
 
     // peercoin: if coinstake available add coinstake tx

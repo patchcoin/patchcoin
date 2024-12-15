@@ -3345,7 +3345,9 @@ int CWallet::GetTxBlocksToMaturity(const CWalletTx& wtx) const
     int chain_depth = GetTxDepthInMainChain(wtx);
     if (!wtx.IsCoinStake())
         assert(chain_depth >= 0); // coinbase tx should not be conflicted
-    return std::max(0, (Params().GetConsensus().nCoinbaseMaturity+1) - chain_depth);
+    ChainstateManager& chainman = chain().chainman();
+    printf("CHAIN HEIGHT: %d\n", chainman.ActiveChain().HeightStake());
+    return std::max(0, (Params().GetConsensus().GetnCoinbaseMaturity(chainman.ActiveChain().HeightStake())+1) - chain_depth);
 }
 
 bool CWallet::IsTxImmatureCoinBase(const CWalletTx& wtx) const
@@ -3669,7 +3671,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         }
 
         static int nMaxStakeSearchInterval = 60;
-        if (header.GetBlockTime() + params.nStakeMinAge > txNew.nTime - nMaxStakeSearchInterval)
+        if (header.GetBlockTime() + params.GetnStakeMinAge(chainman.ActiveChain().Tip()->nHeight) > txNew.nTime - nMaxStakeSearchInterval)
             continue; // only count coins meeting min age requirement
 
         bool fKernelFound = false;
@@ -3784,7 +3786,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
 
     double difficulty = GetDifficulty(GetLastBlockIndex(chainman.ActiveChain().Tip(), true), chainman.ActiveChain().Tip());
     CAmount supply = chainman.ActiveChain().Tip()->nMoneySupply;
-    int maxDayWeight = (params.nStakeMaxAge - params.nStakeMinAge) / (60*60*24);
+    int maxDayWeight = (params.nStakeMaxAge - params.GetnStakeMinAge(chainman.ActiveChain().Tip()->nHeight)) / (60*60*24);
     double securityLevel = (uint64_t(2) << 31)*difficulty / maxDayWeight / (supply/COIN) / params.nStakeTargetSpacing;
     bool isTestnet = Params().NetworkIDString() != CBaseChainParams::MAIN;
     CAmount nTargetOutputAmount = SecurityToOptimalFraction(securityLevel, isTestnet)*supply;

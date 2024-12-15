@@ -9,6 +9,7 @@
 #include <uint256.h>
 
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <vector>
@@ -152,6 +153,28 @@ struct Params {
     int64_t nStakeMaxAge;
     int64_t nModifierInterval;
     int nCoinbaseMaturity;  // Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
+
+    int64_t GetnStakeMinAge(int nHeight) const
+    {
+        return std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
+    }
+
+    int64_t GetnStakeMaxAge(int nHeight) const
+    {
+        return nStakeMaxAge;
+    }
+
+    int64_t GetnModifierInterval(int nHeight) const
+    {
+        return nModifierInterval;
+    }
+
+    int GetnCoinbaseMaturity(int nHeight) const
+    {
+        int maturity = std::min(nHeight - 1, nCoinbaseMaturity);
+        printf("%d, %d, %d\n", maturity, nHeight, nCoinbaseMaturity);
+        return maturity;
+    }
 };
 
 } // namespace Consensus

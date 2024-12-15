@@ -3880,7 +3880,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 LogPrint(BCLog::NET, "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 // peercoin: tell downloading node about the latest block if it's
                 // without risk being rejected due to stake connection check
-                if (hashStop != m_chainman.ActiveChain().Tip()->GetBlockHash() && pindex->GetBlockTime() + Params().GetConsensus().nStakeMinAge > m_chainman.ActiveChain().Tip()->GetBlockTime())
+                if (hashStop != m_chainman.ActiveChain().Tip()->GetBlockHash() && pindex->GetBlockTime() + Params().GetConsensus().GetnStakeMinAge(pindex->nHeight) > m_chainman.ActiveChain().Tip()->GetBlockTime())
                     WITH_LOCK(peer->m_block_inv_mutex, peer->m_blocks_for_inv_relay.push_back(pindex->GetBlockHash()));
                 break;
             }
