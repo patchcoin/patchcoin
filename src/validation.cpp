@@ -2052,7 +2052,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (block_hash == params.GetConsensus().hashGenesisBlock) {
         if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
-        return true;
+        // return true;
     }
 
     bool fScriptChecks = true;
@@ -2272,8 +2272,10 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (gArgs.GetBoolArg("-printcreation", false))
         LogPrintf("%s: destroy=%s nFees=%lld\n", __func__, FormatMoney(nFees), nFees);
 
-    if (!m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, params)) {
-        return false;
+    if (block.GetHash() != Params().GetConsensus().hashGenesisBlock) {
+        if (!m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, params)) {
+            return false;
+        }
     }
 
     const auto time_5{SteadyClock::now()};

@@ -119,7 +119,7 @@ bool CoinStatsIndex::CustomAppend(const interfaces::BlockInfo& block)
     //m_total_subsidy += block_subsidy;
 
     // Ignore genesis block
-    if (block.height > 0) {
+    // if (block.height > 0) {
         // pindex variable gives indexing code access to node internals. It
         // will be removed in upcoming commit
         const CBlockIndex* pindex = WITH_LOCK(cs_main, return m_chainstate->m_blockman.LookupBlockIndex(block.hash));
@@ -191,11 +191,11 @@ bool CoinStatsIndex::CustomAppend(const interfaces::BlockInfo& block)
                 }
             }
         }
-    } else {
+    // } else {
         // genesis block
         //m_total_unspendable_amount += block_subsidy;
         //m_total_unspendables_genesis_block += block_subsidy;
-    }
+    //}
 
     // If spent prevouts + block subsidy are still a higher amount than
     // new outputs + coinbase + current unspendable amount this means
@@ -396,7 +396,7 @@ bool CoinStatsIndex::ReverseBlock(const CBlock& block, const CBlockIndex* pindex
     //m_total_subsidy -= block_subsidy;
 
     // Ignore genesis block
-    if (pindex->nHeight > 0) {
+    // if (pindex->nHeight > 0) {
         if (!UndoReadFromDisk(block_undo, pindex)) {
             return false;
         }
@@ -415,7 +415,7 @@ bool CoinStatsIndex::ReverseBlock(const CBlock& block, const CBlockIndex* pindex
                              __func__, expected_block_hash.ToString());
             }
         }
-    }
+    // }
 
     // Remove the new UTXOs that were created from the block
     for (size_t i = 0; i < block.vtx.size(); ++i) {

@@ -74,6 +74,7 @@ struct BIP9Deployment {
  */
 struct Params {
     uint256 hashGenesisBlock;
+    uint256 hashGenesisTx;
     /**
      * Hashes of blocks that
      * - are known to be consensus valid, and
@@ -156,7 +157,10 @@ struct Params {
 
     int64_t GetnStakeMinAge(int nHeight) const
     {
-        return std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
+        // patchcoin todo, could enforce 5 or 10 minutes starting
+        int64_t MINAGE = std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
+        // printf("MINAGE: %ld\n", MINAGE);
+        return MINAGE;
     }
 
     int64_t GetnStakeMaxAge(int nHeight) const
@@ -167,13 +171,6 @@ struct Params {
     int64_t GetnModifierInterval(int nHeight) const
     {
         return nModifierInterval;
-    }
-
-    int GetnCoinbaseMaturity(int nHeight) const
-    {
-        int maturity = std::min(nHeight - 1, nCoinbaseMaturity);
-        printf("%d, %d, %d\n", maturity, nHeight, nCoinbaseMaturity);
-        return maturity;
     }
 };
 
