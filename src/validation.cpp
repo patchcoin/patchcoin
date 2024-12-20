@@ -1896,7 +1896,7 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex& block_index, const Ch
     }
 
     // Enforce CHECKLOCKTIMEVERIFY (BIP65)
-    if (IsProtocolV06(block_index.pprev)) {
+    if (block_index.pprev && IsProtocolV06(block_index.pprev)) {
         flags |= SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY;
     }
 
@@ -2030,8 +2030,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     // is enforced in ContextualCheckBlockHeader(); we wouldn't want to
     // re-enforce that rule here (at least until we make it impossible for
     // m_adjusted_time_callback() to go backward).
-    // patchcoin todo: drop nHeight check
-    if (pindex->nHeight > 1 && !CheckBlock(block, state, params.GetConsensus(), !fJustCheck, !fJustCheck)) {
+    if (!CheckBlock(block, state, params.GetConsensus(), !fJustCheck, !fJustCheck)) {
         if (state.GetResult() == BlockValidationResult::BLOCK_MUTATED) {
             // We don't write down blocks to disk if they may have been
             // corrupted, so this should be impossible unless we're having hardware
@@ -2050,6 +2049,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
     if (block_hash == params.GetConsensus().hashGenesisBlock) {
+        assert(MoneyRange(block.vtx[0]->GetValueOut()));
         if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
         // return true;
@@ -2135,9 +2135,6 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
         if (tx.IsCoinBase())
             nValueOut += tx.GetValueOut();
-            // TODO PATCHCOIN:
-            // PROBABLY JUST REJECT COINBASES YES?
-            // IF WE GET ALL RELEVANT UTXOS FROM PREV BLOCK + MEMPOOL THEN WE COULD STILL CHECK IT
         else
         {
             CAmount txfee = 0;
@@ -2207,16 +2204,12 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, IsProtocolV12(pindex));
     }
 
-    // patchcoin todo: drop nHeight check
-    /*
-    if (pindex->nHeight > 1 && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
+    if (block_hash != params.GetConsensus().hashGenesisBlock && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
         LogPrintf("ERROR: %s: coinbase pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[0]->GetValueOut(), nFees);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
     }
-    */
 
-    // patchcoin todo: drop nHeight check
-    if (pindex->nHeight > 1 && block.IsProofOfStake()) {
+    if (block.IsProofOfStake()) {
         CAmount nReward = block.vtx[1]->GetValueOut() - nValueStakeIn;
         if (!MoneyRange(nReward)) {
             LogPrintf("ERROR: %s: reward in the block out of range\n", __func__);
@@ -2272,7 +2265,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (gArgs.GetBoolArg("-printcreation", false))
         LogPrintf("%s: destroy=%s nFees=%lld\n", __func__, FormatMoney(nFees), nFees);
 
-    if (block.GetHash() != Params().GetConsensus().hashGenesisBlock) {
+    if (block_hash != params.GetConsensus().hashGenesisBlock) {
         if (!m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, params)) {
             return false;
         }
@@ -3339,9 +3332,8 @@ void Chainstate::ReceivedBlockTransactions(const CBlock& block, CBlockIndex* pin
 
 static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true)
 {
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "high-hash", "proof of work failed");
+    if (fCheckPOW && block.GetHash() != consensusParams.hashGenesisBlock)
+        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "pow", "proof of work not allowed");
 
     return true;
 }
@@ -3407,6 +3399,9 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     if (block.fChecked)
         return true;
 
+    if (block.GetHash() != consensusParams.hashGenesisBlock && block.IsProofOfWork())
+        return false;
+
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, consensusParams, fCheckPOW && !block.IsProofOfStake()))
@@ -3456,18 +3451,6 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     if (block.IsProofOfStake() && !CheckCoinStakeTimestamp(block.GetBlockTime(), block.vtx[1]->nTime ? (int64_t)block.vtx[1]->nTime : block.GetBlockTime()))
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-time", "coinstake timestamp violation");
 
-    // Check coinbase reward
-    /* PATCHCOIN TODO
-    CAmount nCoinbaseCost = 0;
-    if (block.IsProofOfWork())
-        nCoinbaseCost = (GetMinFee(*block.vtx[0], block.nTime) < PERKB_TX_FEE)? 0 : (GetMinFee(*block.vtx[0], block.nTime) - PERKB_TX_FEE);
-    /*
-    if (block.vtx[0]->GetValueOut() > (block.IsProofOfWork()? (GetProofOfWorkReward(block.nBits, block.GetBlockTime()) - nCoinbaseCost) : 0))
-        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount",
-                strprintf("CheckBlock() : coinbase reward exceeded %s > %s",
-                   FormatMoney(block.vtx[0]->GetValueOut()),
-                   FormatMoney(block.IsProofOfWork()? GetProofOfWorkReward(block.nBits, block.GetBlockTime()) : 0)));
-    */
     // Check transactions
     // Must check for duplicate inputs (see CVE-2018-17144)
     for (const auto& tx : block.vtx) {
@@ -3547,7 +3530,7 @@ bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers, const Consens
     return std::all_of(headers.cbegin(), headers.cend(),
             [&](const auto& header) {
                 bool fPoS = header.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE;
-                return fPoS ? true : CheckProofOfWork(header.GetHash(), header.nBits, consensusParams);
+                return fPoS ? true : header.GetHash() == consensusParams.hashGenesisBlock;
             });
 }
 
@@ -3609,6 +3592,10 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
 
     // Check proof of work or proof-of-stake
     const Consensus::Params& consensusParams = chainman.GetConsensus();
+
+    if (block.GetHash() != consensusParams.hashGenesisBlock && !(block.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE))
+        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "pow", "proof of work not allowed");
+
     if (block.nBits != GetNextTargetRequired(pindexPrev, block.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE, consensusParams))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "bad-diffbits", "incorrect proof of work/stake");
 
@@ -3725,6 +3712,11 @@ bool ChainstateManager::AcceptBlockHeader(const CBlockHeader& block, BlockValida
                 return state.Invalid(BlockValidationResult::BLOCK_CACHED_INVALID, "duplicate");
             }
             return true;
+        }
+
+        if (!(block.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE)) {
+            LogPrint(BCLog::VALIDATION, "%s: Consensus::CheckBlockHeader: %s, %s\n", __func__, hash.ToString(), state.ToString());
+            return false;
         }
 
         if (!CheckBlockHeader(block, state, GetConsensus(), !(block.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE))) {
@@ -3948,8 +3940,7 @@ bool Chainstate::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockV
 
     const CChainParams& params{m_chainman.GetParams()};
 
-    // todo patchcoin drop nHeight check
-    if (pindex->nHeight > 1 && !CheckBlock(block, state, params.GetConsensus()) ||
+    if (!CheckBlock(block, state, params.GetConsensus()) ||
         !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -4008,8 +3999,7 @@ bool ChainstateManager::ProcessNewBlock(const std::shared_ptr<const CBlock>& blo
         // malleability that cause CheckBlock() to fail; see e.g. CVE-2012-2459 and
         // https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2019-February/016697.html.  Because CheckBlock() is
         // not very expensive, the anti-DoS benefits of caching failure (of a definitely-invalid block) are not substantial.
-        // todo patchcoin drop nHeight check
-        bool ret = ActiveChainstate().m_chain[0]->nHeight < 2 || CheckBlock(*block, state, GetConsensus());
+        bool ret = CheckBlock(*block, state, GetConsensus());
         if (ret) {
             // Store to disk
             ret = ActiveChainstate().AcceptBlock(block, state, &pindex, force_processing, nullptr, new_block, min_pow_checked);
@@ -4074,13 +4064,11 @@ bool TestBlockValidity(BlockValidationState& state,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, pindexPrev, adjusted_time_callback()))
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, state.ToString());
-    // patchcoin todo: drop nHeight check
-    if (pindexPrev->nHeight > 0 && !CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
         return error("%s: Consensus::CheckBlock: %s", __func__, state.ToString());
     if (!ContextualCheckBlock(block, state, pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, state.ToString());
-    // patchcoin todo: drop nHeight check
-    if (pindexPrev->nHeight > 0 && !chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
+    if (!chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
         return false;
     }
     assert(state.IsValid());

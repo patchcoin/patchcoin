@@ -260,7 +260,6 @@ BOOST_AUTO_TEST_CASE(mempool_locks_reorg)
         }
 
         // Mature the inputs of the txs
-        // patchcoin todo
         for (int j = ::Params().GetConsensus().nCoinbaseMaturity; j > 0; --j) {
             last_mined = GoodBlock(last_mined->GetHash());
             BOOST_REQUIRE(ProcessBlock(last_mined));
@@ -272,7 +271,6 @@ BOOST_AUTO_TEST_CASE(mempool_locks_reorg)
         std::vector<std::shared_ptr<const CBlock>> reorg;
         last_mined = GoodBlock(split_hash);
         reorg.push_back(last_mined);
-        // patchcoin todo
         for (size_t j = ::Params().GetConsensus().nCoinbaseMaturity + txs.size() + 1; j > 0; --j) {
             last_mined = GoodBlock(last_mined->GetHash());
             reorg.push_back(last_mined);

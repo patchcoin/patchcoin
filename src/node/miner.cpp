@@ -182,7 +182,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     if (pwallet == nullptr) {
         pblock->nBits = GetNextTargetRequired(pindexPrev, false, chainparams.GetConsensus());
-        coinbaseTx.vout[0].nValue = nHeight == 1 ? MAX_MONEY - 50 * COIN + nFees : nFees;
+        coinbaseTx.vout[0].nValue = nFees;
     }
 
     // peercoin: if coinstake available add coinstake tx
@@ -598,7 +598,7 @@ void PoSMiner(NodeContext& m_node)
                     return;
             }
 
-            if (Params().MiningRequiresPeers()) {
+            if (gArgs.GetBoolArg("-miningrequirespeers", Params().MiningRequiresPeers())) {
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 while(connman == nullptr || connman->GetNodeCount(ConnectionDirection::Both) == 0 || m_node.chainman->ActiveChainstate().IsInitialBlockDownload()) {

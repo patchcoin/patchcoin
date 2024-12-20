@@ -86,6 +86,7 @@ bool IsProtocolV05(unsigned int nTimeTx)
 // Test against previous block index! (always available)
 bool IsProtocolV06(const CBlockIndex* pindexPrev)
 {
+  return true;
   if (Params().NetworkIDString() == CBaseChainParams::REGTEST)
       return true;
 
@@ -140,6 +141,7 @@ bool IsProtocolV12(const CBlockIndex* pindexPrev)
 // Whether a given block is subject to new v14 protocol
 bool IsProtocolV14(const CBlockIndex* pindexPrev)
 {
+  return true;
   if (Params().NetworkIDString() == CBaseChainParams::REGTEST)
       return true;
 
@@ -391,7 +393,7 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
     nStakeModifierTime = pindex->GetBlockTime();
     int64_t nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
 
-    /* todo patchcoin
+    /* todo patchcoin */
     if (nStakeModifierTime + params.GetnStakeMinAge(pindexPrev->nHeight) - nStakeModifierSelectionInterval <= (int64_t) nTimeTx)
     {
         // Best block is still more than
@@ -402,7 +404,6 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
         else
             return false;
     }
-    */
     // loop to find the stake modifier earlier by
     // (nStakeMinAge minus a selection interval)
     // patchcoin todo check if pindex->nHeight is correct
@@ -524,6 +525,10 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
 {
     const Consensus::Params& params = Params().GetConsensus();
     unsigned int nTimeBlockFrom = blockFrom.GetBlockTime();
+
+    // patchcoin todo
+    if (!pindexPrev->pprev && pindexPrev->nMint == MAX_MONEY && blockFrom.GetHash() == params.hashGenesisBlock)
+        return true;
 
     if (nTimeTx < (txPrev->nTime? txPrev->nTime : nTimeBlockFrom))  // Transaction timestamp violation
         return error("CheckStakeKernelHash() : nTime violation");

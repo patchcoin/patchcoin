@@ -158,9 +158,9 @@ struct Params {
     int64_t GetnStakeMinAge(int nHeight) const
     {
         // patchcoin todo, could enforce 5 or 10 minutes starting
-        int64_t MINAGE = std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
+        // int64_t MINAGE = std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
         // printf("MINAGE: %ld\n", MINAGE);
-        return MINAGE;
+        return nStakeMinAge;
     }
 
     int64_t GetnStakeMaxAge(int nHeight) const

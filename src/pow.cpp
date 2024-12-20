@@ -296,6 +296,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
         if (fProofOfStake) {
             nTargetSpacing = params.nStakeTargetSpacing;
         } else {
+            return CBigNum( uint256S("0000000000000000000000000000000000000000000000000000000000000000")).GetCompact();
             if (IsProtocolV09(pindexLast->nTime)) {
                 nTargetSpacing = params.nStakeTargetSpacing * 6;
             } else {
@@ -316,6 +317,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params)
 {
+    return false;
     bool fNegative;
     bool fOverflow;
     arith_uint256 bnTarget;
