@@ -147,11 +147,11 @@ public:
         nDefaultPort = 9901;
         m_assumed_blockchain_size = 0;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 1u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 0u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x29636f9e66fab26932b62e6464d346f575b7276b3c28c8d31437362a96ff66df"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2107c559b7024c2e9f1ee5db5485f7a26c0ce5d8c95c8e6b204d31fb77646adc"));
+        assert(consensus.hashGenesisBlock == uint256S("0x4867ef98c3a5de79af4beb0f445e67c1b2d297c4d0d08ac8dc3371d7e04a8309"));
+        assert(genesis.hashMerkleRoot == uint256S("0x82d0c77c766e6e8f457ffb17dc946c0daaf04d5931d197d1d2320f8575824feb"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
@@ -182,7 +182,7 @@ public:
 
         checkpointData = {
             {
-                {     0, uint256S("0x2f93da5027cea5e4c88d7f3fc7f490aad372c90b5d83d824ee2d8c8536dea7d9")},
+                {     0, uint256S("0x4867ef98c3a5de79af4beb0f445e67c1b2d297c4d0d08ac8dc3371d7e04a8309")},
             }
         };
 
@@ -241,11 +241,11 @@ public:
         nDefaultPort = 9903;
         m_assumed_blockchain_size = 1;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 1u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 0u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x29636f9e66fab26932b62e6464d346f575b7276b3c28c8d31437362a96ff66df"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2107c559b7024c2e9f1ee5db5485f7a26c0ce5d8c95c8e6b204d31fb77646adc"));
+        assert(consensus.hashGenesisBlock == uint256S("0x4867ef98c3a5de79af4beb0f445e67c1b2d297c4d0d08ac8dc3371d7e04a8309"));
+        assert(genesis.hashMerkleRoot == uint256S("0x82d0c77c766e6e8f457ffb17dc946c0daaf04d5931d197d1d2320f8575824feb"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -391,11 +391,11 @@ public:
 
         nDefaultPort = 38333;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 1u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 0u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x29636f9e66fab26932b62e6464d346f575b7276b3c28c8d31437362a96ff66df"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2107c559b7024c2e9f1ee5db5485f7a26c0ce5d8c95c8e6b204d31fb77646adc"));
+        assert(consensus.hashGenesisBlock == uint256S("0x4867ef98c3a5de79af4beb0f445e67c1b2d297c4d0d08ac8dc3371d7e04a8309"));
+        assert(genesis.hashMerkleRoot == uint256S("0x82d0c77c766e6e8f457ffb17dc946c0daaf04d5931d197d1d2320f8575824feb"));
 
         vFixedSeeds.clear();
 
@@ -500,11 +500,11 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(0, 1731229535, 1u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 0u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x29636f9e66fab26932b62e6464d346f575b7276b3c28c8d31437362a96ff66df"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2107c559b7024c2e9f1ee5db5485f7a26c0ce5d8c95c8e6b204d31fb77646adc"));
+        assert(consensus.hashGenesisBlock == uint256S("0x4867ef98c3a5de79af4beb0f445e67c1b2d297c4d0d08ac8dc3371d7e04a8309"));
+        assert(genesis.hashMerkleRoot == uint256S("0x82d0c77c766e6e8f457ffb17dc946c0daaf04d5931d197d1d2320f8575824feb"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

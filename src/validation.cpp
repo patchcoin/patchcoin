@@ -67,6 +67,7 @@
 #include <optional>
 #include <kernel.h>
 #include <bignum.h>
+#include <key_io.h>
 #include <timedata.h>
 #include <wallet/wallet.h>
 
@@ -5451,6 +5452,145 @@ bool ChainstateManager::PopulateAndValidateSnapshot(
 
     LogPrintf("[snapshot] validated snapshot (%.2f MB)\n",
         coins_cache.DynamicMemoryUsage() / (1000 * 1000));
+    return true;
+}
+
+std::map<CScript, std::vector<fCoinEntry>> foreignSnapshot;
+bool gotIt = false;
+
+CAmount ChainstateManager::LookupAddress(CTxDestination dest)
+{
+    CAmount nValue = 0;
+    for (const auto& entry : foreignSnapshot) {
+        const CScript& scriptPubKey = entry.first;
+
+        std::vector<std::vector<unsigned char>> solutions;
+        const TxoutType type = Solver(scriptPubKey, solutions);
+
+        CTxDestination extractedDest;
+        switch (type) {
+        case TxoutType::PUBKEYHASH: {
+            if (solutions.size() == 1) {
+                extractedDest = PKHash(uint160(solutions[0]));
+            }
+            break;
+        }
+        case TxoutType::PUBKEY: {
+            if (solutions.size() == 1) {
+                CPubKey pubkey(solutions[0]);
+                if (pubkey.IsFullyValid()) {
+                    extractedDest = PKHash(pubkey.GetID());
+                }
+            }
+            break;
+        }
+        default:
+            continue;
+        }
+
+        if (ExtractDestination(scriptPubKey, extractedDest)) {
+            if (extractedDest == dest) {
+                for (const fCoinEntry& coinEntry : entry.second) {
+                    nValue += coinEntry.coin.out.nValue;
+                }
+            }
+        }
+    }
+    if (nValue == 0) {
+        for (const auto& entry : foreignSnapshot) {
+            const CScript& scriptPubKey = entry.first;
+            CTxDestination extractedDest;
+
+            if (ExtractDestination(scriptPubKey, extractedDest)) {
+                if (dest == extractedDest) {
+                    for (const fCoinEntry& coinEntry : entry.second) {
+                        nValue += coinEntry.coin.out.nValue;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return nValue;
+}
+
+bool ChainstateManager::PopulateAndValidateSnapshotForeign(
+    AutoFile& coins_file,
+    const SnapshotMetadata& metadata)
+{
+    if (gotIt)
+        return true;
+    uint256 base_blockhash = metadata.m_base_blockhash;
+
+    COutPoint outpoint;
+    Coin coin;
+    const uint64_t coins_count = metadata.m_coins_count;
+    uint64_t coins_left = metadata.m_coins_count;
+
+    LogPrintf("[snapshot] loading coins from snapshot %s\n", base_blockhash.ToString());
+    int64_t coins_processed{0};
+
+    while (coins_left > 0) {
+        try {
+            coins_file >> outpoint;
+            coins_file >> coin;
+        } catch (const std::ios_base::failure&) {
+            LogPrintf("[snapshot] bad snapshot format or truncated snapshot after deserializing %d coins\n",
+                      coins_count - coins_left);
+            return false;
+        }
+        if (/* coin.nHeight > base_height || */
+            outpoint.n >= std::numeric_limits<decltype(outpoint.n)>::max() // Avoid integer wrap-around in coinstats.cpp:ApplyHash
+        ) {
+            LogPrintf("[snapshot] bad snapshot data after deserializing %d coins\n",
+                      coins_count - coins_left);
+            return false;
+        }
+
+        if (coin.out.nValue > 0) {
+            foreignSnapshot[coin.out.scriptPubKey].emplace_back(outpoint, coin);
+        }
+
+        --coins_left;
+        ++coins_processed;
+
+        if (coins_processed % 1000000 == 0) {
+            LogPrintf("[snapshot] %d coins loaded (%.2f%%)\n",
+                coins_processed,
+                static_cast<float>(coins_processed) * 100 / static_cast<float>(coins_count)/*,
+                coins_cache.DynamicMemoryUsage() / (1000 * 1000)*/);
+        }
+
+        // Batch write and flush (if we need to) every so often.
+        //
+        // If our average Coin size is roughly 41 bytes, checking every 120,000 coins
+        // means <5MB of memory imprecision.
+        if (coins_processed % 120000 == 0) {
+            if (ShutdownRequested()) {
+                return false;
+            }
+        }
+    }
+
+    bool out_of_coins{false};
+    try {
+        coins_file >> outpoint;
+    } catch (const std::ios_base::failure&) {
+        // We expect an exception since we should be out of coins.
+        out_of_coins = true;
+    }
+    if (!out_of_coins) {
+        LogPrintf("[snapshot] bad snapshot - coins left over after deserializing %d coins\n",
+            coins_count);
+        return false;
+    }
+
+    LogPrintf("[snapshot] loaded %d coins from snapshot %s\n",
+        coins_count,
+        /*coins_cache.DynamicMemoryUsage() / (1000 * 1000),*/
+        base_blockhash.ToString());
+
+    gotIt = true;
     return true;
 }
 

@@ -56,6 +56,7 @@
 #include <kernel.h>
 #include <validation.h>
 #include <condition_variable>
+#include <key_io.h>
 #include <memory>
 #include <mutex>
 
@@ -2638,6 +2639,137 @@ UniValue CreateUTXOSnapshot(
     return result;
 }
 
+static RPCHelpMan loadtxoutset()
+{
+    return RPCHelpMan{
+        "loadtxoutset",
+        "Load the serialized UTXO set from a file.\n"
+        "Once this snapshot is loaded, its contents will be "
+        "deserialized into a second chainstate data structure, which is then used to sync to "
+        "the network's tip. "
+        "Meanwhile, the original chainstate will complete the initial block download process in "
+        "the background, eventually validating up to the block that the snapshot is based upon.\n\n"
+
+        "The result is a usable bitcoind instance that is current with the network tip in a "
+        "matter of minutes rather than hours. UTXO snapshot are typically obtained from "
+        "third-party sources (HTTP, torrent, etc.) which is reasonable since their "
+        "contents are always checked by hash.\n\n"
+
+        "You can find more information on this process in the `assumeutxo` design "
+        "document (<https://github.com/bitcoin/bitcoin/blob/master/doc/design/assumeutxo.md>).",
+        {
+            {"path",
+                RPCArg::Type::STR,
+                RPCArg::Optional::NO,
+                "path to the snapshot file. If relative, will be prefixed by datadir."},
+        },
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+                {
+                    {RPCResult::Type::NUM, "coins_loaded", "the number of coins loaded from the snapshot"},
+                    /*{RPCResult::Type::STR_HEX, "tip_hash", "the hash of the base of the snapshot"},
+                    {RPCResult::Type::NUM, "base_height", "the height of the base of the snapshot"},
+                    {RPCResult::Type::STR, "path", "the absolute path that the snapshot was loaded from"},*/
+                }
+        },
+        RPCExamples{
+            HelpExampleCli("-rpcclienttimeout=0 loadtxoutset", "utxo.dat")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    NodeContext& node = EnsureAnyNodeContext(request.context);
+    ChainstateManager& chainman = EnsureChainman(node);
+    const fs::path path{AbsPathForConfigVal(EnsureArgsman(node), fs::u8path(request.params[0].get_str()))};
+
+    FILE* file{fsbridge::fopen(path, "rb")};
+    AutoFile afile{file};
+    if (afile.IsNull()) {
+        throw JSONRPCError(
+            RPC_INVALID_PARAMETER,
+            "Couldn't open file " + path.u8string() + " for reading.");
+    }
+
+    SnapshotMetadata metadata;
+    try {
+        afile >> metadata;
+    } catch (const std::ios_base::failure& e) {
+        throw JSONRPCError(RPC_DESERIALIZATION_ERROR, strprintf("Unable to parse metadata: %s", e.what()));
+    }
+    uint256 base_blockhash = metadata.m_base_blockhash;
+    // chainman.PopulateAndValidateSnapshot(chainman, afile, metadata);
+
+    auto activation_result{chainman.PopulateAndValidateSnapshotForeign(afile, metadata)};
+    if (!activation_result) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Unable to load UTXO snapshot: TODO"));
+    }
+
+    // Because we can't provide historical blocks during tip or background sync.
+    // Update local services to reflect we are a limited peer until we are fully sync.
+    // node.connman->RemoveLocalServices(NODE_NETWORK);
+    // Setting the limited state is usually redundant because the node can always
+    // provide the last 288 blocks, but it doesn't hurt to set it.
+    // node.connman->AddLocalServices(NODE_NETWORK_LIMITED);
+
+    // CBlockIndex& snapshot_index{*CHECK_NONFATAL(*activation_result)};
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("coins_loaded", metadata.m_coins_count);
+    //result.pushKV("tip_hash", snapshot_index.GetBlockHash().ToString());
+    //result.pushKV("base_height", snapshot_index.nHeight);
+    // result.pushKV("path", fs::PathToString(path));
+    return result;
+},
+    };
+}
+
+RPCHelpMan lookupaddress()
+{
+    return RPCHelpMan{"lookupaddress",
+                "\nReturn information about the given peercoin address.\n",
+                {
+                    {"address", RPCArg::Type::STR, RPCArg::Optional::NO, "The peercoin address for which to get information."},
+                },
+                RPCResult{
+                    RPCResult::Type::OBJ, "", "",
+                    {
+                        {RPCResult::Type::STR, "address", "The peercoin address validated."},
+                        {RPCResult::Type::STR, "balance", "Balance of the peercoin adddress."},
+                    }
+                },
+                RPCExamples{
+                    HelpExampleCli("lookupaddress", "\"" + EXAMPLE_ADDRESS[0] + "\"") +
+                    HelpExampleRpc("lookupaddress", "\"" + EXAMPLE_ADDRESS[0] + "\"")
+                },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    NodeContext& node = EnsureAnyNodeContext(request.context);
+    ChainstateManager& chainman = EnsureChainman(node);
+    std::string error_msg;
+    CTxDestination dest = DecodeDestination(request.params[0].get_str(), error_msg);
+
+    // Make sure the destination is valid
+    if (!IsValidDestination(dest)) {
+        // Set generic error message in case 'DecodeDestination' didn't set it
+        if (error_msg.empty()) error_msg = "Invalid address";
+
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
+    }
+
+    UniValue ret(UniValue::VOBJ);
+
+    std::string currentAddress = EncodeDestination(dest);
+    auto aa{chainman.LookupAddress(dest)};
+    ret.pushKV("address", currentAddress);
+    ret.pushKV("balance", FormatMoney(aa));
+
+    // CScript scriptPubKey = GetScriptForDestination(dest);
+    // ret.pushKV("scriptPubKey", HexStr(scriptPubKey));
+
+    return ret;
+},
+    };
+}
+
 void RegisterBlockchainRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
@@ -2667,6 +2799,8 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"hidden", &waitforblockheight},
         {"hidden", &syncwithvalidationinterfacequeue},
         {"hidden", &dumptxoutset},
+        {"hidden", &loadtxoutset},
+        {"hidden", &lookupaddress},
     };
     for (const auto& c : commands) {
         t.appendCommand(c.name, &c);

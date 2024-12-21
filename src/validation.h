@@ -115,6 +115,14 @@ extern arith_uint256 nMinimumChainWork;
 /** Best header we've seen so far (used for getheaders queries' starting points). */
 extern CBlockIndex *pindexBestHeader;
 
+struct fCoinEntry
+{
+    COutPoint outpoint;
+    Coin coin;
+    fCoinEntry(const COutPoint& outpointIn, const Coin& coinIn)
+    : outpoint(outpointIn), coin(coinIn) {}
+};
+
 
 /** Documentation for argument 'checklevel'. */
 extern const std::vector<std::string> CHECKLEVEL_DOC;
@@ -954,6 +962,11 @@ private:
     }
 
 public:
+    [[nodiscard]] bool PopulateAndValidateSnapshotForeign(
+        AutoFile& coins_file,
+        const node::SnapshotMetadata& metadata);
+    [[nodiscard]] CAmount LookupAddress(CTxDestination dest);
+
     using Options = kernel::ChainstateManagerOpts;
 
     explicit ChainstateManager(Options options, node::BlockManager::Options blockman_options);
