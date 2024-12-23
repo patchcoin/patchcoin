@@ -3,54 +3,53 @@
 #include <logging.h>
 #include <chainparams.h>
 #include <key_io.h>
+#include <serialize.h>
 #include <shutdown.h>
 #include <script/standard.h>
+#include <fstream>
+#include <rpc/server_util.h>
+#include <util/moneystr.h>
 
 // std::map<CScript, std::vector<fCoinEntry>> foreignSnapshotByScript;
 std::map<std::string, std::vector<fCoinEntry>> foreignSnapshotByAddress;
 
 bool LoadSnapshotOnStartup(const ArgsManager& args) {
-    std::string snapshotPath = args.GetArg("-snapshotfile", "");
-
-    if (snapshotPath.empty()) {
-        fs::path defaultPath = args.GetDataDirNet() / "peercoin_utxos.dat";
-        if (fs::exists(defaultPath)) {
-            snapshotPath = defaultPath;
-            LogPrintf("LoadSnapshotOnStartup: found default snapshot at %s\n", snapshotPath);
-        }
+    const fs::path path = args.GetDataDirNet() / "peercoin_utxos.dat";
+    if (fs::exists(path)) {
+        LogPrintf("LoadSnapshotOnStartup: found default snapshot at %s\n", fs::PathToString(path));
     }
 
-    if (snapshotPath.empty()) {
+    if (path.empty()) {
         LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found.\n");
         return true;
     }
 
-    return LoadSnapshotFromFile(snapshotPath);
+    return LoadSnapshotFromFile(path);
 }
 
-bool LoadSnapshotFromFile(const std::string& filePath) {
-    fs::path snapFilePath(fs::u8path(filePath));
-    if (!fs::exists(snapFilePath)) {
-        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", filePath);
+bool LoadSnapshotFromFile(const fs::path& path) {
+    if (!fs::exists(path)) {
+        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
         return false;
     }
 
-    AutoFile coins_file(fsbridge::fopen(snapFilePath, "rb"));
+    AutoFile coins_file(fsbridge::fopen(path, "rb"));
 
     node::SnapshotMetadata metadata;
     try {
         coins_file >> metadata;
     } catch (const std::ios_base::failure& e) {
-        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", filePath);
+        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
         return false;
     }
 
     if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
-        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", filePath);
+        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
         return false;
     }
+    coins_file.fclose();
 
-    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", filePath);
+    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
     return true;
 }
 
@@ -154,16 +153,64 @@ bool PopulateAndValidateSnapshotForeign(
     return true;
 }
 
-CAmount LookupPeercoinAddress(const std::string& address) {
+bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible) {
     const auto it = foreignSnapshotByAddress.find(address);
-    if (it == foreignSnapshotByAddress.end()) {
-        return 0;
-    }
+    if (it == foreignSnapshotByAddress.end())
+        return false;
 
     CAmount sum = 0;
-    for (const fCoinEntry& entry : it->second) {
+    for (const fCoinEntry& entry : it->second)
         sum += entry.coin.out.nValue;
+
+    if (!MoneyRange(sum))
+        return false;
+
+    balance = sum;
+    eligible = std::min(balance * 10, 5000 * COIN);
+
+    if (!MoneyRange(eligible)) {
+        eligible = 0;
+        return false;
     }
-    assert(MoneyRange(sum));
-    return sum;
+
+    return true;
+}
+
+std::string FormatCustomMoney(CAmount amount) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6) << static_cast<double>(amount) / COIN;
+    return oss.str();
+}
+
+void ExportSnapshotToCSV(const fs::path& path) {
+    std::ofstream csvFile(path);
+    if (!csvFile.is_open()) {
+        LogPrintf("ExportSnapshotToCSV: Unable to open file: %s\n", fs::PathToString(path));
+        return;
+    }
+
+    csvFile << "Address,Balance,Eligible\n";
+
+    std::vector<std::tuple<std::string, CAmount, CAmount>> snapshotData;
+
+    for (const auto& [address, entries] : foreignSnapshotByAddress) {
+        CAmount balance = 0;
+        CAmount eligible = 0;
+
+        if (LookupPeercoinAddress(address, balance, eligible))
+            snapshotData.emplace_back(address, balance, eligible);
+        else
+            LogPrintf("ExportSnapshotToCSV: Unable to lookup peercoin address: %s\n", address);
+    }
+
+    std::sort(snapshotData.begin(), snapshotData.end(), [](const auto& a, const auto& b) {
+        return std::get<1>(a) > std::get<1>(b);
+    });
+
+    for (const auto& [address, balance, eligible] : snapshotData) {
+        csvFile << address << "," << FormatCustomMoney(balance) << "," << FormatCustomMoney(eligible) << "\n";
+    }
+
+    csvFile.close();
+    LogPrintf("ExportSnapshotToCSV: Snapshot exported to %s\n", fs::PathToString(path));
 }

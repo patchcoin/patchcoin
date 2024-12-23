@@ -2652,6 +2652,7 @@ RPCHelpMan lookupaddress()
                     {
                         {RPCResult::Type::STR, "address", "The peercoin address validated."},
                         {RPCResult::Type::STR, "balance", "Balance of the peercoin adddress."},
+                        {RPCResult::Type::STR, "eligible", "How many patchcoin this address may receive on initial distribution."},
                     }
                 },
                 RPCExamples{
@@ -2669,14 +2670,54 @@ RPCHelpMan lookupaddress()
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
     }
 
-    UniValue detail = DescribeAddress(dest);
+    CAmount balance = 0;
+    CAmount eligible = 0;
+    if (!LookupPeercoinAddress(address, balance, eligible)) {
+        if (error_msg.empty()) error_msg = "Unable to find address";
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
+    };
 
     UniValue ret(UniValue::VOBJ);
-
-    CAmount balance = LookupPeercoinAddress(address);
     ret.pushKV("address", address);
     ret.pushKV("balance", FormatMoney(balance));
+    ret.pushKV("eligible", FormatMoney(eligible));
+    return ret;
+},
+    };
+}
 
+RPCHelpMan exportsnapshot()
+{
+    return RPCHelpMan{"exportsnapshot",
+    "\nExport the current snapshot data to a CSV file.\n",
+    {
+            {"csv_path", RPCArg::Type::STR, RPCArg::Optional::NO, "Path to save the CSV file."},
+        },
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::STR, "status", "Status of the operation."},
+                {RPCResult::Type::STR, "path", "The file path where the snapshot was saved."},
+            }
+        },
+        RPCExamples{
+            HelpExampleCli("exportsnapshot", "\"output.csv\"") +
+            HelpExampleRpc("exportsnapshot", "\"output.csv\"")
+        },
+[&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    NodeContext& node = EnsureAnyNodeContext(request.context);
+    const fs::path path{AbsPathForConfigVal(EnsureArgsman(node), fs::u8path(request.params[0].get_str()))};
+
+    try {
+        ExportSnapshotToCSV(path);
+    } catch (const std::exception& e) {
+        throw JSONRPCError(RPC_MISC_ERROR, strprintf("Failed to export snapshot: %s", e.what()));
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    ret.pushKV("status", "Snapshot exported successfully.");
+    ret.pushKV("path", fs::PathToString(path));
     return ret;
 },
     };
@@ -2712,6 +2753,7 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"hidden", &syncwithvalidationinterfacequeue},
         {"hidden", &dumptxoutset},
         {"hidden", &lookupaddress},
+        {"hidden", &exportsnapshot},
     };
     for (const auto& c : commands) {
         t.appendCommand(c.name, &c);
