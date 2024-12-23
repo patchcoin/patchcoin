@@ -97,6 +97,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <snapshotmanager.h>
 #include <boost/signals2/signal.hpp>
 
 #if ENABLE_ZMQ
@@ -623,6 +624,9 @@ void SetupServerArgs(ArgsManager& argsman)
 
     gArgs.AddArg("-reservebalance=<amt>", "Reserve this many coins", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     gArgs.AddArg("-minting", "Enable minting (default: true)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+
+    // patchcoin
+    gArgs.AddArg("-snapshotfile=<file>", "Path to a peercoin utxo dump file for use in lookupaddress.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 
     // Add the hidden options
     argsman.AddHiddenArgs(hidden_args);
@@ -1551,6 +1555,11 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 return InitError(error);
             }
         }
+    }
+
+
+    if (!LoadSnapshotOnStartup(args)) {
+        return false;
     }
 
     // As LoadBlockIndex can take several minutes, it's possible the user

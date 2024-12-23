@@ -343,7 +343,9 @@ BITCOIN_CORE_H = \
   zmq/zmqutil.h \
 ## --- peercoin headers start from this line --- ##
   kernel.h \
-  kernelrecord.h
+  kernelrecord.h \
+## --- patchcoin start --- ##
+  snapshotmanager.h
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
@@ -435,6 +437,8 @@ libbitcoin_node_a_SOURCES = \
   validation.cpp \
   validationinterface.cpp \
   kernel.cpp \
+## --- patchcoin start --- ##
+  snapshotmanager.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_WALLET
