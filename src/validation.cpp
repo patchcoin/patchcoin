@@ -67,7 +67,6 @@
 #include <optional>
 #include <kernel.h>
 #include <bignum.h>
-#include <key_io.h>
 #include <timedata.h>
 #include <wallet/wallet.h>
 

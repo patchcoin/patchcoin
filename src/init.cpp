@@ -1554,10 +1554,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }
 
-
     uiInterface.InitMessage(_("Loading utxo snapshot…").translated);
     if (!LoadSnapshotOnStartup(args)) {
-        return false;
+        uiInterface.InitMessage(_("Unable to load utxo snapshot.").translated);
     }
 
     // As LoadBlockIndex can take several minutes, it's possible the user
