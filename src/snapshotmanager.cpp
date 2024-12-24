@@ -166,7 +166,7 @@ bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount
         return false;
 
     balance = sum;
-    eligible = std::min(balance * 10, 5000 * COIN);
+    eligible = std::min(balance * 10, 50000 * COIN);
 
     if (!MoneyRange(eligible)) {
         eligible = 0;
