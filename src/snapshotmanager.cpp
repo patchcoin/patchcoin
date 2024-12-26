@@ -27,55 +27,29 @@ bool LoadSnapshotOnStartup(const ArgsManager& args) {
     return LoadSnapshotFromFile(path);
 }
 
-bool LoadSnapshotFromFile(const fs::path& path) {
-    if (!fs::exists(path)) {
-        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
-        return false;
-    }
-
-    AutoFile coins_file(fsbridge::fopen(path, "rb"));
-
-    node::SnapshotMetadata metadata;
-    try {
-        coins_file >> metadata;
-    } catch (const std::ios_base::failure& e) {
-        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
-        return false;
-    }
-
-    if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
-        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
-        return false;
-    }
-    coins_file.fclose();
-
-    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
-    return true;
-}
-
 bool GetAddressFromScriptPubKey(const CScript& scriptPubKey, std::string& outAddress) {
     outAddress.clear();
 
     CTxDestination dest;
     if (ExtractDestination(scriptPubKey, dest)) {
         outAddress = EncodeDestination(dest);
-        return true;
+    } else {
+        CPubKey pubKeyOut;
+        std::vector<std::vector<unsigned char>> solutions;
+        if (Solver(scriptPubKey, solutions) == TxoutType::PUBKEY &&
+            (pubKeyOut = CPubKey(solutions[0])).IsFullyValid()) {
+                auto keyid = pubKeyOut.GetID();
+                CTxDestination fallbackDest = PKHash(keyid);
+                outAddress = EncodeDestination(fallbackDest);
+            }
     }
 
-    std::vector<std::vector<unsigned char>> solutions;
-    TxoutType whichType = Solver(scriptPubKey, solutions);
-    if (whichType == TxoutType::PUBKEY && solutions.size() == 1) {
-        CPubKey pubkey(solutions[0]);
-        if (pubkey.IsFullyValid()) {
-            auto keyid = pubkey.GetID();
-            CTxDestination fallbackDest = PKHash(keyid);
-            outAddress = EncodeDestination(fallbackDest);
-            return true;
-        }
+    if (!IsValidDestinationString(outAddress)) {
+        LogPrintf("GetAddressFromScriptPubKey: Could not parse scriptPubKey: %s\n", HexStr(scriptPubKey));
+        return false;
     }
 
-    LogPrintf("GetAddressFromScriptPubKey: Could not parse scriptPubKey: %s\n", HexStr(scriptPubKey));
-    return false;
+    return true;
 }
 
 bool PopulateAndValidateSnapshotForeign(
@@ -153,27 +127,29 @@ bool PopulateAndValidateSnapshotForeign(
     return true;
 }
 
-bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible) {
-    const auto it = foreignSnapshotByAddress.find(address);
-    if (it == foreignSnapshotByAddress.end())
+bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible) {
+    balance = 0;
+    for (const fCoinEntry& entry : entries) {
+        balance += entry.coin.out.nValue;
+    }
+    if (!MoneyRange(balance))
         return false;
 
-    CAmount sum = 0;
-    for (const fCoinEntry& entry : it->second)
-        sum += entry.coin.out.nValue;
-
-    if (!MoneyRange(sum))
-        return false;
-
-    balance = sum;
     eligible = std::min(balance * 10, 50000 * COIN);
-
     if (!MoneyRange(eligible)) {
         eligible = 0;
         return false;
     }
 
     return true;
+}
+
+bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible) {
+    const auto it = foreignSnapshotByAddress.find(address);
+    if (it == foreignSnapshotByAddress.end())
+        return false;
+
+    return CalculateBalanceAndEligible(it->second, balance, eligible);
 }
 
 std::string FormatCustomMoney(CAmount amount) {
@@ -193,14 +169,19 @@ void ExportSnapshotToCSV(const fs::path& path) {
 
     std::vector<std::tuple<std::string, CAmount, CAmount>> snapshotData;
 
+    // patchcoin todo add more stats?
+    // output potentially faulty addresses
+    // https://chainz.cryptoid.info/ppc/address.dws?PXbK5MbYmcj778AgJYUobigoUfDGnVFLGz.htm
+    // https://chainz.cryptoid.info/ppc/address.dws?PPCoinsHDXLFmAiwjs4NstpZ43pqixEzQj.htm
     for (const auto& [address, entries] : foreignSnapshotByAddress) {
         CAmount balance = 0;
         CAmount eligible = 0;
 
-        if (LookupPeercoinAddress(address, balance, eligible))
+        if (CalculateBalanceAndEligible(entries, balance, eligible)) {
             snapshotData.emplace_back(address, balance, eligible);
-        else
-            LogPrintf("ExportSnapshotToCSV: Unable to lookup peercoin address: %s\n", address);
+        } else {
+            LogPrintf("ExportSnapshotToCSV: Invalid data for address: %s\n", address);
+        }
     }
 
     std::sort(snapshotData.begin(), snapshotData.end(), [](const auto& a, const auto& b) {
@@ -213,4 +194,30 @@ void ExportSnapshotToCSV(const fs::path& path) {
 
     csvFile.close();
     LogPrintf("ExportSnapshotToCSV: Snapshot exported to %s\n", fs::PathToString(path));
+}
+
+bool LoadSnapshotFromFile(const fs::path& path) {
+    if (!fs::exists(path)) {
+        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
+        return false;
+    }
+
+    AutoFile coins_file(fsbridge::fopen(path, "rb"));
+
+    node::SnapshotMetadata metadata;
+    try {
+        coins_file >> metadata;
+    } catch (const std::ios_base::failure& e) {
+        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
+        return false;
+    }
+
+    if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
+        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
+        return false;
+    }
+    coins_file.fclose();
+
+    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
+    return true;
 }

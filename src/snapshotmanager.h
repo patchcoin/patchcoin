@@ -13,11 +13,11 @@ struct fCoinEntry {
     fCoinEntry(const COutPoint& outpointIn, const Coin& coinIn)
         : outpoint(outpointIn), coin(coinIn) {}
 };
+
+inline std::map<std::string, std::vector<fCoinEntry>> foreignSnapshotByAddress;
 bool LoadSnapshotOnStartup(const ArgsManager& args);
 bool LoadSnapshotFromFile(const fs::path& path);
-bool PopulateAndValidateSnapshotForeign(AutoFile& coins_file, const node::SnapshotMetadata& metadata);
 bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible);
-bool GetAddressFromScriptPubKey(const CScript& scriptPubKey, std::string& outAddress);
 void ExportSnapshotToCSV(const fs::path& path);
 
 #endif // PATCHCOIN_SNAPSHOTMANAGER_H
