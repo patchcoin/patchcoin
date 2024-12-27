@@ -48,6 +48,7 @@ private Q_SLOTS:
     /* verify message */
     void on_addressBookButton_VM_clicked();
     void on_verifyMessageButton_VM_clicked();
+    void on_publishClaimButton_SM_clicked();
     void on_clearButton_VM_clicked();
 };
 

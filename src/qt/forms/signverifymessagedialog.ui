@@ -330,6 +330,20 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="publishClaimButton_SM">
+           <property name="text">
+            <string>Publish Claim</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../bitcoin.qrc">
+             <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="clearButton_VM">
            <property name="toolTip">
             <string>Reset all verify message fields</string>
@@ -387,6 +401,16 @@
             </size>
            </property>
           </spacer>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="peercoinMessageCheckbox_SM">
+           <property name="toolTip">
+            <string>Verify Peercoin Message</string>
+           </property>
+           <property name="text">
+            <string>Peercoin</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>

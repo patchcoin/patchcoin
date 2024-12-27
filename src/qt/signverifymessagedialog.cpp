@@ -32,6 +32,7 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(const PlatformStyle *_platformS
     ui->clearButton_SM->setIcon(QIcon(":/icons/remove"));
     ui->addressBookButton_VM->setIcon(QIcon(":/icons/address-book"));
     ui->verifyMessageButton_VM->setIcon(QIcon(":/icons/transaction_0"));
+    ui->publishClaimButton_SM->setIcon(QIcon(":/icons/send"));
     ui->clearButton_VM->setIcon(QIcon(":/icons/remove"));
 
     GUIUtil::setupAddressWidget(ui->addressIn_SM, this);
@@ -198,8 +199,9 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     const std::string& address = ui->addressIn_VM->text().toStdString();
     const std::string& signature = ui->signatureIn_VM->text().toStdString();
     const std::string& message = ui->messageIn_VM->document()->toPlainText().toStdString();
+    const std::string& magic = ui->peercoinMessageCheckbox_SM->checkState() == Qt::Checked ? PEERCOIN_MESSAGE_MAGIC : MESSAGE_MAGIC;
 
-    const auto result = MessageVerify(address, signature, message);
+    const auto result = MessageVerify(address, signature, message, magic);
 
     if (result == MessageVerificationResult::OK) {
         ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
@@ -248,6 +250,15 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     }
 }
 
+void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
+{
+    const std::string& address = ui->addressIn_VM->text().toStdString();
+    const std::string& signature = ui->signatureIn_VM->text().toStdString();
+    const std::string& message = ui->messageIn_VM->document()->toPlainText().toStdString();
+
+    const auto result = MessageVerify(address, signature, message, PEERCOIN_MESSAGE_MAGIC);
+}
+
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()
 {
     ui->addressIn_VM->clear();
@@ -293,6 +304,7 @@ void SignVerifyMessageDialog::changeEvent(QEvent* e)
         ui->clearButton_SM->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/remove")));
         ui->addressBookButton_VM->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/address-book")));
         ui->verifyMessageButton_VM->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/transaction_0")));
+        ui->publishClaimButton_SM->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/send")));
         ui->clearButton_VM->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/remove")));
     }
 

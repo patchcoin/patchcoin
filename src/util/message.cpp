@@ -22,12 +22,14 @@
  * Text used to signify that a signed message follows and to prevent
  * inadvertently signing a transaction.
  */
-const std::string MESSAGE_MAGIC = "Peercoin Signed Message:\n";
+const std::string MESSAGE_MAGIC = "Patchcoin Signed Message:\n";
+const std::string PEERCOIN_MESSAGE_MAGIC = "Peercoin Signed Message:\n";
 
 MessageVerificationResult MessageVerify(
     const std::string& address,
     const std::string& signature,
-    const std::string& message)
+    const std::string& message,
+    const std::string& magic)
 {
     CTxDestination destination = DecodeDestination(address);
     if (!IsValidDestination(destination)) {
@@ -38,13 +40,24 @@ MessageVerificationResult MessageVerify(
         return MessageVerificationResult::ERR_ADDRESS_NO_KEY;
     }
 
+    if (magic == PEERCOIN_MESSAGE_MAGIC) {
+        CTxDestination receiver = DecodeDestination(message);
+        if (!IsValidDestination(receiver)) {
+            return MessageVerificationResult::ERR_INVALID_TARGET_ADDRESS;
+        }
+
+        if (std::get_if<PKHash>(&receiver) == nullptr) {
+            return MessageVerificationResult::ERR_TARGET_ADDRESS_NO_KEY;
+        }
+    }
+
     auto signature_bytes = DecodeBase64(signature);
     if (!signature_bytes) {
         return MessageVerificationResult::ERR_MALFORMED_SIGNATURE;
     }
 
     CPubKey pubkey;
-    if (!pubkey.RecoverCompact(MessageHash(message), *signature_bytes)) {
+    if (!pubkey.RecoverCompact(MessageHash(message, magic), *signature_bytes)) {
         return MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED;
     }
 
@@ -58,11 +71,12 @@ MessageVerificationResult MessageVerify(
 bool MessageSign(
     const CKey& privkey,
     const std::string& message,
-    std::string& signature)
+    std::string& signature,
+    const std::string& magic)
 {
     std::vector<unsigned char> signature_bytes;
 
-    if (!privkey.SignCompact(MessageHash(message), signature_bytes)) {
+    if (!privkey.SignCompact(MessageHash(message, magic), signature_bytes)) {
         return false;
     }
 
@@ -71,10 +85,10 @@ bool MessageSign(
     return true;
 }
 
-uint256 MessageHash(const std::string& message)
+uint256 MessageHash(const std::string& message, const std::string& magic)
 {
     HashWriter hasher{};
-    hasher << MESSAGE_MAGIC << message;
+    hasher << magic << message;
 
     return hasher.GetHash();
 }

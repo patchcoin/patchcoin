@@ -13,6 +13,7 @@
 class CKey;
 
 extern const std::string MESSAGE_MAGIC;
+extern const std::string PEERCOIN_MESSAGE_MAGIC;
 
 /** The result of a signed message verification.
  * Message verification takes as an input:
@@ -24,8 +25,12 @@ enum class MessageVerificationResult {
     //! The provided address is invalid.
     ERR_INVALID_ADDRESS,
 
+    ERR_INVALID_TARGET_ADDRESS,
+
     //! The provided address is valid but does not refer to a public key.
     ERR_ADDRESS_NO_KEY,
+
+    ERR_TARGET_ADDRESS_NO_KEY,
 
     //! The provided signature couldn't be parsed (maybe invalid base64).
     ERR_MALFORMED_SIGNATURE,
@@ -54,7 +59,8 @@ enum class SigningResult {
 MessageVerificationResult MessageVerify(
     const std::string& address,
     const std::string& signature,
-    const std::string& message);
+    const std::string& message,
+    const std::string& magic = MESSAGE_MAGIC);
 
 /** Sign a message.
  * @param[in] privkey Private key to sign with.
@@ -64,13 +70,14 @@ MessageVerificationResult MessageVerify(
 bool MessageSign(
     const CKey& privkey,
     const std::string& message,
-    std::string& signature);
+    std::string& signature,
+    const std::string& magic = MESSAGE_MAGIC);
 
 /**
  * Hashes a message for signing and verification in a manner that prevents
  * inadvertently signing a transaction.
  */
-uint256 MessageHash(const std::string& message);
+uint256 MessageHash(const std::string& message, const std::string& magic = MESSAGE_MAGIC);
 
 std::string SigningResultString(const SigningResult res);
 
