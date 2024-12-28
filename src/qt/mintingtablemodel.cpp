@@ -190,6 +190,7 @@ public:
                             {
                                 if(i>=cachedWallet.size())
                                 {
+                                    // todo patchcoin this breaks at times
                                     LogPrintf("updateWallet: cachedWallet is smaller than expected, access item %d not in size %d\n", i, cachedWallet.size());
                                     break;
                                 }

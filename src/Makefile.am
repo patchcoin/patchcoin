@@ -345,6 +345,9 @@ BITCOIN_CORE_H = \
   kernel.h \
   kernelrecord.h \
 ## --- patchcoin start --- ##
+  index/claimindex.h \
+  node/claim.h \
+  primitives/claim.h \
   snapshotmanager.h
 
 obj/build.h: FORCE
@@ -438,6 +441,9 @@ libbitcoin_node_a_SOURCES = \
   validationinterface.cpp \
   kernel.cpp \
 ## --- patchcoin start --- ##
+  index/claimindex.cpp \
+  node/claim.cpp \
+  primitives/claim.cpp \
   snapshotmanager.cpp \
   $(BITCOIN_CORE_H)
 

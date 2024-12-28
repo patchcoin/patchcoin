@@ -75,6 +75,7 @@ struct BIP9Deployment {
 struct Params {
     uint256 hashGenesisBlock;
     uint256 hashGenesisTx;
+    uint256 hashPeercoinSnapshot;
     /**
      * Hashes of blocks that
      * - are known to be consensus valid, and

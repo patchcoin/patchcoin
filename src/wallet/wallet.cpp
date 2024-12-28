@@ -59,6 +59,8 @@
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
+#include <index/claimindex.h>
+#include <primitives/claim.h>
 
 using interfaces::FoundBlock;
 
@@ -3645,6 +3647,9 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     CScript scriptPubKeyOut;
     bool bMinterKey = false;
 
+    std::vector<CClaim> claims;
+    CScript genesisKeyOut = Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey;
+
     for (const auto& pcoin : result->GetInputSet())
     {
         CDiskTxPos postx;
@@ -3682,6 +3687,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             // Search nSearchInterval seconds back up to nMaxStakeSearchInterval
             uint256 hashProofOfStake = uint256();
             COutPoint prevoutStake = pcoin->outpoint;
+            // patchcoin todo: obviously blocking here should only happen for the seed node
             if (CheckStakeKernelHash(nBits, chainman.ActiveChain().Tip(), header, postx.nTxOffset + CBlockHeader::NORMAL_SERIALIZE_SIZE, tx, prevoutStake, txNew.nTime - n, hashProofOfStake, false, chainman.ActiveChainstate()))
             {
                 // Found a kernel
@@ -3782,6 +3788,40 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     if (nCredit == 0 || nCredit > nAllowedBalance)
         return false;
 
+    if (genesisKeyOut == scriptPubKeyOut) {
+        g_claimindex && g_claimindex->GetAllClaims(claims);
+        std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
+            return a.nTime < b.nTime;
+        });
+        if (claims.empty() && chainman.ActiveHeight() == 0)
+            return false;
+    }
+
+    {
+        if (!claims.empty() && genesisKeyOut == scriptPubKeyOut) {
+            // patchcoin todo: never count ourselves actually
+            claims.erase(
+                std::remove_if(claims.begin(), claims.end(), [&](const CClaim& claim) {
+                    CTxDestination dest;
+                    if (!ExtractDestination(claim.sourceScriptPubKey, dest)) {
+                        return true;
+                    }
+
+                    auto it = foreignSnapshotByAddress.find(EncodeDestination(dest));
+                    if (it != foreignSnapshotByAddress.end()) {
+                        CAmount balance = 0;
+                        if (!CalculateBalanceAndEligible(pwallet, claim.targetScriptPubKey, it->second, balance, claim.nEligible, claim.nTotalReceived))
+                            return true;
+                    } else {
+                        return true;
+                    }
+                    return claim.nTotalReceived >= claim.nEligible;
+                }),
+                claims.end()
+            );
+        }
+    }
+
     // rfc28 precalculation
     int maxMintingUtxos = gArgs.GetIntArg("-maxmintingutxos", MAX_MINTING_UTXOS);
 
@@ -3831,8 +3871,10 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
 
         // Attempt to add more inputs
         // Only add coins of the same key/address as kernel
-        if (((pcoin->txout.scriptPubKey == scriptPubKeyKernel || pcoin->txout.scriptPubKey == txNew.vout[1].scriptPubKey))
-            && (pcoin->outpoint.hash != txNew.vin[0].prevout.hash)
+        // patchcoin todo: if kernel matches genesis tx we do not ever want to combine inputs
+        if (genesisKeyOut != scriptPubKeyOut
+            && ((pcoin->txout.scriptPubKey == scriptPubKeyKernel || pcoin->txout.scriptPubKey == txNew.vout[1].scriptPubKey))
+            && pcoin->outpoint.hash != txNew.vin[0].prevout.hash
             && pwallet->m_combine_coins)
         {
             // Stop adding more inputs if already too many inputs and we are above target or have minter key to add
@@ -3878,7 +3920,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         // Assume success
         bool outputsOk = true;
         // split and set amounts based on rfc28
-        if (pwallet->m_split_coins) {
+        if (genesisKeyOut != scriptPubKeyOut && pwallet->m_split_coins) {
             CAmount current = nCredit - nMinFee;
             double ratio = current / double(nTargetOutputAmount);
             // Obtain the optimal number of outputs and clamp it to maxOutputs to ensure the fee is not exceeded
@@ -3913,7 +3955,28 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                 }
             }
         } else {
-            txNew.vout.push_back(CTxOut(nCredit - nMinFee, scriptPubKeyOut));
+            if (!claims.empty() && genesisKeyOut == scriptPubKeyOut) {
+                CClaim ENQUEUED_STAKE{claims[0]};
+                CScript target = ENQUEUED_STAKE.IsValid() ? ENQUEUED_STAKE.targetScriptPubKey : scriptPubKeyOut;
+                if (ENQUEUED_STAKE.IsValid() && ENQUEUED_STAKE.nTotalReceived + nCredit > ENQUEUED_STAKE.nEligible) {
+                    // patchcoin todo MoneyRange
+                    CAmount remainder = ENQUEUED_STAKE.nEligible - ENQUEUED_STAKE.nTotalReceived;
+
+                    if (remainder > 0) {
+                        txNew.vout.push_back(CTxOut(remainder, target));
+                        nCredit -= remainder;
+                    }
+                    CAmount amountToGenesis = nCredit - nMinFee;
+                    if (amountToGenesis > 0) {
+                        txNew.vout.push_back(CTxOut(amountToGenesis, genesisKeyOut));
+                    }
+                    ENQUEUED_STAKE.SetNull();
+                } else {
+                    txNew.vout.push_back(CTxOut(nCredit - nMinFee, target));
+                }
+            } else {
+                txNew.vout.push_back(CTxOut(nCredit - nMinFee, scriptPubKeyOut));
+            }
         }
 
         // Sign

@@ -24,6 +24,8 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <primitives/claim.h>
+#include <util/error.h>
 
 class BanMan;
 class CNodeStats;
@@ -207,6 +209,8 @@ public:
 
     //! Broadcast transaction.
     virtual TransactionError broadcastTransaction(CTransactionRef tx, std::string& err_string) = 0;
+
+    virtual ClaimError broadcastClaim(CClaimRef claim, std::string& err_string) = 0;
 
     //! Get wallet loader.
     virtual WalletLoader& walletLoader() = 0;

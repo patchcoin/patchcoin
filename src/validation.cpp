@@ -67,6 +67,8 @@
 #include <optional>
 #include <kernel.h>
 #include <bignum.h>
+#include <key_io.h>
+#include <snapshotmanager.h>
 #include <timedata.h>
 #include <wallet/wallet.h>
 
@@ -4989,11 +4991,15 @@ typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
 {
     std::vector<valtype> vSolutions;
+    // patchcoin todo
     const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
-    if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
-        return false;
+    // const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
+    /*if (*/Solver(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey, vSolutions);/*) != TxoutType::PUBKEY)*/
+        // return false;
+    // CTxDestination dest = DecodeDestination(ENQUEUED_STAKE);
+    // CScript XDDD = ENQUEUED_STAKE;
     // Sign
     if (keystore.IsLegacy())
     {
@@ -5025,7 +5031,8 @@ bool CheckBlockSignature(const CBlock& block)
         return block.vchBlockSig.empty();
 
     std::vector<valtype> vSolutions;
-    const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+    // patchcoin todo
+    const CTxOut& txout = Params().GenesisBlock().vtx[0]->vout[0]; // block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;

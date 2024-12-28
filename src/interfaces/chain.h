@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <primitives/claim.h>
 
 class ArgsManager;
 class CBlock;
@@ -206,6 +207,10 @@ public:
     //! amount specified by max_tx_fee, and broadcast to all peers if relay is set to true.
     //! Return false if the transaction could not be added due to the fee or for another reason.
     virtual bool broadcastTransaction(const CTransactionRef& tx,
+        bool relay,
+        std::string& err_string) = 0;
+
+    virtual bool broadcastClaim(const CClaimRef& claim,
         bool relay,
         std::string& err_string) = 0;
 

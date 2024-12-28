@@ -7,24 +7,30 @@
 #include <shutdown.h>
 #include <script/standard.h>
 #include <fstream>
-#include <rpc/server_util.h>
+#include <util/message.h>
 #include <util/moneystr.h>
+#include <wallet/wallet.h>
 
-// std::map<CScript, std::vector<fCoinEntry>> foreignSnapshotByScript;
-std::map<std::string, std::vector<fCoinEntry>> foreignSnapshotByAddress;
+namespace wallet {
+class CWallet;
+}
 
-bool LoadSnapshotOnStartup(const ArgsManager& args) {
-    const fs::path path = args.GetDataDirNet() / "peercoin_utxos.dat";
-    if (fs::exists(path)) {
-        LogPrintf("LoadSnapshotOnStartup: found default snapshot at %s\n", fs::PathToString(path));
+uint256 HashScriptPubKeysOfPeercoinSnapshot(std::vector<CScript> scripts) {
+    CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+    for (const auto& entry : scripts) {
+        ss << entry;
+    }
+    return ss.GetHash();
+}
+
+std::vector<CScript> getScriptPubKeysOfPeercoinSnapshot() {
+    std::vector<CScript> result;
+
+    for (const auto& [_, entries] : foreignSnapshotByAddress) {
+        result.push_back(entries[0].coin.out.scriptPubKey);
     }
 
-    if (path.empty()) {
-        LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found.\n");
-        return true;
-    }
-
-    return LoadSnapshotFromFile(path);
+    return result;
 }
 
 bool GetAddressFromScriptPubKey(const CScript& scriptPubKey, std::string& outAddress) {
@@ -49,6 +55,10 @@ bool GetAddressFromScriptPubKey(const CScript& scriptPubKey, std::string& outAdd
         return false;
     }
 
+    if (outAddress.rfind("pc1qcanvas0000000000000000000000000000000000000", 0) == 0) {
+        return false;
+    }
+
     return true;
 }
 
@@ -63,6 +73,7 @@ bool PopulateAndValidateSnapshotForeign(
 
     // foreignSnapshotByScript.clear();
     foreignSnapshotByAddress.clear();
+    scriptPubKeysOfPeercoinSnapshot.clear();
 
     COutPoint outpoint;
     Coin coin;
@@ -124,7 +135,53 @@ bool PopulateAndValidateSnapshotForeign(
     LogPrintf("[snapshot] loaded %d coins from snapshot %s\n",
               coins_processed, base_blockhash.ToString());
 
+    scriptPubKeysOfPeercoinSnapshot = getScriptPubKeysOfPeercoinSnapshot();
+    hashScriptPubKeysOfPeercoinSnapshot = HashScriptPubKeysOfPeercoinSnapshot();
+    LogPrintf("[snapshot] hash of peercoin scripts: want=%s, got=%s\n", Params().GetConsensus().hashPeercoinSnapshot.ToString(), hashScriptPubKeysOfPeercoinSnapshot.ToString());
+    assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
+
     return true;
+}
+
+bool LoadSnapshotFromFile(const fs::path& path) {
+    if (!fs::exists(path)) {
+        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
+        return false;
+    }
+
+    AutoFile coins_file(fsbridge::fopen(path, "rb"));
+
+    node::SnapshotMetadata metadata;
+    try {
+        coins_file >> metadata;
+    } catch (const std::ios_base::failure& e) {
+        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
+        return false;
+    }
+
+    if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
+        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
+        return false;
+    }
+    coins_file.fclose();
+    DumpPermittedScriptPubKeys();
+
+    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
+    return true;
+}
+
+bool LoadSnapshotOnStartup(const ArgsManager& args) {
+    const fs::path path = args.GetDataDirNet() / "peercoin_utxos.dat";
+    if (fs::exists(path)) {
+        LogPrintf("LoadSnapshotOnStartup: found default snapshot at %s\n", fs::PathToString(path));
+    }
+
+    if (path.empty()) {
+        LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found.\n");
+        return true;
+    }
+
+    return LoadSnapshotFromFile(path) || ReadPermittedScriptPubKeys();
 }
 
 bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible) {
@@ -142,6 +199,24 @@ bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount
     }
 
     return true;
+}
+
+bool CalculateBalanceAndEligible(const CWallet* pwallet, CScript target, const std::vector<fCoinEntry>& entries,  CAmount& balance, CAmount& eligible, CAmount& nTotalReceived) {
+    if (pwallet) {
+        for (const auto& [_, wtx] : pwallet->mapWallet) {
+            for (const CTxOut& txout : wtx.tx->vout) {
+                if (txout.scriptPubKey == target) {
+                    // patchcoin todo MoneyRange
+                    // patchcoin todo add to stats
+                    nTotalReceived += txout.nValue;
+                }
+            }
+        }
+    } else {
+        return false;
+    }
+
+    return CalculateBalanceAndEligible(entries, balance, eligible);
 }
 
 bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible) {
@@ -196,28 +271,71 @@ void ExportSnapshotToCSV(const fs::path& path) {
     LogPrintf("ExportSnapshotToCSV: Snapshot exported to %s\n", fs::PathToString(path));
 }
 
-bool LoadSnapshotFromFile(const fs::path& path) {
+void DumpPermittedScriptPubKeys()
+{
+    std::vector<CScript> scriptPubKeys = scriptPubKeysOfPeercoinSnapshot.empty() ? getScriptPubKeysOfPeercoinSnapshot() : scriptPubKeysOfPeercoinSnapshot;
+    uint256 hash{HashScriptPubKeysOfPeercoinSnapshot(scriptPubKeys)};
+    assert(hash == Params().GetConsensus().hashPeercoinSnapshot);
+    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), fs::u8path("peercoin_snapshot.dat"));
+    if (fs::exists(path)) {
+        return;
+    }
+    FILE* file{fsbridge::fopen(path, "wb")};
+    AutoFile afile{file};
+    if (afile.IsNull()) {
+        return;
+    }
+    WriteCompactSize(afile, scriptPubKeys.size());
+    for (const auto& script : scriptPubKeys) {
+        afile << script;
+    }
+    // patchcoin todo check for errors, possibly written size
+}
+
+bool ReadPermittedScriptPubKeys()
+{
+    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), fs::u8path("peercoin_snapshot.dat"));
     if (!fs::exists(path)) {
-        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
         return false;
     }
-
-    AutoFile coins_file(fsbridge::fopen(path, "rb"));
-
-    node::SnapshotMetadata metadata;
-    try {
-        coins_file >> metadata;
-    } catch (const std::ios_base::failure& e) {
-        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
+    FILE* file{fsbridge::fopen(path, "rb")};
+    AutoFile afile{file};
+    if (afile.IsNull()) {
         return false;
     }
+    scriptPubKeysOfPeercoinSnapshot.clear();
+    afile >> scriptPubKeysOfPeercoinSnapshot;
 
-    if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
-        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
-        return false;
+    // patchcoin todo, we could re-fetch the snapshot
+    if (std::fgetc(afile.Get()) != EOF) {
+        LogPrintf("[snapshot] warning: unexpected trailing data\n");
+    } else if (std::ferror(afile.Get())) {
+        LogPrintf("[snapshot] warning: i/o error\n");
     }
-    coins_file.fclose();
-
-    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
+    afile.fclose();
+    hashScriptPubKeysOfPeercoinSnapshot = HashScriptPubKeysOfPeercoinSnapshot();
+    LogPrintf("[snapshot] hash of peercoin scripts:  want=%s, got=%s\n", Params().GetConsensus().hashPeercoinSnapshot.ToString(), hashScriptPubKeysOfPeercoinSnapshot.ToString());
+    assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
     return true;
+}
+
+bool IsClaimValid(CScript source, std::vector<unsigned char> signature, CScript target)
+{
+    if (hashScriptPubKeysOfPeercoinSnapshot != Params().GetConsensus().hashPeercoinSnapshot)
+        return false;
+    try {
+        // patchcoin todo
+        CTxDestination dest;
+        CTxDestination lol;
+        ExtractDestination(source, dest);
+        ExtractDestination(target, lol);
+        std::string inAddress = EncodeDestination(dest);
+        std::string outAddress = EncodeDestination(lol);
+
+        auto it = std::find(scriptPubKeysOfPeercoinSnapshot.begin(), scriptPubKeysOfPeercoinSnapshot.end(), GetScriptForDestination(dest));
+        if (it != scriptPubKeysOfPeercoinSnapshot.end()) {
+            return MessageVerify(inAddress, EncodeBase64(signature), outAddress, PEERCOIN_MESSAGE_MAGIC) == MessageVerificationResult::OK;
+        }
+    }  catch (...) {}
+    return false;
 }

@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "clientmodel.h"
+
 #include <qt/signverifymessagedialog.h>
 #include <qt/forms/ui_signverifymessagedialog.h>
 
@@ -17,10 +19,14 @@
 #include <vector>
 
 #include <QClipboard>
+#include <index/claimindex.h>
+#include <interfaces/node.h>
+#include <node/claim.h>
 
-SignVerifyMessageDialog::SignVerifyMessageDialog(const PlatformStyle *_platformStyle, QWidget *parent) :
+SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, const PlatformStyle *_platformStyle, QWidget *parent) :
     QDialog(parent, GUIUtil::dialog_flags),
     ui(new Ui::SignVerifyMessageDialog),
+    m_client_model(client_model),
     platformStyle(_platformStyle)
 {
     ui->setupUi(this);
@@ -34,6 +40,7 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(const PlatformStyle *_platformS
     ui->verifyMessageButton_VM->setIcon(QIcon(":/icons/transaction_0"));
     ui->publishClaimButton_SM->setIcon(QIcon(":/icons/send"));
     ui->clearButton_VM->setIcon(QIcon(":/icons/remove"));
+
 
     GUIUtil::setupAddressWidget(ui->addressIn_SM, this);
     GUIUtil::setupAddressWidget(ui->addressIn_VM, this);
@@ -257,6 +264,16 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     const std::string& message = ui->messageIn_VM->document()->toPlainText().toStdString();
 
     const auto result = MessageVerify(address, signature, message, PEERCOIN_MESSAGE_MAGIC);
+    std::string err_string;
+    CTxDestination destination = DecodeDestination(address);
+    CScript huur{GetScriptForDestination(destination)};
+    auto signature_bytes = DecodeBase64(signature);
+    CTxDestination target = DecodeDestination(message);
+    CScript duur{GetScriptForDestination(target)};
+    const CClaim claim = CreateNewClaim(huur, *signature_bytes, duur);
+    CClaim lool;
+    g_claimindex->FindClaim(claim.GetHash(), lool);
+    m_client_model->node().broadcastClaim(MakeClaimRef(claim), err_string);
 }
 
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()

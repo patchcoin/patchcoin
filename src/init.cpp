@@ -99,6 +99,7 @@
 
 #include <snapshotmanager.h>
 #include <boost/signals2/signal.hpp>
+#include <index/claimindex.h>
 
 #if ENABLE_ZMQ
 #include <zmq/zmqabstractnotifier.h>
@@ -293,6 +294,10 @@ void Shutdown(NodeContext& node)
     if (g_txindex) {
         g_txindex->Stop();
         g_txindex.reset();
+    }
+    if (g_claimindex) {
+        g_claimindex->Stop();
+        g_claimindex.reset();
     }
     if (g_coin_stats_index) {
         g_coin_stats_index->Stop();
@@ -1581,6 +1586,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     g_txindex = std::make_unique<TxIndex>(interfaces::MakeChain(node), cache_sizes.tx_index, false, fReindex);
     if (!g_txindex->Start()) {
+        return false;
+    }
+
+    g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
+    if (!g_claimindex->Start()) {
+        LogPrintf("Failed to start ClaimIndex.\n");
         return false;
     }
 

@@ -711,13 +711,13 @@ std::string HelpMessageOpt(const std::string &option, const std::string &message
 
 fs::path GetDefaultDataDir()
 {
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Peercoin
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Peercoin
-    // Mac: ~/Library/Application Support/Peercoin
-    // Unix: ~/.peercoin
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Patchcoin
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Patchcoin
+    // Mac: ~/Library/Application Support/Patchcoin
+    // Unix: ~/.patchcoin
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "Peercoin";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Patchcoin";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -727,10 +727,10 @@ fs::path GetDefaultDataDir()
         pathRet = fs::path(pszHome);
 #ifdef MAC_OSX
     // Mac
-    return pathRet / "Library/Application Support/Peercoin";
+    return pathRet / "Library/Application Support/Patchcoin";
 #else
     // Unix
-    return pathRet / ".peercoin";
+    return pathRet / ".patchcoin";
 #endif
 #endif
 }
