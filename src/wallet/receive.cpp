@@ -111,7 +111,7 @@ CAmount CachedTxGetCredit(const CWallet& wallet, const CWalletTx& wtx, const ism
     AssertLockHeld(wallet.cs_wallet);
 
     // Must wait until coinbase is safely deep enough in the chain before valuing it
-    if (wallet.IsTxImmatureCoinBase(wtx))
+    if (wtx.tx->vin[0].prevout.hash != Params().GetConsensus().hashGenesisTx && wallet.IsTxImmatureCoinBase(wtx))
         return 0;
 
     CAmount credit = 0;

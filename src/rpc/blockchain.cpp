@@ -2669,7 +2669,7 @@ RPCHelpMan lookupaddress()
         if (error_msg.empty()) error_msg = "Invalid address";
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
     }
-
+    // patchcoin todo add more stats
     CAmount balance = 0;
     CAmount eligible = 0;
     if (!LookupPeercoinAddress(address, balance, eligible)) {

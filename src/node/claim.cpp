@@ -21,14 +21,23 @@ ClaimError BroadcastClaim(NodeContext& node, const CClaimRef& claim, std::string
         LOCK(cs_main);
         CClaim maybe_claim;
 
-        // Check if the claim already exists in the claim index
-        // patchcoin todo could add a flag to force send, although that should be debounced / limited as well. that or set a timer since last attempt
-        if (g_claimindex->FindClaim(hash, maybe_claim)) {
+        std::vector<CClaim> claims;
+        if (g_claimindex && g_claimindex->GetAllClaims(claims)) {
+            for (const CClaim& claimFromDb : claims) {
+                if (claimFromDb.sourceScriptPubKey == claim->sourceScriptPubKey && claimFromDb.targetScriptPubKey != claim->targetScriptPubKey) {
+                    return ClaimError::ALREADY_EXISTS;
+                }
+            }
+        } else {
+            LogPrint(BCLog::NET, "Unable to access ClaimIndex");
+            return ClaimError::INDEX_ERROR;
+        }
+
+        if (g_claimindex && g_claimindex->FindClaim(hash, maybe_claim)) {
             return ClaimError::ALREADY_EXISTS;
         }
 
-        // Add the claim to the claim index
-        if (!g_claimindex->AddClaim(*claim)) {
+        if (g_claimindex && !g_claimindex->AddClaim(*claim)) {
             err_string = "Failed to add claim to index";
             return ClaimError::INDEX_ERROR;
         }

@@ -4302,10 +4302,15 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
     if (msg_type == NetMsgType::CLAIM) {
         // patchcoin todo ensure we actually hold data related to hashScriptPubKeysOfPeercoinSnapshot as this check currently doesn't account for concurrency issues
+        // claim.IsValid() does this same check so run it here first to avoid evicting peer wrongfully
         if (hashScriptPubKeysOfPeercoinSnapshot != m_chainparams.GetConsensus().hashPeercoinSnapshot)
             return;
-        // Deserialize the claim message
-        // std::string claimAddress, claimSign, claimTargetAddress;
+
+        if (!g_claimindex) {
+            LogPrint(BCLog::NET, "Claim received but ClaimIndex is not available.\n");
+            return;
+        }
+
         // patchcoin todo: try{}?
         // patchcoin todo: try to debounce if we get same claims repeatedly
         CClaim claim;
@@ -4315,6 +4320,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
+
         // patchcoin todo more antispam
         LOCK(cs_main);
 
@@ -4324,71 +4330,47 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             if (pfrom.GetId() == pnode->GetId()) return;
             m_connman.PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
         });
-        // patchcoin todo dont actually skip the rest. should still store claims
-        // patchcoin todo also check if a claim is unique to source address
         return;
         */
 
         CClaimRef claimRef = MakeClaimRef(claim);
 
+        std::vector<CClaim> claims;
+        if (g_claimindex && g_claimindex->GetAllClaims(claims)) {
+            for (const CClaim& claimFromDb : claims) {
+                if (claimFromDb.sourceScriptPubKey == claimRef->sourceScriptPubKey && claimFromDb.targetScriptPubKey != claimRef->targetScriptPubKey) {
+                    Misbehaving(*peer, 20, strprintf("duplicate claim from same source address claim=%s, pubKey1=%s, pubKey2=%s",
+                        claimRef->GetHash().ToString(), HexStr(claimFromDb.targetScriptPubKey), HexStr(claimRef->sourceScriptPubKey)));
+                    return;
+                }
+            }
+        } else {
+            LogPrint(BCLog::NET, "Unable to access ClaimIndex");
+            return;
+        }
+
         {
             LOCK(cs_claims_seen);
             // patchcoin todo not sure if these go well together
             if (claims_seen.count(claimRef) || (g_claimindex && g_claimindex->ClaimExists(claimRef->GetHash()))) {
-                LogPrint(BCLog::NET, "Duplicate CLAIM ignored: %s\n", claimRef->GetHash().ToString());
+                LogPrint(BCLog::NET, "Duplicate claim ignored: %s\n", claimRef->GetHash().ToString());
                 return;
             }
 
-            // Add the claim to claims_seen
             claims_seen.insert(claimRef);
         }
 
-        // Add to the peer-specific claims_seen
         {
             LOCK(peer->m_claims_inventory_mutex);
             peer->m_claims_seen.insert(claimRef);
+            peer->m_claims_sent.insert(claimRef);
         }
 
         // patchcoin todo silently fail?
         // patchcoin todo don't re-insert. especially if we care about timestamps
         if (g_claimindex && g_claimindex->AddClaim(claim)) {
-            LogPrint(BCLog::NET, "Processed new CLAIM: %s\n", claimRef->GetHash().ToString());
+            LogPrint(BCLog::NET, "Processed new claim: %s\n", claimRef->GetHash().ToString());
         }
-        /*
-        CAmount balance = 0;
-        CAmount eligible = 0;
-        LookupPeercoinAddress(claimAddress, balance, eligible);
-        LogPrint(BCLog::NET, "Received CLAIM: %s\n", claimAddress);
-        ENQUEUED_STAKE = claimAddress;
-
-        if (g_claimindex && g_claimindex->AddClaim(claimAddress)) {
-            LogPrintf("Claim added successfully: %s\n", claimAddress);
-            std::vector<std::string> claims;
-            g_claimindex->GetAllClaims(claims);
-            LogPrintf("nil\n");
-        } else {
-            LogPrintf("Failed to add claim: %s\n", claimAddress);
-        }
-        */
-
-        // patchcoin todo we cannot send transactions in one big swoop because we would eat
-        // through all available outputs very fast
-        // unless we use very small outputs for staking that is
-        // figure out a ways to best handle that. might be able to split outputs between
-        // simulanious requests
-
-        // Verify the claim, see below for details
-        /*
-        if (!VerifyClaim(hehe)) {
-            // Maybe ban the node or return an error
-            Misbehaving(pfrom->GetId(), 10);
-            return false;
-        }
-        */
-
-        // If valid, either store it, process it, or mark for relay
-        // ...
-        // RelayClaim(hehe);
 
         return;
     }

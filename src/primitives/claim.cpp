@@ -22,6 +22,7 @@ std::string CClaim::ToString() const
 CClaim CreateNewClaim(const CScript& sourceScriptPubKey, const std::vector<unsigned char>& signature, const CScript& targetScriptPubKey)
 {
     // patchcoin todo drop this function
+    // patchcoin todo maybe don't throw :^)
     if (sourceScriptPubKey.empty() || targetScriptPubKey.empty()) {
         throw std::invalid_argument("Source or target scriptPubKey cannot be empty");
     }
