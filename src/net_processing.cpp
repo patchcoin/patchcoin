@@ -4338,9 +4338,19 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         std::vector<CClaim> claims;
         if (g_claimindex && g_claimindex->GetAllClaims(claims)) {
             for (const CClaim& claimFromDb : claims) {
-                if (claimFromDb.sourceScriptPubKey == claimRef->sourceScriptPubKey && claimFromDb.targetScriptPubKey != claimRef->targetScriptPubKey) {
-                    Misbehaving(*peer, 20, strprintf("duplicate claim from same source address claim=%s, pubKey1=%s, pubKey2=%s",
-                        claimRef->GetHash().ToString(), HexStr(claimFromDb.targetScriptPubKey), HexStr(claimRef->sourceScriptPubKey)));
+                bool debounce = GetTimeMillis() - claim.nTime < 2 * 60 * 1000;
+                if (claimFromDb.sourceScriptPubKey == claimRef->sourceScriptPubKey) {
+                    if (debounce) {
+                        Misbehaving(*peer, 10, strprintf("duplicate claim from same address claim=%s, source=%s",
+                            claimRef->GetHash().ToString(), HexStr(claimRef->sourceScriptPubKey)));
+                    }
+                    return;
+                }
+                if (claimFromDb.targetScriptPubKey == claimRef->targetScriptPubKey) {
+                    if (debounce) {
+                        Misbehaving(*peer, 10, strprintf("duplicate claim to same address claim=%s, target=%s",
+                            claimRef->GetHash().ToString(), HexStr(claimRef->targetScriptPubKey)));
+                    }
                     return;
                 }
             }

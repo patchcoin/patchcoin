@@ -7,8 +7,8 @@
 #include <shutdown.h>
 #include <script/standard.h>
 #include <fstream>
+#include <index/claimindex.h>
 #include <util/message.h>
-#include <util/moneystr.h>
 #include <wallet/wallet.h>
 
 namespace wallet {
@@ -177,7 +177,7 @@ bool LoadSnapshotOnStartup(const ArgsManager& args) {
     }
 
     if (path.empty()) {
-        LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found.\n");
+        LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found\n");
         return true;
     }
 
@@ -201,19 +201,17 @@ bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount
     return true;
 }
 
-bool CalculateBalanceAndEligible(const CWallet* pwallet, CScript target, const std::vector<fCoinEntry>& entries,  CAmount& balance, CAmount& eligible, CAmount& nTotalReceived) {
-    if (pwallet) {
-        for (const auto& [_, wtx] : pwallet->mapWallet) {
-            for (const CTxOut& txout : wtx.tx->vout) {
-                if (txout.scriptPubKey == target) {
-                    // patchcoin todo MoneyRange
-                    // patchcoin todo add to stats
-                    nTotalReceived += txout.nValue;
-                }
+bool CalculateBalanceAndEligible(const CWallet* pwallet, CScript target, const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible, CAmount& nTotalReceived) {
+    if (!pwallet) return false;
+
+    for (const auto& [_, wtx] : pwallet->mapWallet) {
+        for (const CTxOut& txout : wtx.tx->vout) {
+            if (txout.scriptPubKey == target) {
+                // patchcoin todo add to stats
+                if (!MoneyRange(nTotalReceived += txout.nValue))
+                    return false;
             }
         }
-    } else {
-        return false;
     }
 
     return CalculateBalanceAndEligible(entries, balance, eligible);
@@ -319,23 +317,60 @@ bool ReadPermittedScriptPubKeys()
     return true;
 }
 
-bool IsClaimValid(CScript source, std::vector<unsigned char> signature, CScript target)
+bool IsClaimValid(const CScript& source, const std::vector<unsigned char>& signature, const CScript& target)
 {
-    if (hashScriptPubKeysOfPeercoinSnapshot != Params().GetConsensus().hashPeercoinSnapshot)
+    if (hashScriptPubKeysOfPeercoinSnapshot != Params().GetConsensus().hashPeercoinSnapshot) {
+        LogPrintf("[claim] warning: snapshot hash does not match consensus hash\n");
         return false;
-    try {
-        // patchcoin todo
-        CTxDestination dest;
-        CTxDestination lol;
-        ExtractDestination(source, dest);
-        ExtractDestination(target, lol);
-        std::string inAddress = EncodeDestination(dest);
-        std::string outAddress = EncodeDestination(lol);
+    }
 
-        auto it = std::find(scriptPubKeysOfPeercoinSnapshot.begin(), scriptPubKeysOfPeercoinSnapshot.end(), GetScriptForDestination(dest));
-        if (it != scriptPubKeysOfPeercoinSnapshot.end()) {
-            return MessageVerify(inAddress, EncodeBase64(signature), outAddress, PEERCOIN_MESSAGE_MAGIC) == MessageVerificationResult::OK;
+    try {
+        CTxDestination sourceDest;
+        CTxDestination targetDest;
+
+        if (!ExtractDestination(source, sourceDest)) {
+            LogPrintf("[claim] error: failed to extract destination from source script\n");
+            return false;
         }
-    }  catch (...) {}
+
+        if (!ExtractDestination(target, targetDest)) {
+            LogPrintf("[claim] error: failed to extract destination from target script\n");
+            return false;
+        }
+
+        std::string sourceAddress = EncodeDestination(sourceDest);
+        std::string targetAddress = EncodeDestination(targetDest);
+
+        CScript sourceScript = GetScriptForDestination(sourceDest);
+
+        auto it = std::find(
+            scriptPubKeysOfPeercoinSnapshot.begin(),
+            scriptPubKeysOfPeercoinSnapshot.end(),
+            sourceScript
+        );
+
+        if (it != scriptPubKeysOfPeercoinSnapshot.end()) {
+            auto res = MessageVerify(sourceAddress, EncodeBase64(signature), targetAddress, PEERCOIN_MESSAGE_MAGIC);
+
+            if (res == MessageVerificationResult::OK) {
+                LogPrintf("[claim] info: claim verification succeeded for address %s\n", sourceAddress);
+                return true;
+            }
+            LogPrintf("[claim] warning: message verification failed with result %d for address %s\n",
+                      static_cast<int>(res), sourceAddress);
+            return false;
+        }
+
+        LogPrintf("[claim] warning: source script not found in snapshot for address %s\n", sourceAddress);
+    }
+    catch (const std::exception& e) {
+        LogPrintf("[claim] exception: %s\n", e.what());
+        return false;
+    }
+    catch (...) {
+        LogPrintf("[claim] unknown exception encountered during claim validation\n");
+        return false;
+    }
+
     return false;
 }

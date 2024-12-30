@@ -31,5 +31,5 @@ bool ReadPermittedScriptPubKeys();
 bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible);
 bool CalculateBalanceAndEligible(const wallet::CWallet* pwallet, CScript target, const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible, CAmount& nTotalReceived);
 
-bool IsClaimValid(CScript source, std::vector<unsigned char> signature, CScript target);
+bool IsClaimValid(const CScript& source, const std::vector<unsigned char>& signature, const CScript& target);
 #endif // PATCHCOIN_SNAPSHOTMANAGER_H
