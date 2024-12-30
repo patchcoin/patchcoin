@@ -345,10 +345,12 @@ BITCOIN_CORE_H = \
   kernel.h \
   kernelrecord.h \
 ## --- patchcoin start --- ##
+  claimset.h \
   index/claimindex.h \
   node/claim.h \
   primitives/claim.h \
-  snapshotmanager.h
+  snapshotmanager.h \
+  sendclaimset.h
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
@@ -441,6 +443,7 @@ libbitcoin_node_a_SOURCES = \
   validationinterface.cpp \
   kernel.cpp \
 ## --- patchcoin start --- ##
+  claimset.cpp \
   index/claimindex.cpp \
   node/claim.cpp \
   primitives/claim.cpp \
@@ -500,6 +503,7 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/walletdb.cpp \
   wallet/walletutil.cpp \
   wallet/coinselection.cpp \
+  claimset.cpp \
   kernelrecord.cpp \
   $(BITCOIN_CORE_H)
 

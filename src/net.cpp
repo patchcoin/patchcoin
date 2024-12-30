@@ -58,6 +58,7 @@
 #include <unordered_map>
 
 #include <math.h>
+#include <sendclaimset.h>
 
 /** Maximum number of block-relay-only anchor connections */
 static constexpr size_t MAX_BLOCK_RELAY_ONLY_ANCHORS = 2;
@@ -2084,6 +2085,7 @@ void CConnman::ThreadMessageHandler()
                     return;
             }
         }
+        send_claimset = false; // patchcoin todo this doesnt belong here, can check for timestamp of last claim in index -> either that or next block timer
 
         WAIT_LOCK(mutexMsgProc, lock);
         if (!fMoreWork) {

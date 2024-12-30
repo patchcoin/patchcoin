@@ -17,11 +17,13 @@
 
 #include <interfaces/wallet.h>
 #include <support/allocators/secure.h>
+#include <index/claimindex.h>
 
 #include <vector>
 
 #include <QObject>
 
+class ClaimIndex;
 enum class OutputType;
 
 class AddressTableModel;
@@ -202,6 +204,7 @@ private:
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
     void checkBalanceChanged(const interfaces::WalletBalances& new_balances);
+    ClaimIndex* m_claimIndex;
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -234,6 +237,8 @@ Q_SIGNALS:
     void canGetAddressesChanged();
 
     void timerTimeout();
+
+    void claimsIndexUpdated();
 
 public Q_SLOTS:
     /* Starts a timer to periodically update the balance */

@@ -48,6 +48,7 @@ const char *SENDTXRCNCL="sendtxrcncl";
 const char *GETPEERCOINSNAPSHOT="getppcsns";
 const char *SENDPEERCOINSNAPSHOT="sendppcsns";
 const char *CLAIM="claim";
+const char *SENDCLAIMSET="claimset";
 } // namespace NetMsgType
 
 /** All known message types. Keep this in the same order as the list of
@@ -92,6 +93,7 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::GETPEERCOINSNAPSHOT,
     NetMsgType::SENDPEERCOINSNAPSHOT,
     NetMsgType::CLAIM,
+    NetMsgType::SENDCLAIMSET,
 };
 const static std::vector<std::string> allNetMessageTypesVec(std::begin(allNetMessageTypes), std::end(allNetMessageTypes));
 

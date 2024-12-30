@@ -14,6 +14,7 @@ public:
     std::vector<unsigned char> signature;
     CScript targetScriptPubKey;
     int64_t nTime;
+    mutable bool seen = false;
     mutable CAmount nTotalReceived;
     mutable CAmount nEligible;
 
@@ -29,8 +30,10 @@ public:
         READWRITE(obj.targetScriptPubKey);
         // patchcoin todo timestamp added for consistency in retrieval
         // patchcoin todo timestamps can be forged, so we shouldn't actually write them -> move that to claimindex
-        if (!(s.GetType() & SER_GETHASH))
+        if (!(s.GetType() & SER_GETHASH)) {
             READWRITE(obj.nTime);
+            READWRITE(obj.seen);
+        }
     }
 
     void SetNull()
@@ -38,6 +41,7 @@ public:
         sourceScriptPubKey.clear();
         signature.clear();
         targetScriptPubKey.clear();
+        seen = false;
         nTime = 0;
         nTotalReceived = 0;
         nEligible = 0;
@@ -76,7 +80,7 @@ typedef std::shared_ptr<const CClaim> CClaimRef;
 template <typename... Args>
 static inline CClaimRef MakeClaimRef(Args&&... args) {
     auto claim = std::make_shared<CClaim>(std::forward<Args>(args)...);
-    claim->nTime = GetTimeMillis();
+    claim->nTime = GetTime();
     return claim;
 }
 

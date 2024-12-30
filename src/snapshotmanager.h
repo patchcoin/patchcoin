@@ -20,14 +20,18 @@ struct fCoinEntry {
 };
 
 inline std::map<std::string, std::vector<fCoinEntry>> foreignSnapshotByAddress;
-inline std::vector<CScript> scriptPubKeysOfPeercoinSnapshot;
+inline std::map<CScript, std::vector<fCoinEntry>> foreignSnapshotByScriptPubKey;
+inline std::map<CScript, CAmount> scriptPubKeysOfPeercoinSnapshot;
+inline node::SnapshotMetadata peercoinSnapshotMetadata;
 inline uint256 hashScriptPubKeysOfPeercoinSnapshot;
-uint256 HashScriptPubKeysOfPeercoinSnapshot(std::vector<CScript> scripts = scriptPubKeysOfPeercoinSnapshot);
+uint256 HashScriptPubKeysOfPeercoinSnapshot(std::map<CScript, CAmount> scripts = scriptPubKeysOfPeercoinSnapshot);
 bool LoadSnapshotOnStartup(const ArgsManager& args);
+bool LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CAmount& balance, CAmount& eligible);
 bool LookupPeercoinAddress(const std::string& address, CAmount& balance, CAmount& eligible);
 void ExportSnapshotToCSV(const fs::path& path);
 void DumpPermittedScriptPubKeys();
 bool ReadPermittedScriptPubKeys();
+bool CalculateBalanceAndEligible(const CAmount& balance, CAmount& eligible);
 bool CalculateBalanceAndEligible(const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible);
 bool CalculateBalanceAndEligible(const wallet::CWallet* pwallet, CScript target, const std::vector<fCoinEntry>& entries, CAmount& balance, CAmount& eligible, CAmount& nTotalReceived);
 

@@ -31,12 +31,10 @@
 #include <node/interface_ui.h>
 #include <util/exception.h>
 #include <util/thread.h>
-#include <validation.h>
 #include <wallet/wallet.h>
 #include <wallet/coincontrol.h>
 #include <warnings.h>
 #include <wallet/spend.h>
-#include <wallet/wallet.h>
 
 #include <algorithm>
 #include <utility>

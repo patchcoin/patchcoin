@@ -6,6 +6,7 @@
 
 #include <qt/addresstablemodel.h>
 #include <qt/bitcoinunits.h>
+#include <qt/buildclaimsetwidget.h>
 #include <qt/csvmodelwriter.h>
 #include <qt/editaddressdialog.h>
 #include <qt/guiutil.h>
@@ -22,17 +23,17 @@
 #include <chrono>
 #include <optional>
 
+#include <QSplitter>
+#include <QTableWidget>
 #include <QApplication>
 #include <QComboBox>
 #include <QDateTimeEdit>
 #include <QDesktopServices>
 #include <QDoubleValidator>
-#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
-#include <QPoint>
 #include <QScrollBar>
 #include <QSettings>
 #include <QTableView>
@@ -119,7 +120,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     hlayout->addWidget(amountWidget);
 
     // Delay before filtering transactions
-    static constexpr auto input_filter_delay{200ms};
+    static constexpr auto input_filter_delay{500ms};
 
     QTimer* amount_typing_delay = new QTimer(this);
     amount_typing_delay->setSingleShot(true);
@@ -129,16 +130,64 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     prefix_typing_delay->setSingleShot(true);
     prefix_typing_delay->setInterval(input_filter_delay);
 
-    QVBoxLayout *vlayout = new QVBoxLayout(this);
-    vlayout->setContentsMargins(0,0,0,0);
-    vlayout->setSpacing(0);
+    QSplitter* splitter = new QSplitter(this);
+    splitter->setOrientation(Qt::Horizontal);
+
+    QWidget* leftWidget = new QWidget(this);
+    leftWidget->setContentsMargins(0,0,0,0);
+    QVBoxLayout* leftVLayout = new QVBoxLayout(leftWidget);
+    leftVLayout->setContentsMargins(0,0,0,0);
+    leftVLayout->setSpacing(0);
 
     transactionView = new QTableView(this);
     transactionView->setObjectName("transactionView");
-    vlayout->addLayout(hlayout);
-    vlayout->addWidget(createDateRangeWidget());
-    vlayout->addWidget(transactionView);
-    vlayout->setSpacing(0);
+
+    leftVLayout->addLayout(hlayout);
+    leftVLayout->addWidget(createDateRangeWidget());
+    leftVLayout->addWidget(transactionView);
+    leftWidget->setLayout(leftVLayout);
+    splitter->addWidget(leftWidget);
+
+    QWidget* rightWidget = new QWidget(this);
+    rightWidget->setContentsMargins(0,0,0,0);
+    QVBoxLayout* rightVLayout = new QVBoxLayout(rightWidget);
+    rightVLayout->setContentsMargins(0,0,0,0);
+    rightVLayout->setSpacing(0);
+
+    QSplitter* rightInnerSplitter = new QSplitter(Qt::Vertical, this);
+
+    buildClaimSetWidget = new BuildClaimSetWidget(platformStyle, this);
+    rightInnerSplitter->addWidget(buildClaimSetWidget);
+
+    snapshotTable = new QTableWidget(this);
+    snapshotTable->setColumnCount(2);
+    snapshotTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("Peercoin Address") << tr("Peercoin Amount"));
+    snapshotTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    snapshotTable->resizeColumnsToContents();
+    snapshotTable->setAlternatingRowColors(true);
+    snapshotTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    snapshotTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    snapshotTable->setSortingEnabled(false);
+    snapshotTable->verticalHeader()->hide();
+
+    rightInnerSplitter->addWidget(snapshotTable);
+    rightInnerSplitter->setStretchFactor(0, 1);
+    rightInnerSplitter->setStretchFactor(1, 2);
+
+    rightVLayout->addWidget(rightInnerSplitter);
+    rightWidget->setLayout(rightVLayout);
+
+    splitter->addWidget(rightWidget);
+    splitter->setStretchFactor(0, 3);
+    splitter->setStretchFactor(1, 1);
+
+    QVBoxLayout* mainVLayout = new QVBoxLayout(this);
+    mainVLayout->setContentsMargins(0,0,0,0);
+    mainVLayout->setSpacing(0);
+    mainVLayout->addWidget(splitter);
+    setLayout(mainVLayout);
+
     int width = transactionView->verticalScrollBar()->sizeHint().width();
     // Cover scroll bar width with spacing
     if (platformStyle->getUseExtraSpacing()) {
@@ -149,6 +198,8 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     transactionView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     transactionView->setTabKeyNavigation(false);
     transactionView->setContextMenuPolicy(Qt::CustomContextMenu);
+    transactionView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    transactionView->resizeColumnsToContents();
     transactionView->installEventFilter(this);
     transactionView->setAlternatingRowColors(true);
     transactionView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -205,6 +256,50 @@ TransactionView::~TransactionView()
     settings.setValue("TransactionViewHeaderState", transactionView->horizontalHeader()->saveState());
 }
 
+void TransactionView::PopulateSnapshotTable()
+{
+    if (!snapshotTable) return;
+
+    snapshotTable->clearContents(); // clear old rows
+    snapshotTable->setRowCount((int)scriptPubKeysOfPeercoinSnapshot.size());
+
+    int row = 0;
+    for (const auto& [scriptPubKey, balance] : scriptPubKeysOfPeercoinSnapshot) {
+        std::string address;
+        CTxDestination dest;
+        ExtractDestination(scriptPubKey, dest);
+        address = EncodeDestination(dest);
+
+        QTableWidgetItem* addressItem = new QTableWidgetItem(QString::fromStdString(address));
+        snapshotTable->setItem(row, 0, addressItem);
+
+        QString valStr = BitcoinUnits::format(BitcoinUnit::BTC, balance, false, BitcoinUnits::SeparatorStyle::ALWAYS);
+        QTableWidgetItem* valItem = new QTableWidgetItem(valStr);
+        valItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        snapshotTable->setItem(row, 1, valItem);
+
+        row++;
+    }
+}
+
+void TransactionView::filterSnapshotTable()
+{
+    if (!snapshotTable) return;
+
+    QString searchString = search_widget->text();
+    for (int i = 0; i < snapshotTable->rowCount(); ++i) {
+        bool matches = false;
+        for (int j = 0; j < snapshotTable->columnCount(); ++j) {
+            QTableWidgetItem* item = snapshotTable->item(i, j);
+            if (item && item->text().contains(searchString, Qt::CaseInsensitive)) {
+                matches = true;
+                break;
+            }
+        }
+        snapshotTable->setRowHidden(i, !matches);
+    }
+}
+
 void TransactionView::setModel(WalletModel *_model)
 {
     this->model = _model;
@@ -218,6 +313,14 @@ void TransactionView::setModel(WalletModel *_model)
         transactionProxyModel->setSortRole(Qt::EditRole);
         transactionView->setModel(transactionProxyModel);
         transactionView->sortByColumn(TransactionTableModel::Date, Qt::DescendingOrder);
+        // patchcoin todo
+        transactionView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        transactionView->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        transactionView->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        transactionView->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        transactionView->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+        transactionView->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
+        transactionView->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
 
 
         if (_model->getOptionsModel())
@@ -248,6 +351,9 @@ void TransactionView::setModel(WalletModel *_model)
 
         // Watch-only signal
         connect(_model, &WalletModel::notifyWatchonlyChanged, this, &TransactionView::updateWatchOnlyColumn);
+        PopulateSnapshotTable();
+
+        buildClaimSetWidget->setModel(_model);
     }
 }
 
@@ -330,9 +436,25 @@ void TransactionView::chooseWatchonly(int idx)
 
 void TransactionView::changedSearch()
 {
-    if(!transactionProxyModel)
+    if (!transactionProxyModel)
         return;
+
     transactionProxyModel->setSearchString(search_widget->text());
+
+    QString searchString = search_widget->text();
+    for (int i = 0; i < snapshotTable->rowCount(); ++i) {
+        bool matches = false;
+        for (int j = 0; j < snapshotTable->columnCount(); ++j) {
+            QTableWidgetItem* item = snapshotTable->item(i, j);
+            if (item && item->text().contains(searchString, Qt::CaseInsensitive)) {
+                matches = true;
+                break;
+            }
+        }
+        snapshotTable->setRowHidden(i, !matches);
+    }
+
+    buildClaimSetWidget->filterClaims(searchString);
 }
 
 void TransactionView::changedAmount()

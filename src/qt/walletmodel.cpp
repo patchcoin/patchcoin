@@ -39,6 +39,7 @@
 #include <QSettings>
 #include <QTimer>
 
+class ClaimIndex;
 using wallet::CCoinControl;
 using wallet::CRecipient;
 using wallet::DEFAULT_DISABLE_WALLET;

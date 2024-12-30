@@ -5,6 +5,7 @@
 
 #include <core_io.h>
 //#include <interfaces/wallet.h>
+#include <claimset.h>
 #include <key_io.h>
 #include <rpc/server.h>
 #include <rpc/server_util.h>
@@ -26,6 +27,7 @@
 #include <kernelrecord.h>
 #include <node/miner.h>
 #include <boost/lexical_cast.hpp>
+#include <index/claimindex.h>
 
 using wallet::WalletContext;
 
@@ -1065,6 +1067,144 @@ static RPCHelpMan migratewallet()
     };
 }
 
+bool PopulateClaimAmounts(std::vector<CClaim>& claims)
+{
+    for (auto& claim : claims) {
+        CTxDestination sourceDest;
+        if (!ExtractDestination(claim.sourceScriptPubKey, sourceDest)) {
+            claim.nEligible = 0;
+            claim.nTotalReceived = 0;
+            return false;
+        }
+
+        std::string addr = EncodeDestination(sourceDest);
+
+        CAmount balance = 0;
+        CAmount eligible = 0;
+        if (LookupPeercoinScriptPubKey(claim.sourceScriptPubKey, balance, eligible)) {
+            claim.nTotalReceived = balance;
+            claim.nEligible = eligible;
+        } else {
+            claim.nTotalReceived = 0;
+            claim.nEligible = 0;
+        }
+    }
+
+    return true;
+}
+
+static RPCHelpMan buildclaimset()
+{
+    return RPCHelpMan{
+        "buildclaimset",
+        "\nGather all claims from g_claimindex, retrieve their eligible/original amounts, build a ClaimSet, and sign.\n",
+        {},
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::STR_HEX, "claimset_hex", "Hex-encoded ClaimSet data"},
+                {RPCResult::Type::STR_HEX, "signature",    "Signature over the ClaimSet"},
+                {RPCResult::Type::NUM,     "num_claims",   "Number of claims included"},
+                {RPCResult::Type::ARR,     "claims",       "Array of claims with addresses, amounts, etc.",
+                    {
+                        {RPCResult::Type::OBJ, "claim", "",
+                            {
+                                {RPCResult::Type::STR,       "source_address",   "Decoded address for source"},
+                                {RPCResult::Type::STR,       "target_address",   "Decoded address for target"},
+                                {RPCResult::Type::NUM,       "nTime",            "Claim timestamp"},
+                                {RPCResult::Type::STR_AMOUNT,"coins_eligible",   "Eligible amount for distribution"},
+                                {RPCResult::Type::STR_AMOUNT,"original_amount",  "Original or total amount tracked"},
+                                {RPCResult::Type::STR_HEX,   "source_script",    "Hex-encoded sourceScriptPubKey"},
+                                {RPCResult::Type::STR_HEX,   "target_script",    "Hex-encoded targetScriptPubKey"},
+                                {RPCResult::Type::STR_HEX,   "signature",        "Hex-encoded signature"},
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        RPCExamples{
+            HelpExampleCli("buildclaimset", "") +
+            HelpExampleRpc("buildclaimset", "")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        {
+            if (!g_claimindex) {
+                throw JSONRPCError(RPC_MISC_ERROR, "ClaimIndex not available");
+            }
+            std::vector<CClaim> allClaims;
+            if (!g_claimindex->GetAllClaims(allClaims)) {
+                throw JSONRPCError(RPC_MISC_ERROR, "Failed to retrieve claims from index");
+            }
+            if (allClaims.empty()) {
+                throw JSONRPCError(RPC_MISC_ERROR, "No claims found");
+            }
+
+            PopulateClaimAmounts(allClaims);
+
+            std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
+            if (!pwallet) return UniValue::VNULL;
+
+            EnsureWalletIsUnlocked(*pwallet);
+
+            CClaimSet claimset;
+            try {
+                claimset = BuildAndSignClaimSet(allClaims, *pwallet);
+            } catch (const std::runtime_error& e) {
+                claimset = BuildClaimSet(allClaims);
+            }
+
+            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+            ss << claimset;
+            std::string claimsetHex = HexStr(ss);
+
+
+            UniValue claimsArr(UniValue::VARR);
+            for (const auto& c : claimset.claims) {
+                UniValue claimObj(UniValue::VOBJ);
+
+                {
+                    CTxDestination srcDest;
+                    if (ExtractDestination(c.sourceScriptPubKey, srcDest)) {
+                        claimObj.pushKV("source_address", EncodeDestination(srcDest));
+                    } else {
+                        claimObj.pushKV("source_address", "unrecognized");
+                    }
+                }
+                {
+                    CTxDestination tgtDest;
+                    if (ExtractDestination(c.targetScriptPubKey, tgtDest)) {
+                        claimObj.pushKV("target_address", EncodeDestination(tgtDest));
+                    } else {
+                        claimObj.pushKV("target_address", "unrecognized");
+                    }
+                }
+
+                claimObj.pushKV("nTime", (uint64_t)c.nTime);
+
+                claimObj.pushKV("coins_eligible", ValueFromAmount(c.nEligible));
+                claimObj.pushKV("original_amount", ValueFromAmount(c.nTotalReceived));
+
+                claimObj.pushKV("source_script", HexStr(c.sourceScriptPubKey));
+                claimObj.pushKV("target_script", HexStr(c.targetScriptPubKey));
+
+                claimObj.pushKV("signature", HexStr(c.signature));
+
+                claimsArr.push_back(claimObj);
+            }
+
+            UniValue result(UniValue::VOBJ);
+            result.pushKV("claimset_hex", claimsetHex);
+            result.pushKV("signature", HexStr(claimset.vchSig));
+            result.pushKV("num_claims", (uint64_t)claimset.claims.size());
+            result.pushKV("claims", claimsArr);
+
+            return result;
+        }
+    };
+}
+
+
 // addresses
 RPCHelpMan getaddressinfo();
 RPCHelpMan getnewaddress();
@@ -1209,6 +1349,7 @@ static const CRPCCommand commands[] =
     { "wallet",             &importcoinstake,                },
     { "wallet",             &listminting,                    },
     { "wallet",             &reservebalance,                 },
+    { "wallet",             &buildclaimset,                  },
 };
 // clang-format on
     return commands;

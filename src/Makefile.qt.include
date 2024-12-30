@@ -32,7 +32,7 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsdialog.ui \
   qt/forms/sendcoinsentry.ui \
   qt/forms/signverifymessagedialog.ui \
-  qt/forms/transactiondescdialog.ui 
+  qt/forms/transactiondescdialog.ui
 # \
 #  qt/forms/multisigaddressentry.ui \
 #  qt/forms/multisigdialog.ui \
@@ -94,7 +94,9 @@ QT_MOC_CPP = \
   qt/moc_walletview.cpp \
   qt/moc_mintingfilterproxy.cpp \
   qt/moc_mintingtablemodel.cpp \
-  qt/moc_mintingview.cpp
+  qt/moc_mintingview.cpp \
+  qt/moc_buildclaimsetwidget.cpp \
+  qt/moc_claimstablemodel.cpp
 # \
 #  qt/moc_multisigaddressentry.cpp \
 #  qt/moc_multisigdialog.cpp \
@@ -180,7 +182,9 @@ BITCOIN_QT_H = \
   qt/winshutdownmonitor.h \
   qt/mintingfilterproxy.h \
   qt/mintingtablemodel.h \
-  qt/mintingview.h 
+  qt/mintingview.h \
+  qt/buildclaimsetwidget.h \
+  qt/claimstablemodel.h
 # \
 #  qt/multisigaddressentry.h \
 #  qt/multisigdialog.h \
@@ -321,7 +325,9 @@ BITCOIN_QT_WALLET_CPP = \
   qt/walletview.cpp \
   qt/mintingfilterproxy.cpp \
   qt/mintingtablemodel.cpp \
-  qt/mintingview.cpp 
+  qt/mintingview.cpp \
+  qt/buildclaimsetwidget.cpp \
+  qt/claimstablemodel.cpp
 # \
 #  qt/multisigaddressentry.cpp \
 #  qt/multisigdialog.cpp \

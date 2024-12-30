@@ -79,8 +79,7 @@ BaseIndex::DB& ClaimIndex::GetDB() const
 
 bool ClaimIndex::AddClaim(const CClaim& claim)
 {
-    uint256 hash = claim.GetHash();
-    return m_db->WriteClaim(hash, claim);
+    return m_db->WriteClaim(claim.GetHash(), claim);
 }
 
 bool ClaimIndex::ClaimExists(const uint256& hash) const

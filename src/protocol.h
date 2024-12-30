@@ -270,6 +270,8 @@ extern const char* GETPEERCOINSNAPSHOT;
 extern const char* SENDPEERCOINSNAPSHOT;
 
 extern const char* CLAIM;
+
+extern const char* SENDCLAIMSET;
 }; // namespace NetMsgType
 
 /* Get a vector of all valid message types (see above) */

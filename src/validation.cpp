@@ -58,6 +58,7 @@
 #include <util/translation.h>
 #include <validationinterface.h>
 #include <warnings.h>
+#include <sendclaimset.h>
 
 #include <algorithm>
 #include <cassert>
@@ -67,6 +68,7 @@
 #include <optional>
 #include <kernel.h>
 #include <bignum.h>
+#include <claimset.h>
 #include <key_io.h>
 #include <snapshotmanager.h>
 #include <timedata.h>
@@ -74,6 +76,7 @@
 
 #include <string>
 #include <utility>
+#include <index/claimindex.h>
 
 using kernel::CCoinsStats;
 using kernel::CoinStatsHashType;
@@ -4986,6 +4989,31 @@ bool GetCoinAge(const CTransaction& tx, const CCoinsViewCache &view, uint64_t& n
     return true;
 }
 
+bool PopulateClaimAmounts(std::vector<CClaim>& claims)
+{
+    for (auto& claim : claims) {
+        CTxDestination sourceDest;
+        if (!ExtractDestination(claim.sourceScriptPubKey, sourceDest)) {
+            claim.nEligible = 0;
+            claim.nTotalReceived = 0;
+            continue;
+        }
+
+        std::string addr = EncodeDestination(sourceDest);
+
+        CAmount balance{0}, eligible{0};
+        if (LookupPeercoinAddress(addr, balance, eligible)) {
+            claim.nTotalReceived = balance;
+            claim.nEligible = eligible;
+        } else {
+            claim.nTotalReceived = 0;
+            claim.nEligible = 0;
+        }
+    }
+
+    return true;
+}
+
 // peercoin: sign block
 typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
@@ -4995,6 +5023,14 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
     const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
 
     // const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+
+    if (g_claimindex) {
+        std::vector<CClaim> allClaims;
+        if (g_claimindex->GetAllClaims(allClaims) && !allClaims.empty()) {
+            PopulateClaimAmounts(allClaims); // patchcoin todo move this inside buildandsign
+            send_claimset_to_send = BuildAndSignClaimSet(allClaims, keystore);
+        }
+    }
 
     /*if (*/Solver(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey, vSolutions);/*) != TxoutType::PUBKEY)*/
         // return false;
@@ -5009,6 +5045,7 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
             return false;
         if (key.GetPubKey() != CPubKey(vchPubKey))
             return false;
+        send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         return key.Sign(block.GetHash(), block.vchBlockSig, 0);
     }
     else
@@ -5018,6 +5055,7 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
         address = PKHash(pubKey);
         PKHash* pkhash = std::get_if<PKHash>(&address);
         SigningResult res = keystore.SignBlockHash(block.GetHash(), *pkhash, block.vchBlockSig);
+        send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         if (res == SigningResult::OK)
             return true;
         return false;

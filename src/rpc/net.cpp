@@ -122,7 +122,7 @@ static RPCHelpMan sendclaim()
             std::string strTargetAddress = request.params[2].get_str();
 
             CTxDestination dest = DecodeDestination(strAddress);
-            auto it = std::find(scriptPubKeysOfPeercoinSnapshot.begin(), scriptPubKeysOfPeercoinSnapshot.end(), GetScriptForDestination(dest));
+            auto it = scriptPubKeysOfPeercoinSnapshot.find(GetScriptForDestination(dest));
 
             if (it != scriptPubKeysOfPeercoinSnapshot.end()) {
                 // Found the target script

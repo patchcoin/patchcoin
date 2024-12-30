@@ -35,7 +35,7 @@ CClaim CreateNewClaim(const CScript& sourceScriptPubKey, const std::vector<unsig
     claim->sourceScriptPubKey = sourceScriptPubKey;
     claim->signature = signature;
     claim->targetScriptPubKey = targetScriptPubKey;
-    claim->nTime = GetTimeMillis();
+    claim->nTime = GetTime();
     claim->nTotalReceived = 0;
 
     if (!claim->IsValid()) {

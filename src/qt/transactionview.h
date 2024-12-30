@@ -11,6 +11,8 @@
 
 #include <QWidget>
 #include <QKeyEvent>
+#include <QTableWidget>
+#include <qt/buildclaimsetwidget.h>
 
 class PlatformStyle;
 class TransactionDescDialog;
@@ -63,9 +65,12 @@ public:
 
 protected:
     void changeEvent(QEvent* e) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     WalletModel *model{nullptr};
+    QTableWidget *snapshotTable{nullptr};
+    BuildClaimSetWidget *buildClaimSetWidget{nullptr};
     TransactionFilterProxy *transactionProxyModel{nullptr};
     QTableView *transactionView{nullptr};
 
@@ -85,12 +90,11 @@ private:
     QAction *copyLabelAction{nullptr};
 
     QWidget *createDateRangeWidget();
-
-    bool eventFilter(QObject *obj, QEvent *event) override;
-
     const PlatformStyle* m_platform_style;
 
     QList<TransactionDescDialog*> m_opened_dialogs;
+    void PopulateSnapshotTable();
+    void filterSnapshotTable();
 
 private Q_SLOTS:
     void contextualMenu(const QPoint &);
