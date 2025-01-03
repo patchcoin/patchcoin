@@ -56,6 +56,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <optional>
+#include <sendclaimset.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
@@ -3788,13 +3789,17 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     if (nCredit == 0 || nCredit > nAllowedBalance)
         return false;
 
+    genesis_key_held = false;
+
     if (genesisKeyOut == scriptPubKeyOut) {
+        // patchcoin todo use existing or build new claimset?
         g_claimindex && g_claimindex->GetAllClaims(claims);
         std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
             return a.nTime < b.nTime;
         });
         if (claims.empty() && chainman.ActiveHeight() == 0)
             return false;
+        genesis_key_held = true;
     }
 
     {

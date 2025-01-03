@@ -1523,6 +1523,16 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
         auto [status, error] = catch_exceptions([&]{ return LoadChainstate(chainman, cache_sizes, options); });
         if (status == node::ChainstateLoadStatus::SUCCESS) {
+            // patchcoin todo verify OOE, unsure about this loop
+            uiInterface.InitMessage(_("Loading peercoin utxo snapshot…").translated);
+            if (!LoadSnapshotOnStartup(args)) {
+                uiInterface.InitMessage(_("Unable to load peercoin utxo snapshot.").translated);
+            }
+            g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
+            if (!g_claimindex->Start()) {
+                LogPrintf("Failed to start ClaimIndex.\n");
+                return false;
+            }
             uiInterface.InitMessage(_("Verifying blocks…").translated);
             if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
                 LogPrintfCategory(BCLog::PRUNE, "pruned datadir may not have more than %d blocks; only checking available blocks\n",
@@ -1559,11 +1569,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }
 
-    uiInterface.InitMessage(_("Loading utxo snapshot…").translated);
-    if (!LoadSnapshotOnStartup(args)) {
-        uiInterface.InitMessage(_("Unable to load utxo snapshot.").translated);
-    }
-
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -1586,12 +1591,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     g_txindex = std::make_unique<TxIndex>(interfaces::MakeChain(node), cache_sizes.tx_index, false, fReindex);
     if (!g_txindex->Start()) {
-        return false;
-    }
-
-    g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
-    if (!g_claimindex->Start()) {
-        LogPrintf("Failed to start ClaimIndex.\n");
         return false;
     }
 

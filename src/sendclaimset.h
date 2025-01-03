@@ -3,8 +3,11 @@
 
 #include <claimset.h>
 
+// patchcoin todo this entire section doesnt need to be global. move it.
+
 inline bool send_claimset{false};
 inline CClaimSet send_claimset_to_send{};
 inline CClaimSet last_claimset_received{};
+inline bool genesis_key_held{false};
 
 #endif //SENDCLAIMSET_H

@@ -666,6 +666,13 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     TxValidationState& state = ws.m_state;
     std::unique_ptr<CTxMemPoolEntry>& entry = ws.m_entry;
 
+    if (GetTime() - m_active_chainstate.m_chain[m_active_chainstate.m_chain.Height() == 0 ? 0 : 1]->GetBlockTime() < 100 * 24 * 60 * 60) {
+        for (const CTxIn& txin : tx.vin) {
+            if (txin.prevout.hash == Params().GetConsensus().hashGenesisTx)
+                return state.Invalid(TxValidationResult::TX_CONSENSUS, "genesis-input");
+        }
+    }
+
     if (!CheckTransaction(tx, state)) {
         return false; // state filled in by CheckTransaction
     }
@@ -5019,23 +5026,18 @@ typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
 {
     std::vector<valtype> vSolutions;
-    // patchcoin todo
-    const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+    const CTxOut& txout = genesis_key_held ? Params().GenesisBlock().vtx[0]->vout[0] : block.vtx[1]->vout[1];
 
-    // const CTxOut& txout = block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
-
-    if (g_claimindex) {
-        std::vector<CClaim> allClaims;
-        if (g_claimindex->GetAllClaims(allClaims) && !allClaims.empty()) {
-            PopulateClaimAmounts(allClaims); // patchcoin todo move this inside buildandsign
-            send_claimset_to_send = BuildAndSignClaimSet(allClaims, keystore);
+    if (genesis_key_held && g_claimindex) { // patchcoin todo move this
+        std::vector<CClaim> claims;
+        if (g_claimindex->GetAllClaims(claims) && !claims.empty()) {
+            PopulateClaimAmounts(claims);
+            send_claimset_to_send = BuildAndSignClaimSet(claims, keystore);
         }
     }
 
-    /*if (*/Solver(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey, vSolutions);/*) != TxoutType::PUBKEY)*/
-        // return false;
-    // CTxDestination dest = DecodeDestination(ENQUEUED_STAKE);
-    // CScript XDDD = ENQUEUED_STAKE;
+    if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
+        return false;
     // Sign
     if (keystore.IsLegacy())
     {
@@ -5045,7 +5047,8 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
             return false;
         if (key.GetPubKey() != CPubKey(vchPubKey))
             return false;
-        send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
+        if (genesis_key_held)
+            send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         return key.Sign(block.GetHash(), block.vchBlockSig, 0);
     }
     else
@@ -5055,7 +5058,8 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
         address = PKHash(pubKey);
         PKHash* pkhash = std::get_if<PKHash>(&address);
         SigningResult res = keystore.SignBlockHash(block.GetHash(), *pkhash, block.vchBlockSig);
-        send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
+        if (genesis_key_held)
+            send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         if (res == SigningResult::OK)
             return true;
         return false;
@@ -5068,18 +5072,35 @@ bool CheckBlockSignature(const CBlock& block)
     if (block.GetHash() == Params().GetConsensus().hashGenesisBlock)
         return block.vchBlockSig.empty();
 
-    std::vector<valtype> vSolutions;
-    // patchcoin todo
-    const CTxOut& txout = Params().GenesisBlock().vtx[0]->vout[0]; // block.IsProofOfStake()? block.vtx[1]->vout[1] : block.vtx[0]->vout[0];
+    assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
+    assert(g_claimindex);
 
-    if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
-        return false;
+    std::vector<CScript> scripts = {block.vtx[1]->vout[1].scriptPubKey};
+    std::vector<CClaim> claims;
+    if (g_claimindex->GetAllClaims(claims)) {
+        for (const CClaim& claim : claims) {
+            if (claim.targetScriptPubKey == scripts[0]) {
+                // patchcoin todo void claims based on 1) time of discovery and 2) inclusion height in chain
+                // patchcoin todo this doesn't need to be done here, but checked for
+                scripts.push_back(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey);
+                break;
+            }
+        }
+    }
 
-    const valtype& vchPubKey = vSolutions[0];
-    CPubKey key(vchPubKey);
-    if (block.vchBlockSig.empty())
-        return false;
-    return key.Verify(block.GetHash(), block.vchBlockSig);
+    bool isValid = false;
+    for (const CScript& script : scripts) {
+        std::vector<valtype> vSolutions;
+        if (Solver(script, vSolutions) != TxoutType::PUBKEY)
+            continue;
+
+        const valtype& vchPubKey = vSolutions[0];
+        CPubKey key(vchPubKey);
+        if (block.vchBlockSig.empty())
+            continue;
+        isValid = key.Verify(block.GetHash(), block.vchBlockSig);
+    }
+    return isValid;
 }
 
 std::optional<uint256> ChainstateManager::SnapshotBlockhash() const
