@@ -394,7 +394,7 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
     int64_t nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
 
     /* todo patchcoin */
-    if (nStakeModifierTime + params.GetnStakeMinAge(pindexPrev->nHeight) - nStakeModifierSelectionInterval <= (int64_t) nTimeTx)
+    if (nStakeModifierTime + params.nStakeMinAge - nStakeModifierSelectionInterval <= (int64_t) nTimeTx)
     {
         // Best block is still more than
         // (nStakeMinAge minus a selection interval) older than kernel timestamp
@@ -407,7 +407,7 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
     // loop to find the stake modifier earlier by
     // (nStakeMinAge minus a selection interval)
     // patchcoin todo check if pindex->nHeight is correct
-    while (nStakeModifierTime + params.GetnStakeMinAge(pindex->nHeight) - nStakeModifierSelectionInterval >(int64_t) nTimeTx)
+    while (nStakeModifierTime + params.nStakeMinAge - nStakeModifierSelectionInterval >(int64_t) nTimeTx)
     {
         if (!pindex->pprev)
         {   // reached genesis block; should not happen
@@ -470,7 +470,7 @@ static bool GetKernelStakeModifierV03(CBlockIndex* pindexPrev, uint256 hashBlock
         if (n > tmpChain.size() || pindex == NULL) // check if tmpChain[n+1] exists
         {   // reached best block; may happen if node is behind on block chain
             // patchcoin todo check if pindex->nHeight is proper
-            if (fPrintProofOfStake || (old_pindex->GetBlockTime() + params.GetnStakeMinAge(pindex->nHeight) - nStakeModifierSelectionInterval > TicksSinceEpoch<std::chrono::seconds>(GetAdjustedTime())))
+            if (fPrintProofOfStake || (old_pindex->GetBlockTime() + params.nStakeMinAge - nStakeModifierSelectionInterval > TicksSinceEpoch<std::chrono::seconds>(GetAdjustedTime())))
                 return error("GetKernelStakeModifier() : reached best block %s at height %d from block %s",
                     old_pindex->GetBlockHash().ToString(), old_pindex->nHeight, hashBlockFrom.ToString());
             else
@@ -533,7 +533,7 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     if (nTimeTx < (txPrev->nTime? txPrev->nTime : nTimeBlockFrom))  // Transaction timestamp violation
         return error("CheckStakeKernelHash() : nTime violation");
 
-    if (nTimeBlockFrom + params.GetnStakeMinAge(pindexPrev->nHeight) > nTimeTx) // Min age requirement
+    if (nTimeBlockFrom + params.nStakeMinAge > nTimeTx) // Min age requirement
         return error("CheckStakeKernelHash() : min age violation");
 
     CBigNum bnTargetPerCoinDay;
@@ -542,7 +542,7 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     // v0.3 protocol kernel hash weight starts from 0 at the 30-day min age
     // this change increases active coins participating the hash and helps
     // to secure the network when proof-of-stake difficulty is low
-    int64_t nTimeWeight = min((int64_t)nTimeTx - (txPrev->nTime? txPrev->nTime : nTimeBlockFrom), params.nStakeMaxAge) - (IsProtocolV03(nTimeTx)? params.GetnStakeMinAge(pindexPrev->nHeight) : 0);
+    int64_t nTimeWeight = min((int64_t)nTimeTx - (txPrev->nTime? txPrev->nTime : nTimeBlockFrom), params.nStakeMaxAge) - (IsProtocolV03(nTimeTx)? params.nStakeMinAge : 0);
     CBigNum bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / COIN / (24 * 60 * 60);
     // Calculate hash
     CDataStream ss(SER_GETHASH, 0);

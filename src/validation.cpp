@@ -4974,7 +4974,7 @@ bool GetCoinAge(const CTransaction& tx, const CCoinsViewCache &view, uint64_t& n
         if (txPrev->GetHash() != prevout.hash)
             return error("%s() : txid mismatch in GetCoinAge()", __PRETTY_FUNCTION__);
 
-        if (header.GetBlockTime() + Params().GetConsensus().GetnStakeMinAge(coin.nHeight) > nTimeTx)
+        if (header.GetBlockTime() + Params().GetConsensus().nStakeMinAge > nTimeTx)
             continue; // only count coins meeting min age requirement
 
         int64_t nValueIn = txPrev->vout[txin.prevout.n].nValue;

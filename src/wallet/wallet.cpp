@@ -3678,7 +3678,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
 
         static int nMaxStakeSearchInterval = 60;
         // patchcoin todo check
-        if (header.GetBlockTime() + params.GetnStakeMinAge(chainman.ActiveChain().HeightStake()) > txNew.nTime - nMaxStakeSearchInterval)
+        if (header.GetBlockTime() + params.nStakeMinAge > txNew.nTime - nMaxStakeSearchInterval)
             continue; // only count coins meeting min age requirement
 
         bool fKernelFound = false;
@@ -3833,7 +3833,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     double difficulty = GetDifficulty(GetLastBlockIndex(chainman.ActiveChain().Tip(), true), chainman.ActiveChain().Tip());
     CAmount supply = chainman.ActiveChain().Tip()->nMoneySupply;
     // patchcoin todo check
-    int maxDayWeight = (params.nStakeMaxAge - params.GetnStakeMinAge(chainman.ActiveChain().HeightStake())) / (60*60*24);
+    int maxDayWeight = (params.nStakeMaxAge - params.nStakeMinAge) / (60*60*24);
     double securityLevel = (uint64_t(2) << 31)*difficulty / maxDayWeight / (supply/COIN) / params.nStakeTargetSpacing;
     bool isTestnet = Params().NetworkIDString() != CBaseChainParams::MAIN;
     CAmount nTargetOutputAmount = SecurityToOptimalFraction(securityLevel, isTestnet)*supply;

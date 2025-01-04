@@ -3937,7 +3937,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 LogPrint(BCLog::NET, "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 // peercoin: tell downloading node about the latest block if it's
                 // without risk being rejected due to stake connection check
-                if (hashStop != m_chainman.ActiveChain().Tip()->GetBlockHash() && pindex->GetBlockTime() + Params().GetConsensus().GetnStakeMinAge(pindex->nHeight) > m_chainman.ActiveChain().Tip()->GetBlockTime())
+                if (hashStop != m_chainman.ActiveChain().Tip()->GetBlockHash() && pindex->GetBlockTime() + Params().GetConsensus().nStakeMinAge > m_chainman.ActiveChain().Tip()->GetBlockTime())
                     WITH_LOCK(peer->m_block_inv_mutex, peer->m_blocks_for_inv_relay.push_back(pindex->GetBlockHash()));
                 break;
             }
@@ -4372,17 +4372,21 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             for (const CClaim& claimFromDb : claims) {
                 bool debounce = GetTime() - claim.nTime < 2 * 60; // patchcoin todo this might be too excessive
                 if (claimFromDb.sourceScriptPubKey == claimRef->sourceScriptPubKey) {
+                    /*
                     if (debounce) {
                         Misbehaving(*peer, 10, strprintf("duplicate claim from same address claim=%s, source=%s",
                             claimRef->GetHash().ToString(), HexStr(claimRef->sourceScriptPubKey)));
                     }
+                    */
                     return;
                 }
                 if (claimFromDb.targetScriptPubKey == claimRef->targetScriptPubKey) {
+                    /*
                     if (debounce) {
                         Misbehaving(*peer, 10, strprintf("duplicate claim to same address claim=%s, target=%s",
                             claimRef->GetHash().ToString(), HexStr(claimRef->targetScriptPubKey)));
                     }
+                    */
                     return;
                 }
             }
@@ -5625,6 +5629,19 @@ void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::mic
 void PeerManagerImpl::MaybeSendClaims(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
     std::set<CClaimRef> claims_to_send;
+
+    {
+        LOCK(peer.m_claims_inventory_mutex);
+        // patchcoin todo it would be much preferable to send a claimset if we hold it
+        if (g_claimindex && claims_to_send.empty() && claims_seen.empty()) {
+            std::vector<CClaim> claims;
+            g_claimindex->GetAllClaims(claims);
+            for (const auto& claim : claims) {
+                CClaimRef claimRef = MakeClaimRef(claim);
+                claims_seen.insert(claimRef);
+            }
+        }
+    }
 
     {
         // Prepare hash set of already-sent claims

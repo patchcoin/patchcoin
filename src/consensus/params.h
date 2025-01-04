@@ -155,24 +155,6 @@ struct Params {
     int64_t nStakeMaxAge;
     int64_t nModifierInterval;
     int nCoinbaseMaturity;  // Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
-
-    int64_t GetnStakeMinAge(int nHeight) const
-    {
-        // patchcoin todo, could enforce 5 or 10 minutes starting
-        // int64_t MINAGE = std::min(nStakeMinAge, nStakeMinAge * nHeight / 10000);
-        // printf("MINAGE: %ld\n", MINAGE);
-        return nStakeMinAge;
-    }
-
-    int64_t GetnStakeMaxAge(int nHeight) const
-    {
-        return nStakeMaxAge;
-    }
-
-    int64_t GetnModifierInterval(int nHeight) const
-    {
-        return nModifierInterval;
-    }
 };
 
 } // namespace Consensus
