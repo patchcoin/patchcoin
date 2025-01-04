@@ -56,12 +56,12 @@ const unsigned int nProtocolV14TestSwitchTime = 1710720000; // Mon 18 Mar 00:00:
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0x0e00670bu )
+    ( 0, 0xe0f05322u )
     ;
 
 static std::map<int, unsigned int> mapStakeModifierTestnetCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0x0e00670bu )
+    ( 0, 0xe0f05322u )
     ;
 
 // Whether the given coinstake is subject to new v0.3 protocol
@@ -394,6 +394,7 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
     int64_t nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
 
     /* todo patchcoin */
+    /*
     if (nStakeModifierTime + params.nStakeMinAge - nStakeModifierSelectionInterval <= (int64_t) nTimeTx)
     {
         // Best block is still more than
@@ -404,6 +405,7 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
         else
             return false;
     }
+    */
     // loop to find the stake modifier earlier by
     // (nStakeMinAge minus a selection interval)
     // patchcoin todo check if pindex->nHeight is correct
@@ -581,8 +583,10 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     }
 
     // Now check if proof-of-stake hash meets target protocol
+    /* patchcoin todo
     if (CBigNum(hashProofOfStake) > bnCoinDayWeight * bnTargetPerCoinDay)
         return false;
+    */
     if (gArgs.GetBoolArg("-debug", false) && !fPrintProofOfStake)
     {
         if (IsProtocolV03(nTimeTx)) {
@@ -685,6 +689,7 @@ unsigned int GetStakeModifierChecksum(const CBlockIndex* pindex)
 // Check stake modifier hard checkpoints
 bool CheckStakeModifierCheckpoints(int nHeight, unsigned int nStakeModifierChecksum)
 {
+    return true;
     bool fTestNet = Params().NetworkIDString() == CBaseChainParams::TESTNET;
     if (fTestNet && mapStakeModifierTestnetCheckpoints.count(nHeight))
         return nStakeModifierChecksum == mapStakeModifierTestnetCheckpoints[nHeight];
