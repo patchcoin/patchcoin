@@ -50,8 +50,6 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include "claim.h"
-
 #include <any>
 #include <memory>
 #include <optional>
@@ -324,10 +322,6 @@ public:
     TransactionError broadcastTransaction(CTransactionRef tx, std::string& err_string) override
     {
         return BroadcastTransaction(*m_context, std::move(tx), err_string,  /*relay=*/ true, /*wait_callback=*/ false);
-    }
-    ClaimError broadcastClaim(CClaimRef claim, std::string& err_string) override
-    {
-        return BroadcastClaim(*m_context, std::move(claim), err_string, true, false);
     }
     WalletLoader& walletLoader() override
     {
@@ -654,13 +648,6 @@ public:
         // Note: this will need to be updated if BroadcastTransactions() is updated to return other non-mempool failures
         // that Chain clients do not need to know about.
         return TransactionError::OK == err;
-    }
-    bool broadcastClaim(const CClaimRef& claim,
-        bool relay,
-        std::string& err_string) override
-    {
-        const ClaimError err = BroadcastClaim(m_node, claim, err_string, relay, false);
-        return ClaimError::OK == err;
     }
     void getTransactionAncestry(const uint256& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize, CAmount* ancestorfees) override
     {

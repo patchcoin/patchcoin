@@ -19,9 +19,10 @@
 #include <vector>
 
 #include <QClipboard>
+#include <claimset.h>
+#include <netmessagemaker.h>
 #include <index/claimindex.h>
 #include <interfaces/node.h>
-#include <node/claim.h>
 
 SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, const PlatformStyle *_platformStyle, QWidget *parent) :
     QDialog(parent, GUIUtil::dialog_flags),
@@ -39,6 +40,7 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, cons
     ui->addressBookButton_VM->setIcon(QIcon(":/icons/address-book"));
     ui->verifyMessageButton_VM->setIcon(QIcon(":/icons/transaction_0"));
     ui->publishClaimButton_SM->setIcon(QIcon(":/icons/send"));
+    ui->publishClaimButton_SM->setEnabled(m_client_model->node().context()->connman->GetNodeCount(ConnectionDirection::Both) > 0);
     ui->clearButton_VM->setIcon(QIcon(":/icons/remove"));
 
 
@@ -201,7 +203,7 @@ void SignVerifyMessageDialog::on_addressBookButton_VM_clicked()
     }
 }
 
-void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
+bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
 {
     const std::string& address = ui->addressIn_VM->text().toStdString();
     const std::string& signature = ui->signatureIn_VM->text().toStdString();
@@ -221,59 +223,123 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         ui->statusLabel_VM->setText(
             QString("<nobr>") + tr("Message verified.") + QString("</nobr>")
         );
-        return;
+        return true;
     case MessageVerificationResult::ERR_INVALID_ADDRESS:
         ui->statusLabel_VM->setText(
             tr("The entered address is invalid.") + QString(" ") +
             tr("Please check the address and try again.")
         );
-        return;
+        return false;
     case MessageVerificationResult::ERR_ADDRESS_NO_KEY:
         ui->addressIn_VM->setValid(false);
         ui->statusLabel_VM->setText(
             tr("The entered address does not refer to a key.") + QString(" ") +
             tr("Please check the address and try again.")
         );
-        return;
+        return false;
     case MessageVerificationResult::ERR_MALFORMED_SIGNATURE:
         ui->signatureIn_VM->setValid(false);
         ui->statusLabel_VM->setText(
             tr("The signature could not be decoded.") + QString(" ") +
             tr("Please check the signature and try again.")
         );
-        return;
+        return false;
     case MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED:
         ui->signatureIn_VM->setValid(false);
         ui->statusLabel_VM->setText(
             tr("The signature did not match the message digest.") + QString(" ") +
             tr("Please check the signature and try again.")
         );
-        return;
+        return false;
     case MessageVerificationResult::ERR_NOT_SIGNED:
         ui->statusLabel_VM->setText(
             QString("<nobr>") + tr("Message verification failed.") + QString("</nobr>")
         );
-        return;
+        return false;
+    default:
+        return false;
     }
 }
 
+std::map<uint256, int64_t> debounce;
+
 void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 {
-    const std::string& address = ui->addressIn_VM->text().toStdString();
-    const std::string& signature = ui->signatureIn_VM->text().toStdString();
-    const std::string& message = ui->messageIn_VM->document()->toPlainText().toStdString();
+    if (m_client_model->node().context()->connman->GetNodeCount(ConnectionDirection::Both) == 0) {
+        ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
+        ui->statusLabel_VM->setText(
+            QString("<nobr>") + tr("Not connected.") + QString("</nobr>")
+        );
+        return;
+    }
+    const std::string& source_address = TrimString(ui->addressIn_VM->text().toStdString());
+    const std::string& signature = TrimString(ui->signatureIn_VM->text().toStdString());
+    const std::string& target_address = TrimString(ui->messageIn_VM->document()->toPlainText().toStdString());
+    ui->addressIn_VM->setText(source_address.data());
+    ui->signatureIn_VM->setText(signature.data());
+    ui->messageIn_VM->document()->setPlainText(target_address.data());
+    ui->peercoinMessageCheckbox_SM->setCheckState(Qt::Checked);
+    if (!on_verifyMessageButton_VM_clicked())
+        return;
 
-    const auto result = MessageVerify(address, signature, message, PEERCOIN_MESSAGE_MAGIC);
-    std::string err_string;
-    CTxDestination destination = DecodeDestination(address);
-    CScript huur{GetScriptForDestination(destination)};
-    auto signature_bytes = DecodeBase64(signature);
-    CTxDestination target = DecodeDestination(message);
-    CScript duur{GetScriptForDestination(target)};
-    const CClaim claim = CreateNewClaim(huur, *signature_bytes, duur);
-    CClaim lool;
-    g_claimindex->FindClaim(claim.GetHash(), lool);
-    m_client_model->node().broadcastClaim(MakeClaimRef(claim), err_string);
+    try {
+        CClaim claim(source_address, signature, target_address);
+        if (claim.IsValid()) {
+            CClaim& dbClaim = claim;
+            // patchcoin todo check claimset
+            if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
+                g_claimindex->AddClaim(claim);
+            if (dbClaim.IsValid() && dbClaim.seen) {
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+                ui->statusLabel_VM->setText(
+                    QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+                return;
+            }
+            if (GetTime() - debounce[claim.GetHash()] < 2 * 60) {
+                int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetHash()]);
+                int minutes = timeLeft / 60;
+                int seconds = timeLeft % 60;
+
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
+
+                QString timeText;
+
+                if (minutes > 0) {
+                    timeText = QString("<nobr>") +
+                               tr("Please wait %1 minute%2 and %3 second%4...")
+                                   .arg(minutes)
+                                   .arg(minutes == 1 ? "" : "s")
+                                   .arg(seconds)
+                                   .arg(seconds == 1 ? "" : "s") +
+                               QString("</nobr>");
+                } else {
+                    timeText = QString("<nobr>") +
+                               tr("Please wait %1 second%2...")
+                                   .arg(seconds)
+                                   .arg(seconds == 1 ? "" : "s") +
+                               QString("</nobr>");
+                }
+                timeText += QString("<br>") + tr("Or try a different claim.");
+
+                ui->statusLabel_VM->setText(timeText);
+                return;
+            }
+            m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
+                if (pnode->fDisconnect) return;
+                const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
+                m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
+            });
+            debounce[claim.GetHash()] = GetTime();
+            ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+            ui->statusLabel_VM->setText(
+                QString("<nobr>") + tr("Claim sent.") + QString("</nobr>")
+            );
+        } else {
+            std::cout << "CClaim initialization failed: Invalid claim." << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error initializing CClaim: " << e.what() << std::endl;
+    }
 }
 
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()
@@ -282,6 +348,7 @@ void SignVerifyMessageDialog::on_clearButton_VM_clicked()
     ui->signatureIn_VM->clear();
     ui->messageIn_VM->clear();
     ui->statusLabel_VM->clear();
+    ui->peercoinMessageCheckbox_SM->setCheckState(Qt::Unchecked);
 
     ui->addressIn_VM->setFocus();
 }

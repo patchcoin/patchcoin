@@ -160,9 +160,9 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     rightInnerSplitter->addWidget(buildClaimSetWidget);
 
     snapshotTable = new QTableWidget(this);
-    snapshotTable->setColumnCount(2);
+    snapshotTable->setColumnCount(3);
     snapshotTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("Peercoin Address") << tr("Peercoin Amount"));
+    snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("Peercoin Address") << tr("Peercoin Amount") << tr("Patchcoin Eligible"));
     snapshotTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     snapshotTable->resizeColumnsToContents();
     snapshotTable->setAlternatingRowColors(true);
@@ -277,6 +277,13 @@ void TransactionView::PopulateSnapshotTable()
         QTableWidgetItem* valItem = new QTableWidgetItem(valStr);
         valItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         snapshotTable->setItem(row, 1, valItem);
+
+        CAmount eligible = 0;
+        CalculateEligible(balance, eligible);
+        QString elStr = BitcoinUnits::format(BitcoinUnit::BTC, eligible, false, BitcoinUnits::SeparatorStyle::ALWAYS);
+        QTableWidgetItem* elItem = new QTableWidgetItem(elStr);
+        elItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        snapshotTable->setItem(row, 2, elItem);
 
         row++;
     }

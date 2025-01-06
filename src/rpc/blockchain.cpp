@@ -2672,7 +2672,8 @@ RPCHelpMan lookupaddress()
     // patchcoin todo add more stats
     CAmount balance = 0;
     CAmount eligible = 0;
-    if (!LookupPeercoinAddress(address, balance, eligible)) {
+    CScript script = GetScriptForDestination(dest);
+    if (!LookupPeercoinScriptPubKey(script, balance, eligible)) {
         if (error_msg.empty()) error_msg = "Unable to find address";
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
     };

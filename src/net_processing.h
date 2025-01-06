@@ -10,7 +10,7 @@
 #include <validationinterface.h>
 #include <primitives/claim.h>
 inline RecursiveMutex cs_claims_seen;
-inline std::set<CClaimRef> claims_seen;
+inline std::set<CClaim> claims_seen;
 
 class AddrMan;
 class CChainParams;

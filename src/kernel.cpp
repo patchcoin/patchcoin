@@ -56,12 +56,12 @@ const unsigned int nProtocolV14TestSwitchTime = 1710720000; // Mon 18 Mar 00:00:
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0xe0f05322u )
+    ( 0, 0xfd11f4e7u )
     ;
 
 static std::map<int, unsigned int> mapStakeModifierTestnetCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0xe0f05322u )
+    ( 0, 0xfd11f4e7u )
     ;
 
 // Whether the given coinstake is subject to new v0.3 protocol

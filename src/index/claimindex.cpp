@@ -34,7 +34,11 @@ bool ClaimIndex::DB::WriteClaim(const uint256& hash, const CClaim& claim)
 
 bool ClaimIndex::DB::ReadClaim(const uint256& hash, CClaim& claim)
 {
-    return Read(std::make_pair(DB_CLAIMINDEX, hash), claim);
+    if (Read(std::make_pair(DB_CLAIMINDEX, hash), claim)) {
+        claim.Init(); // patchcoin todo: check valid?
+        return true;
+    }
+    return false;
 }
 
 bool ClaimIndex::DB::ReadAllClaims(std::vector<CClaim>& claims)
@@ -48,6 +52,7 @@ bool ClaimIndex::DB::ReadAllClaims(std::vector<CClaim>& claims)
 
         if (it->GetKey(key) && key.first == DB_CLAIMINDEX) {
             if (it->GetValue(claim)) {
+                claim.Init(); // patchcoin todo: check valid?
                 claims.push_back(claim);
             } else {
                 LogPrintf("ClaimIndex::DB::ReadAllClaims: Failed to read claim value.\n");

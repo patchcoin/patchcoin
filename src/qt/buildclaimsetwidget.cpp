@@ -7,8 +7,6 @@
 #include <QVBoxLayout>
 #include <QTimer>
 #include <claimset.h>
-#include <snapshotmanager.h>
-#include <consensus/amount.h>
 #include <index/claimindex.h>
 #include <primitives/claim.h>
 
@@ -92,8 +90,6 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
         return;
     }
 
-    PopulateClaimAmountsA(allClaims);
-
     CClaimSet claimset;
     try {
         claimset = BuildClaimSet(allClaims);
@@ -102,28 +98,12 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
         return;
     }
 
-    m_claimsModel->updateData(claimset.claims);
+    m_claimsModel->updateData(claimset.GetSortedClaims());
 
     infoLabel->setText(
         tr("Built a ClaimSet with %1 claims.")
             .arg(claimset.claims.size())
     );
-}
-
-bool BuildClaimSetWidget::PopulateClaimAmountsA(std::vector<CClaim>& claims)
-{
-    for (auto& claim : claims) {
-        CAmount balance = 0;
-        CAmount eligible = 0;
-        if (LookupPeercoinScriptPubKey(claim.sourceScriptPubKey, balance, eligible)) {
-            claim.nTotalReceived = balance;
-            claim.nEligible = eligible;
-        } else {
-            claim.nTotalReceived = 0;
-            claim.nEligible = 0;
-        }
-    }
-    return true;
 }
 
 void BuildClaimSetWidget::filterClaims(const QString& searchString)

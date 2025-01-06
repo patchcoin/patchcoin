@@ -35,13 +35,6 @@ enum class TransactionError {
     INVALID_PACKAGE,
 };
 
-enum class ClaimError
-{
-    OK, //!< No error
-    ALREADY_EXISTS,
-    INDEX_ERROR,
-};
-
 bilingual_str TransactionErrorString(const TransactionError error);
 
 bilingual_str ResolveErrMsg(const std::string& optname, const std::string& strBind);

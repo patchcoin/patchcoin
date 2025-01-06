@@ -152,7 +152,7 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
         assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0x7fe475846a8f646be4c756fe73cec2cefdf9a370ee7d26eca7d2bd6d0db3cb9e");
+        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
@@ -247,7 +247,7 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
         assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0x7fe475846a8f646be4c756fe73cec2cefdf9a370ee7d26eca7d2bd6d0db3cb9e");
+        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -398,7 +398,7 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
         assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0x7fe475846a8f646be4c756fe73cec2cefdf9a370ee7d26eca7d2bd6d0db3cb9e");
+        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
 
         vFixedSeeds.clear();
 
@@ -508,7 +508,7 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
         assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0x7fe475846a8f646be4c756fe73cec2cefdf9a370ee7d26eca7d2bd6d0db3cb9e");
+        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

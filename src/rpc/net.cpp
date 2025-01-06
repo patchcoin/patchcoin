@@ -37,7 +37,6 @@
 #include <univalue.h>
 #include <consensus/merkle.h>
 #include <index/claimindex.h>
-#include <node/claim.h>
 #include <util/message.h>
 
 using node::NodeContext;
@@ -129,7 +128,7 @@ static RPCHelpMan sendclaim()
                 // LogPrintf("sendclaim Target script found!\n");
             } else {
                 // Target script not found
-                // LogPrintf("sendclaim Target script not found.\n");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
             }
 
 
@@ -148,7 +147,7 @@ static RPCHelpMan sendclaim()
             case MessageVerificationResult::ERR_NOT_SIGNED:
                 return false;
             case MessageVerificationResult::OK:
-
+                /*
                 NodeContext& node = EnsureAnyNodeContext(request.context);
                 std::string err_string;
                 CTxDestination destination = DecodeDestination(strAddress);
@@ -156,11 +155,10 @@ static RPCHelpMan sendclaim()
                 auto signature_bytes = DecodeBase64(strSign);
                 CTxDestination target = DecodeDestination(strTargetAddress);
                 CScript duur{GetScriptForDestination(target)};
-                const CClaim claim{CreateNewClaim(huur, *signature_bytes, duur)};
-                CClaim lool;
-                g_claimindex->FindClaim(claim.GetHash(), lool);
+                const CClaim claim(strAddress, strSign, strTargetAddress);
+                */
 
-                BroadcastClaim(node, MakeClaimRef(claim), err_string, true, false); // patchcoin maybe dont use broadcast? also fill error string
+                // BroadcastClaim(node, claim, err_string, true, false); // patchcoin maybe dont use broadcast? also fill error string
                 return true;
             }
 

@@ -97,6 +97,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <claimset.h>
 #include <snapshotmanager.h>
 #include <boost/signals2/signal.hpp>
 #include <index/claimindex.h>
@@ -1532,6 +1533,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             if (!g_claimindex->Start()) {
                 LogPrintf("Failed to start ClaimIndex.\n");
                 return false;
+            }
+            std::vector<CClaim> claims;
+            g_claimindex->GetAllClaims(claims);
+            for (CClaim& claim : claims) {
+                if (!claim.IsValid()) {
+                    return false;
+                }
             }
             uiInterface.InitMessage(_("Verifying blocks…").translated);
             if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {

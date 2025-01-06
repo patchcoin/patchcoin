@@ -17,25 +17,43 @@ typedef std::vector<unsigned char> valtype;
 class CClaimSet
 {
 public:
-    std::vector<CClaim> claims{};
+    // patchcoin todo move this to private
+    std::map<CScript, CClaim> claims;
     int64_t nTime;
     std::vector<unsigned char> vchSig;
-
-    CClaimSet() : nTime(0) {}
+    // patchcoin todo move this to private
+    CClaimSet() : nTime(0)
+    {
+    }
 
     SERIALIZE_METHODS(CClaimSet, obj)
     {
-        READWRITE(obj.claims);
-        READWRITE(obj.nTime);
-        READWRITE(obj.vchSig);
+        READWRITE(obj.claims, obj.nTime);
+        if (!(s.GetType() & SER_GETHASH))
+            READWRITE(obj.vchSig);
     }
 
-    uint256 GetHash() const
+    bool AddClaim(const CClaim& claim)
     {
-        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-        ss << claims;
-        ss << nTime;
-        return ss.GetHash();
+        if (!claim.IsValid()) {
+            return false;
+        }
+        if (claims.find(claim.GetSource()) != claims.end()) {
+            return false;
+        }
+        claims.emplace(claim.GetSource(), claim);
+        return true;
+    }
+
+    bool AddClaims(const std::vector<CClaim>& newClaims)
+    {
+        bool allAdded = true;
+        for (const auto& claim : newClaims) {
+            if (!AddClaim(claim)) {
+                allAdded = false;
+            }
+        }
+        return allAdded;
     }
 
     bool IsEmpty() const
@@ -59,11 +77,11 @@ public:
             return false;
         }
 
-        if (claims.empty()) { // patchcoin todo might do nothing
+        if (IsEmpty()) {
             return false;
         }
 
-        for (const auto& claim : claims) {
+        for (const auto& [hash, claim] : claims) {
             if (!claim.IsValid()) {
                 return false;
             }
@@ -71,6 +89,28 @@ public:
 
         return true;
     }
+
+    uint256 GetHash() const;
+
+    std::vector<CClaim> GetSortedClaims() const
+    {
+        std::vector<CClaim> sortedClaims;
+        sortedClaims.reserve(claims.size());
+        for (const auto& [hash, claim] : claims) {
+            sortedClaims.push_back(claim);
+        }
+        std::sort(sortedClaims.begin(), sortedClaims.end(),
+                  [](const CClaim& a, const CClaim& b) {
+                      return a.nTime > b.nTime;
+                  });
+        return sortedClaims;
+    }
+
+    friend bool operator==(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() == b.GetHash(); }
+    friend bool operator!=(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() != b.GetHash(); }
+    // patchcoin todo:
+    friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.nTime < b.nTime; }
+    friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.nTime > b.nTime; }
 };
 
 CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims);

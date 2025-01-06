@@ -1067,32 +1067,6 @@ static RPCHelpMan migratewallet()
     };
 }
 
-bool PopulateClaimAmounts(std::vector<CClaim>& claims)
-{
-    for (auto& claim : claims) {
-        CTxDestination sourceDest;
-        if (!ExtractDestination(claim.sourceScriptPubKey, sourceDest)) {
-            claim.nEligible = 0;
-            claim.nTotalReceived = 0;
-            return false;
-        }
-
-        std::string addr = EncodeDestination(sourceDest);
-
-        CAmount balance = 0;
-        CAmount eligible = 0;
-        if (LookupPeercoinScriptPubKey(claim.sourceScriptPubKey, balance, eligible)) {
-            claim.nTotalReceived = balance;
-            claim.nEligible = eligible;
-        } else {
-            claim.nTotalReceived = 0;
-            claim.nEligible = 0;
-        }
-    }
-
-    return true;
-}
-
 static RPCHelpMan buildclaimset()
 {
     return RPCHelpMan{
@@ -1112,10 +1086,10 @@ static RPCHelpMan buildclaimset()
                                 {RPCResult::Type::STR,       "source_address",   "Decoded address for source"},
                                 {RPCResult::Type::STR,       "target_address",   "Decoded address for target"},
                                 {RPCResult::Type::NUM,       "nTime",            "Claim timestamp"},
-                                {RPCResult::Type::STR_AMOUNT,"coins_eligible",   "Eligible amount for distribution"},
                                 {RPCResult::Type::STR_AMOUNT,"original_amount",  "Original or total amount tracked"},
-                                {RPCResult::Type::STR_HEX,   "source_script",    "Hex-encoded sourceScriptPubKey"},
-                                {RPCResult::Type::STR_HEX,   "target_script",    "Hex-encoded targetScriptPubKey"},
+                                {RPCResult::Type::STR_AMOUNT,"coins_eligible",   "Eligible amount for distribution"},
+                                {RPCResult::Type::STR_HEX,   "source_script",    "Hex-encoded source script"},
+                                {RPCResult::Type::STR_HEX,   "target_script",    "Hex-encoded target script"},
                                 {RPCResult::Type::STR_HEX,   "signature",        "Hex-encoded signature"},
                             }
                         }
@@ -1140,7 +1114,7 @@ static RPCHelpMan buildclaimset()
                 throw JSONRPCError(RPC_MISC_ERROR, "No claims found");
             }
 
-            PopulateClaimAmounts(allClaims);
+            // PopulateClaimAmounts(allClaims);
 
             std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
             if (!pwallet) return UniValue::VNULL;
@@ -1160,12 +1134,13 @@ static RPCHelpMan buildclaimset()
 
 
             UniValue claimsArr(UniValue::VARR);
-            for (const auto& c : claimset.claims) {
+            for (const auto& c : claimset.GetSortedClaims()) {
                 UniValue claimObj(UniValue::VOBJ);
 
                 {
+                    // patchcoin todo re-do entire section
                     CTxDestination srcDest;
-                    if (ExtractDestination(c.sourceScriptPubKey, srcDest)) {
+                    if (ExtractDestination(c.GetSource(), srcDest)) {
                         claimObj.pushKV("source_address", EncodeDestination(srcDest));
                     } else {
                         claimObj.pushKV("source_address", "unrecognized");
@@ -1173,7 +1148,7 @@ static RPCHelpMan buildclaimset()
                 }
                 {
                     CTxDestination tgtDest;
-                    if (ExtractDestination(c.targetScriptPubKey, tgtDest)) {
+                    if (ExtractDestination(c.GetTarget(), tgtDest)) {
                         claimObj.pushKV("target_address", EncodeDestination(tgtDest));
                     } else {
                         claimObj.pushKV("target_address", "unrecognized");
@@ -1182,13 +1157,13 @@ static RPCHelpMan buildclaimset()
 
                 claimObj.pushKV("nTime", (uint64_t)c.nTime);
 
-                claimObj.pushKV("coins_eligible", ValueFromAmount(c.nEligible));
-                claimObj.pushKV("original_amount", ValueFromAmount(c.nTotalReceived));
+                claimObj.pushKV("original_amount", ValueFromAmount(c.GetPeercoinBalance())); // patchcoin todo
+                claimObj.pushKV("coins_eligible", ValueFromAmount(c.GetEligible()));
 
-                claimObj.pushKV("source_script", HexStr(c.sourceScriptPubKey));
-                claimObj.pushKV("target_script", HexStr(c.targetScriptPubKey));
+                claimObj.pushKV("source_script", HexStr(c.GetSource()));
+                claimObj.pushKV("target_script", HexStr(c.GetTarget()));
 
-                claimObj.pushKV("signature", HexStr(c.signature));
+                claimObj.pushKV("signature", HexStr(c.GetSignature()));
 
                 claimsArr.push_back(claimObj);
             }

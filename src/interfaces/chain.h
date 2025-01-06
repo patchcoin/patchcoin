@@ -210,10 +210,6 @@ public:
         bool relay,
         std::string& err_string) = 0;
 
-    virtual bool broadcastClaim(const CClaimRef& claim,
-        bool relay,
-        std::string& err_string) = 0;
-
     //! Calculate mempool ancestor and descendant counts for the given transaction.
     virtual void getTransactionAncestry(const uint256& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize = nullptr, CAmount* ancestorfees = nullptr) = 0;
 

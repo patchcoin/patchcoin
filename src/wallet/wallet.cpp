@@ -3803,24 +3803,21 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     }
 
     {
-        if (!claims.empty() && genesisKeyOut == scriptPubKeyOut) {
+        if (!claims.empty() && genesis_key_held) {
             // patchcoin todo: never count ourselves actually
             claims.erase(
-                std::remove_if(claims.begin(), claims.end(), [&](const CClaim& claim) {
-                    CTxDestination dest;
-                    if (!ExtractDestination(claim.sourceScriptPubKey, dest)) {
-                        return true;
+                std::remove_if(claims.begin(), claims.end(), [&](CClaim& claim) {
+                    if (!claim.IsValid()) return true;
+                    for (const auto& [_, wtx] : pwallet->mapWallet) {
+                        for (const CTxOut& txout : wtx.tx->vout) {
+                            if (txout.scriptPubKey == claim.GetTarget()) {
+                                // patchcoin todo add to stats
+                                if (!MoneyRange(claim.nTotalReceived += txout.nValue))
+                                    return false;
+                            }
+                        }
                     }
-
-                    auto it = foreignSnapshotByAddress.find(EncodeDestination(dest));
-                    if (it != foreignSnapshotByAddress.end()) {
-                        CAmount balance = 0;
-                        if (!CalculateBalanceAndEligible(pwallet, claim.targetScriptPubKey, it->second, balance, claim.nEligible, claim.nTotalReceived))
-                            return true;
-                    } else {
-                        return true;
-                    }
-                    return claim.nTotalReceived >= claim.nEligible;
+                    return claim.nTotalReceived >= claim.GetEligible();
                 }),
                 claims.end()
             );
@@ -3960,12 +3957,12 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                 }
             }
         } else {
-            if (!claims.empty() && genesisKeyOut == scriptPubKeyOut) {
+            if (!claims.empty() && genesis_key_held) {
                 CClaim ENQUEUED_STAKE{claims[0]};
-                CScript target = ENQUEUED_STAKE.IsValid() ? ENQUEUED_STAKE.targetScriptPubKey : scriptPubKeyOut;
-                if (ENQUEUED_STAKE.IsValid() && ENQUEUED_STAKE.nTotalReceived + nCredit > ENQUEUED_STAKE.nEligible) {
+                CScript target = ENQUEUED_STAKE.IsValid() ? ENQUEUED_STAKE.GetTarget() : scriptPubKeyOut;
+                if (ENQUEUED_STAKE.IsValid() && ENQUEUED_STAKE.nTotalReceived + nCredit > ENQUEUED_STAKE.GetEligible()) {
                     // patchcoin todo MoneyRange
-                    CAmount remainder = ENQUEUED_STAKE.nEligible - ENQUEUED_STAKE.nTotalReceived;
+                    CAmount remainder = ENQUEUED_STAKE.GetEligible() - ENQUEUED_STAKE.nTotalReceived;
 
                     if (remainder > 0) {
                         txNew.vout.push_back(CTxOut(remainder, target));

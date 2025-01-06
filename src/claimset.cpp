@@ -3,6 +3,11 @@
 #include <index/claimindex.h>
 #include <wallet/wallet.h>
 
+uint256 CClaimSet::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
 typedef std::vector<unsigned char> valtype;
 bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet)
 {
@@ -33,14 +38,14 @@ bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet)
 CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims)
 {
     CClaimSet claimset;
-    claimset.claims = inputClaims;
-    claimset.nTime = GetTimeMillis();
-
+    claimset.AddClaims(inputClaims);
+ //   claimset.nTime = GetTime();
+/*
     std::sort(claimset.claims.begin(), claimset.claims.end(),
               [](const CClaim& a, const CClaim& b) {
                   return a.nTime > b.nTime;
               });
-
+*/
     return claimset;
 }
 
@@ -59,31 +64,9 @@ CClaimSet BuildAndSignClaimSet(const std::vector<CClaim>& inputClaims, const CWa
     return claimset;
 }
 
-bool PopulateClaimAmountsB(const CClaim& claim)
-{
-    CTxDestination sourceDest;
-    if (!ExtractDestination(claim.sourceScriptPubKey, sourceDest)) {
-        claim.nEligible = 0;
-        claim.nTotalReceived = 0;
-        return false;
-    }
-
-    std::string addr = EncodeDestination(sourceDest);
-
-    CAmount balance = 0;
-    CAmount eligible = 0;
-    if (LookupPeercoinScriptPubKey(claim.sourceScriptPubKey, balance, eligible)) {
-        claim.nTotalReceived = balance;
-        claim.nEligible = eligible;
-    } else {
-        claim.nTotalReceived = 0;
-        claim.nEligible = 0;
-    }
-    return true;
-}
-
 void ApplyClaimSet(const CClaimSet& claimset)
 {
+    /*
     LOCK(cs_main);
     if (!g_claimindex) return;
 
@@ -98,4 +81,5 @@ void ApplyClaimSet(const CClaimSet& claimset)
             }
         }
     }
+    */
 }

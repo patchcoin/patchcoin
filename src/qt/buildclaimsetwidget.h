@@ -29,7 +29,6 @@ private Q_SLOTS:
     void onClaimsIndexUpdated();
     void refreshClaimsTable();
     void populateClaimsTableFromModel();
-    bool PopulateClaimAmountsA(std::vector<CClaim>& claims);
 
 private:
     WalletModel* m_walletModel;

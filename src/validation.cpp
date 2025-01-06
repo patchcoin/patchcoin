@@ -4998,9 +4998,10 @@ bool GetCoinAge(const CTransaction& tx, const CCoinsViewCache &view, uint64_t& n
 
 bool PopulateClaimAmounts(std::vector<CClaim>& claims)
 {
+    /*
     for (auto& claim : claims) {
         CTxDestination sourceDest;
-        if (!ExtractDestination(claim.sourceScriptPubKey, sourceDest)) {
+        if (!ExtractDestination(claim.source, sourceDest)) {
             claim.nEligible = 0;
             claim.nTotalReceived = 0;
             continue;
@@ -5017,6 +5018,7 @@ bool PopulateClaimAmounts(std::vector<CClaim>& claims)
             claim.nEligible = 0;
         }
     }
+    */
 
     return true;
 }
@@ -5079,7 +5081,7 @@ bool CheckBlockSignature(const CBlock& block)
     std::vector<CClaim> claims;
     if (g_claimindex->GetAllClaims(claims)) {
         for (const CClaim& claim : claims) {
-            if (claim.targetScriptPubKey == scripts[0]) {
+            if (claim.GetTarget() == scripts[0]) {
                 // patchcoin todo void claims based on 1) time of discovery and 2) inclusion height in chain
                 // patchcoin todo this doesn't need to be done here, but checked for
                 scripts.push_back(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey);
