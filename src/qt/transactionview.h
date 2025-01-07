@@ -14,6 +14,7 @@
 #include <QTableWidget>
 #include <qt/buildclaimsetwidget.h>
 
+class WalletView;
 class PlatformStyle;
 class TransactionDescDialog;
 class TransactionFilterProxy;
@@ -37,7 +38,7 @@ class TransactionView : public QWidget
     Q_OBJECT
 
 public:
-    explicit TransactionView(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
+    explicit TransactionView(const PlatformStyle *platformStyle, WalletView* walletView, QWidget *parent = nullptr);
     ~TransactionView();
 
     void setModel(WalletModel *model);
@@ -68,6 +69,7 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
+    ClientModel* clientModel{nullptr};
     WalletModel *model{nullptr};
     QTableWidget *snapshotTable{nullptr};
     BuildClaimSetWidget *buildClaimSetWidget{nullptr};
@@ -95,6 +97,10 @@ private:
     QList<TransactionDescDialog*> m_opened_dialogs;
     void PopulateSnapshotTable();
     void filterSnapshotTable();
+    WalletView* m_walletView{nullptr};
+    QMenu* snapshotContextMenu{nullptr};
+    QAction* claimAddressAction{nullptr};
+    QAction* searchAddressAction{nullptr};
 
 private Q_SLOTS:
     void contextualMenu(const QPoint &);
@@ -110,6 +116,9 @@ private Q_SLOTS:
     void openThirdPartyTxUrl(QString url);
     void updateWatchOnlyColumn(bool fHaveWatchOnly);
     void abandonTx();
+    void snapshotTableContextMenuRequested(const QPoint &pos);
+    void claimSnapshotAddress();
+    void searchThisSnapshotAddress();
 
 Q_SIGNALS:
     void doubleClicked(const QModelIndex&);

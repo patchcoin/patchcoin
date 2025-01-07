@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "walletview.h"
+
 #include <qt/transactionview.h>
 
 #include <qt/addresstablemodel.h>
@@ -41,8 +43,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *parent)
-    : QWidget(parent), m_platform_style{platformStyle}
+TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView* walletView, QWidget *parent)
+    : QWidget(parent), m_platform_style{platformStyle}, m_walletView(walletView)
 {
     // Build filter row
     setContentsMargins(0,0,0,0);
@@ -163,13 +165,23 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     snapshotTable->setColumnCount(3);
     snapshotTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("Peercoin Address") << tr("Peercoin Amount") << tr("Patchcoin Eligible"));
+    snapshotTable->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    snapshotTable->horizontalHeaderItem(0)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     snapshotTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    snapshotTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    snapshotTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     snapshotTable->resizeColumnsToContents();
     snapshotTable->setAlternatingRowColors(true);
     snapshotTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     snapshotTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
     snapshotTable->setSortingEnabled(false);
     snapshotTable->verticalHeader()->hide();
+    snapshotTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(snapshotTable, &QTableWidget::customContextMenuRequested, this, &TransactionView::snapshotTableContextMenuRequested);
+    snapshotContextMenu = new QMenu(this);
+    snapshotContextMenu->setObjectName("snapshotContextMenu");
+    claimAddressAction = snapshotContextMenu->addAction(tr("Claim address"), this, &TransactionView::claimSnapshotAddress);
+    searchAddressAction = snapshotContextMenu->addAction(tr("Search address"), this, &TransactionView::searchThisSnapshotAddress);
 
     rightInnerSplitter->addWidget(snapshotTable);
     rightInnerSplitter->setStretchFactor(0, 1);
@@ -179,8 +191,8 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     rightWidget->setLayout(rightVLayout);
 
     splitter->addWidget(rightWidget);
-    splitter->setStretchFactor(0, 3);
-    splitter->setStretchFactor(1, 1);
+    splitter->setStretchFactor(0, 2);
+    splitter->setStretchFactor(1, 3);
 
     QVBoxLayout* mainVLayout = new QVBoxLayout(this);
     mainVLayout->setContentsMargins(0,0,0,0);
@@ -306,6 +318,51 @@ void TransactionView::filterSnapshotTable()
         snapshotTable->setRowHidden(i, !matches);
     }
 }
+
+void TransactionView::searchThisSnapshotAddress()
+{
+    QList<QTableWidgetItem*> selectedItems = snapshotTable->selectedItems();
+    if (selectedItems.isEmpty()) {
+        return;
+    }
+
+    int row = selectedItems.first()->row();
+    QString peercoinAddress = snapshotTable->item(row, 0)->text();
+
+    search_widget->setText(peercoinAddress);
+}
+
+void TransactionView::snapshotTableContextMenuRequested(const QPoint &pos)
+{
+    QTableWidgetItem* item = snapshotTable->itemAt(pos);
+    if (!item) {
+        return;
+    }
+
+    if (snapshotTable->currentColumn() != 0) {
+        return;
+    }
+
+    claimAddressAction->setEnabled(true);
+    searchAddressAction->setEnabled(true);
+
+    snapshotContextMenu->exec(snapshotTable->viewport()->mapToGlobal(pos));
+}
+
+void TransactionView::claimSnapshotAddress()
+{
+    if (!m_walletView) return;
+
+    QList<QTableWidgetItem*> selectedItems = snapshotTable->selectedItems();
+    if (selectedItems.isEmpty()) {
+        return;
+    }
+    int row = selectedItems.first()->row();
+    QString peercoinAddress = snapshotTable->item(row, 0)->text();
+
+    m_walletView->gotoVerifyMessageTabWithClaim(peercoinAddress);
+}
+
 
 void TransactionView::setModel(WalletModel *_model)
 {

@@ -82,6 +82,14 @@ void SignVerifyMessageDialog::setAddress_VM(const QString &address)
     ui->messageIn_VM->setFocus();
 }
 
+void SignVerifyMessageDialog::setClaim_VM(const QString &source, const QString &target)
+{
+    ui->addressIn_VM->setText(source);
+    ui->messageIn_VM->document()->setPlainText(target);
+    ui->peercoinMessageCheckbox_SM->setChecked(true);
+    ui->signatureIn_VM->setFocus();
+}
+
 void SignVerifyMessageDialog::showTab_SM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(0);
@@ -284,59 +292,60 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 
     try {
         CClaim claim(source_address, signature, target_address);
-        if (claim.IsValid()) {
-            CClaim& dbClaim = claim;
-            // patchcoin todo check claimset
-            if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
-                g_claimindex->AddClaim(claim);
-            if (dbClaim.IsValid() && dbClaim.seen) {
-                ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-                ui->statusLabel_VM->setText(
-                    QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
-                return;
-            }
-            if (GetTime() - debounce[claim.GetHash()] < 2 * 60) {
-                int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetHash()]);
-                int minutes = timeLeft / 60;
-                int seconds = timeLeft % 60;
-
-                ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
-
-                QString timeText;
-
-                if (minutes > 0) {
-                    timeText = QString("<nobr>") +
-                               tr("Please wait %1 minute%2 and %3 second%4...")
-                                   .arg(minutes)
-                                   .arg(minutes == 1 ? "" : "s")
-                                   .arg(seconds)
-                                   .arg(seconds == 1 ? "" : "s") +
-                               QString("</nobr>");
-                } else {
-                    timeText = QString("<nobr>") +
-                               tr("Please wait %1 second%2...")
-                                   .arg(seconds)
-                                   .arg(seconds == 1 ? "" : "s") +
-                               QString("</nobr>");
-                }
-                timeText += QString("<br>") + tr("Or try a different claim.");
-
-                ui->statusLabel_VM->setText(timeText);
-                return;
-            }
-            m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
-                if (pnode->fDisconnect) return;
-                const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
-                m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
-            });
-            debounce[claim.GetHash()] = GetTime();
+        if (!claim.IsValid()) {
+            ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+            ui->statusLabel_VM->setText(
+                QString("<nobr>") + tr("Claim invalid.") + QString("</nobr>"));
+            return;
+        }
+        CClaim& dbClaim = claim;
+        // patchcoin todo check claimset
+        if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
+            g_claimindex->AddClaim(claim);
+        if (dbClaim.IsValid() && dbClaim.seen) {
             ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
             ui->statusLabel_VM->setText(
-                QString("<nobr>") + tr("Claim sent.") + QString("</nobr>")
-            );
-        } else {
-            std::cout << "CClaim initialization failed: Invalid claim." << std::endl;
+                QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+            return;
         }
+        if (GetTime() - debounce[claim.GetHash()] < 2 * 60) {
+            int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetHash()]);
+            int minutes = timeLeft / 60;
+            int seconds = timeLeft % 60;
+
+            ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
+            QString timeText;
+
+            if (minutes > 0) {
+                timeText = QString("<nobr>") +
+                           tr("Please wait %1 minute%2 and %3 second%4...")
+                               .arg(minutes)
+                               .arg(minutes == 1 ? "" : "s")
+                               .arg(seconds)
+                               .arg(seconds == 1 ? "" : "s") +
+                           QString("</nobr>");
+            } else {
+                timeText = QString("<nobr>") +
+                           tr("Please wait %1 second%2...")
+                               .arg(seconds)
+                               .arg(seconds == 1 ? "" : "s") +
+                           QString("</nobr>");
+            }
+            timeText += QString("<br>") + tr("Or try a different claim.");
+
+            ui->statusLabel_VM->setText(timeText);
+            return;
+        }
+        m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
+            if (pnode->fDisconnect) return;
+            const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
+            m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
+        });
+        debounce[claim.GetHash()] = GetTime();
+        ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+        ui->statusLabel_VM->setText(
+            QString("<nobr>") + tr("Claim published.") + QString("</nobr>")
+        );
     } catch (const std::exception& e) {
         std::cerr << "Error initializing CClaim: " << e.what() << std::endl;
     }

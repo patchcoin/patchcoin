@@ -8,6 +8,7 @@
 #include <node/transaction.h>
 #include <policy/policy.h>
 #include <qt/addressbookpage.h>
+#include <qt/addresstablemodel.h>
 #include <qt/askpassphrasedialog.h>
 #include <qt/clientmodel.h>
 #include <qt/guiutil.h>
@@ -201,6 +202,39 @@ void WalletView::gotoSignMessageTab(QString addr)
     if (!addr.isEmpty())
         signVerifyMessageDialog->setAddress_SM(addr);
 }
+
+void WalletView::gotoVerifyMessageTabWithClaim(QString addr)
+{
+    QString labelToSearch = QString("claim %1").arg(addr);
+    int rowCount = walletModel->getAddressTableModel()->rowCount(QModelIndex());
+    QString existingAddress;
+    for (int i = 0; i < rowCount; ++i) {
+        QModelIndex labelIndex = walletModel->getAddressTableModel()->index(i, AddressTableModel::Label, QModelIndex());
+        QString rowLabel = walletModel->getAddressTableModel()->data(labelIndex, Qt::DisplayRole).toString();
+        if (rowLabel == labelToSearch) {
+            QModelIndex addressIndex = walletModel->getAddressTableModel()->index(i, AddressTableModel::Address, QModelIndex());
+            existingAddress = walletModel->getAddressTableModel()->data(addressIndex, Qt::DisplayRole).toString();
+            break;
+        }
+    }
+
+    QString targetAddr;
+    if (!existingAddress.isEmpty()) {
+        targetAddr = existingAddress;
+    } else {
+        targetAddr = walletModel->getAddressTableModel()->addRow(AddressTableModel::Receive, labelToSearch, "", OutputType::LEGACY);
+    }
+
+    SignVerifyMessageDialog *signVerifyMessageDialog = new SignVerifyMessageDialog(clientModel, platformStyle, this);
+    signVerifyMessageDialog->setAttribute(Qt::WA_DeleteOnClose);
+    signVerifyMessageDialog->setModel(walletModel);
+
+    signVerifyMessageDialog->showTab_VM(true);
+
+    if (!addr.isEmpty())
+        signVerifyMessageDialog->setClaim_VM(addr, targetAddr);
+}
+
 
 void WalletView::gotoVerifyMessageTab(QString addr)
 {

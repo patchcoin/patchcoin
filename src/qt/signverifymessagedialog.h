@@ -26,6 +26,7 @@ public:
     void setModel(WalletModel *model);
     void setAddress_SM(const QString &address);
     void setAddress_VM(const QString &address);
+    void setClaim_VM(const QString &source, const QString &target);
 
     void showTab_SM(bool fShow);
     void showTab_VM(bool fShow);
