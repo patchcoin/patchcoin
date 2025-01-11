@@ -80,29 +80,30 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
     }
 
     std::vector<CClaim> allClaims;
-    if (!g_claimindex->GetAllClaims(allClaims)) {
-        infoLabel->setText(tr("Failed to retrieve claims from index."));
-        return;
+    for (const auto& [_, claim] : g_claims) {
+        allClaims.emplace_back(claim);
     }
 
     if (allClaims.empty()) {
         infoLabel->setText(tr("No claims found in index."));
         return;
     }
-
+    /*
     CClaimSet claimset;
     try {
+        // patchcoin this is calling verify each time its rendered. this shouldn't be needed
         claimset = BuildClaimSet(allClaims);
     } catch (const std::runtime_error& e) {
         infoLabel->setText(tr("Failed to build/sign claimset: %1").arg(e.what()));
         return;
     }
+    */
 
-    m_claimsModel->updateData(claimset.GetSortedClaims());
+    m_claimsModel->updateData(allClaims); // patchcoin todo sorting shouldnt be a thing here, please fix it
 
     infoLabel->setText(
         tr("Built a ClaimSet with %1 claims.")
-            .arg(claimset.claims.size())
+            .arg(allClaims.size())
     );
 }
 

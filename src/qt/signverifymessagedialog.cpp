@@ -292,21 +292,39 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 
     try {
         CClaim claim(source_address, signature, target_address);
+        // bool a = claim.IsSourceTargetAddress();
+        // bool b = claim.IsSourceTarget();
+        // bool x = claim.Commit();
+        // bool d = claim.IsUnique();
+        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
+            ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+            ui->statusLabel_VM->setText(
+                QString("<nobr>") + tr("Source address cannot match output address.") + QString("</nobr>"));
+            return;
+        }
         if (!claim.IsValid()) {
             ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
             ui->statusLabel_VM->setText(
                 QString("<nobr>") + tr("Claim invalid.") + QString("</nobr>"));
             return;
         }
-        CClaim& dbClaim = claim;
-        // patchcoin todo check claimset
-        if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
-            g_claimindex->AddClaim(claim);
-        if (dbClaim.IsValid() && dbClaim.seen) {
-            ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-            ui->statusLabel_VM->setText(
-                QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
-            return;
+        LOCK(cs_main);
+        if (claim.IsUniqueSource()) {
+            // g_claims should be imperative over claimindex, as such overwrite it whenever
+            if (!(claim.Commit() && g_claimindex->AddClaim(claim))) {
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+                ui->statusLabel_VM->setText(
+                    QString("<nobr>") + tr("Database error.") + QString("</nobr>"));
+                return;
+            }
+        } else {
+            const auto& it = g_claims.find(claim.GetSource());
+            if (it != g_claims.end() && it->second.seen) {
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+                ui->statusLabel_VM->setText(
+                    QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+                return;
+            }
         }
         if (GetTime() - debounce[claim.GetHash()] < 2 * 60) {
             int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetHash()]);
@@ -336,12 +354,22 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
             ui->statusLabel_VM->setText(timeText);
             return;
         }
+        debounce[claim.GetHash()] = GetTime();
+        // CClaim& dbClaim = claim;
+        // patchcoin todo check claimset
+        // if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
+        //     g_claimindex->AddClaim(claim); // patchcoin this might fail as well
+        // if (dbClaim.IsValid() && dbClaim.seen) {
+        //    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+        //    ui->statusLabel_VM->setText(
+        //        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+        //    return;
+        //}
         m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
             if (pnode->fDisconnect) return;
             const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
             m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
         });
-        debounce[claim.GetHash()] = GetTime();
         ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
         ui->statusLabel_VM->setText(
             QString("<nobr>") + tr("Claim published.") + QString("</nobr>")

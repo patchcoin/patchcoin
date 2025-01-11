@@ -3789,35 +3789,31 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     if (nCredit == 0 || nCredit > nAllowedBalance)
         return false;
 
-    genesis_key_held = false;
-
     if (genesisKeyOut == scriptPubKeyOut) {
         // patchcoin todo use existing or build new claimset?
         g_claimindex && g_claimindex->GetAllClaims(claims);
         std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
             return a.nTime < b.nTime;
         });
+        // patchcoin todo: wait maybe 10-20 claims on network creation?
         if (claims.empty() && chainman.ActiveHeight() == 0)
             return false;
         genesis_key_held = true;
     }
+    /*
+    if (claims.size() < 3)
+        return false;
+        */
 
     {
         if (!claims.empty() && genesis_key_held) {
             // patchcoin todo: never count ourselves actually
             claims.erase(
-                std::remove_if(claims.begin(), claims.end(), [&](CClaim& claim) {
+                std::remove_if(claims.begin(), claims.end(), [&](const CClaim& claim) {
                     if (!claim.IsValid()) return true;
-                    for (const auto& [_, wtx] : pwallet->mapWallet) {
-                        for (const CTxOut& txout : wtx.tx->vout) {
-                            if (txout.scriptPubKey == claim.GetTarget()) {
-                                // patchcoin todo add to stats
-                                if (!MoneyRange(claim.nTotalReceived += txout.nValue))
-                                    return false;
-                            }
-                        }
-                    }
-                    return claim.nTotalReceived >= claim.GetEligible();
+                    CAmount nTotalReceived = 0;
+                    if (!claim.GetReceived(pwallet, nTotalReceived)) return true;
+                    return nTotalReceived >= claim.GetEligible();
                 }),
                 claims.end()
             );
@@ -3874,7 +3870,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         // Attempt to add more inputs
         // Only add coins of the same key/address as kernel
         // patchcoin todo: if kernel matches genesis tx we do not ever want to combine inputs
-        if (genesisKeyOut != scriptPubKeyOut
+        if (!genesis_key_held
             && ((pcoin->txout.scriptPubKey == scriptPubKeyKernel || pcoin->txout.scriptPubKey == txNew.vout[1].scriptPubKey))
             && pcoin->outpoint.hash != txNew.vin[0].prevout.hash
             && pwallet->m_combine_coins)
@@ -3918,63 +3914,119 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     while(true)
     {
         // Clear outputs
-        txNew.vout.erase(txNew.vout.begin() + 1u+bMinterKey, txNew.vout.end());
+        txNew.vout.erase(txNew.vout.begin() + 1u+bMinterKey, txNew.vout.end()); //  patchcoin todo check if MinterKey is relevant here
         // Assume success
         bool outputsOk = true;
-        // split and set amounts based on rfc28
-        if (genesisKeyOut != scriptPubKeyOut && pwallet->m_split_coins) {
+
+        if (genesis_key_held) {
             CAmount current = nCredit - nMinFee;
-            double ratio = current / double(nTargetOutputAmount);
-            // Obtain the optimal number of outputs and clamp it to maxOutputs to ensure the fee is not exceeded
-            int desiredOutputs = std::min(
-                constrainToMaxUtxos
-                // When constraining to the max utxos, ensure the output amount is no less than the target
-                ? std::max(int(ratio), 1)
-                // Otherwise minimise the log-distance from the target
-                : int(std::floor((std::sqrt(4 * std::pow(ratio, 2) + 1) + 1) / 2)),
-                maxOutputs
-            );
+            if (current < 0) {
+                return error("CreateCoinStake : not enough balance to cover fee");
+            }
 
-            if (bDebug)
-                LogPrintf("rfc28: security level is %f, target amount %f, desired outputs %d from %f ppc\n",
-                    securityLevel, double(nTargetOutputAmount)/COIN, desiredOutputs, double(current)/COIN);
+            if (!claims.empty())
+                txNew.vout.push_back(CTxOut(0, genesisKeyOut));
 
-            CAmount outValue = current / desiredOutputs;
-            CAmount remainder = current - outValue*desiredOutputs;
+            for (auto &claim : claims)
+            {
+                // patchcoin todo tally everything at the end, maybe not even in this loop to absolutely ensure we're not randomly dropping / adding anyting
+                // patchcoin todo potentially reset nTotalReceived since this here is just virtual
+                if (!claim.IsValid()) {
+                    continue;
+                }
+                CAmount nTotalReceived = 0;
+                if (!claim.GetReceived(pwallet, nTotalReceived))
+                    return error("CreateCoinStake : failed to get received amount");
+                if (!MoneyRange(nTotalReceived))
+                    return error("CreateCoinStake : claim total received out of range");
+                CAmount neededForClaim = claim.GetEligible() - nTotalReceived;
+                if (neededForClaim <= 0) {
+                    // patchcoin this might result in issues / blocking
+                    continue;
+                }
 
-            for (int i=0; i<desiredOutputs; i++) {
-                // Add remainder to first output
-                txNew.vout.push_back(CTxOut(outValue + (i == 0 ? remainder : 0), scriptPubKeyOut));
-                // make sure transaction below 1kb
+                CAmount amountToSend = std::min(current, neededForClaim);
+                if (amountToSend > 0) {
+                    txNew.vout.push_back(CTxOut(amountToSend, claim.GetTarget()));
+                    /*
+                    if (txNew.vout.size() > (size_t)maxOutputs) {
+                        // patchcoin todo
+                        txNew.vout.pop_back();
+                        outputsOk = false;
+                        maxOutputs--;
+                        break;
+                    }
+                    */
+                    current -= amountToSend;
+                    nTotalReceived += amountToSend;
+                }
+
+                if (!MoneyRange(current)) {
+                    return error("CreateCoinStake : credit out of range");
+                }
+
                 if (::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION) > 1000) {
-                    if (!i)
-                        return error("CreateCoinStake : failed to create coinstake");
-                    // Remove output that goes over max size and set maxOutputs so that the logic can be re-run
                     txNew.vout.pop_back();
                     outputsOk = false;
-                    maxOutputs = i;
+                    maxOutputs--;
+                    break;
+                }
+
+                if (current <= 0) {
                     break;
                 }
             }
-        } else {
-            if (!claims.empty() && genesis_key_held) {
-                CClaim ENQUEUED_STAKE{claims[0]};
-                CScript target = ENQUEUED_STAKE.IsValid() ? ENQUEUED_STAKE.GetTarget() : scriptPubKeyOut;
-                if (ENQUEUED_STAKE.IsValid() && ENQUEUED_STAKE.nTotalReceived + nCredit > ENQUEUED_STAKE.GetEligible()) {
-                    // patchcoin todo MoneyRange
-                    CAmount remainder = ENQUEUED_STAKE.GetEligible() - ENQUEUED_STAKE.nTotalReceived;
 
-                    if (remainder > 0) {
-                        txNew.vout.push_back(CTxOut(remainder, target));
-                        nCredit -= remainder;
+            /*if (!outputsOk) {
+                continue;
+            }*/
+
+            if (current > 0)
+            {
+                txNew.vout.push_back(CTxOut(current, genesisKeyOut));
+
+                if (::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION) > 1000) {
+                    // Remove the output if we exceed the limit
+                    txNew.vout.pop_back();
+                    outputsOk = false;
+                    maxOutputs--;
+                }
+            }
+        } else {
+            // split and set amounts based on rfc28
+            if (pwallet->m_split_coins) {
+                CAmount current = nCredit - nMinFee;
+                double ratio = current / double(nTargetOutputAmount);
+                // Obtain the optimal number of outputs and clamp it to maxOutputs to ensure the fee is not exceeded
+                int desiredOutputs = std::min(
+                    constrainToMaxUtxos
+                    // When constraining to the max utxos, ensure the output amount is no less than the target
+                    ? std::max(int(ratio), 1)
+                    // Otherwise minimise the log-distance from the target
+                    : int(std::floor((std::sqrt(4 * std::pow(ratio, 2) + 1) + 1) / 2)),
+                    maxOutputs
+                );
+
+                if (bDebug)
+                    LogPrintf("rfc28: security level is %f, target amount %f, desired outputs %d from %f ppc\n",
+                        securityLevel, double(nTargetOutputAmount)/COIN, desiredOutputs, double(current)/COIN);
+
+                CAmount outValue = current / desiredOutputs;
+                CAmount remainder = current - outValue*desiredOutputs;
+
+                for (int i=0; i<desiredOutputs; i++) {
+                    // Add remainder to first output
+                    txNew.vout.push_back(CTxOut(outValue + (i == 0 ? remainder : 0), scriptPubKeyOut));
+                    // make sure transaction below 1kb
+                    if (::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION) > 1000) {
+                        if (!i)
+                            return error("CreateCoinStake : failed to create coinstake");
+                        // Remove output that goes over max size and set maxOutputs so that the logic can be re-run
+                        txNew.vout.pop_back();
+                        outputsOk = false;
+                        maxOutputs = i;
+                        break;
                     }
-                    CAmount amountToGenesis = nCredit - nMinFee;
-                    if (amountToGenesis > 0) {
-                        txNew.vout.push_back(CTxOut(amountToGenesis, genesisKeyOut));
-                    }
-                    ENQUEUED_STAKE.SetNull();
-                } else {
-                    txNew.vout.push_back(CTxOut(nCredit - nMinFee, target));
                 }
             } else {
                 txNew.vout.push_back(CTxOut(nCredit - nMinFee, scriptPubKeyOut));

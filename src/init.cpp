@@ -1534,10 +1534,11 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 LogPrintf("Failed to start ClaimIndex.\n");
                 return false;
             }
+            // patchcoin todo store them somewhere
             std::vector<CClaim> claims;
             g_claimindex->GetAllClaims(claims);
-            for (CClaim& claim : claims) {
-                if (!claim.IsValid()) {
+            for (const CClaim& claim : claims) {
+                if (!claim.Commit()) {
                     return false;
                 }
             }

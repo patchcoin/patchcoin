@@ -53,7 +53,7 @@ bool ClaimIndex::DB::ReadAllClaims(std::vector<CClaim>& claims)
         if (it->GetKey(key) && key.first == DB_CLAIMINDEX) {
             if (it->GetValue(claim)) {
                 claim.Init(); // patchcoin todo: check valid?
-                claims.push_back(claim);
+                claims.push_back(std::move(claim));
             } else {
                 LogPrintf("ClaimIndex::DB::ReadAllClaims: Failed to read claim value.\n");
                 return false;

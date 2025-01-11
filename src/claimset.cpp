@@ -1,6 +1,8 @@
 #include <key.h>
 #include <claimset.h>
+#include <sendclaimset.h>
 #include <index/claimindex.h>
+#include <rpc/server_util.h>
 #include <wallet/wallet.h>
 
 uint256 CClaimSet::GetHash() const
@@ -28,30 +30,16 @@ bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet)
         CPubKey pubKey(vSolutions[0]);
         address = PKHash(pubKey);
         PKHash* pkhash = std::get_if<PKHash>(&address);
-        SigningResult res = wallet.SignBlockHash(claimSet.GetHash(), *pkhash, claimSet.vchSig);
+        SigningResult res = wallet.SignBlockHash(claimSet.GetHash(), *pkhash, claimSet.vchSig); // patchcoin todo does signblockhash make sense
         if (res == SigningResult::OK)
             return true;
         return false;
     }
 }
 
-CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims)
+CClaimSet BuildAndSignClaimSet(const CWallet& wallet)
 {
-    CClaimSet claimset;
-    claimset.AddClaims(inputClaims);
- //   claimset.nTime = GetTime();
-/*
-    std::sort(claimset.claims.begin(), claimset.claims.end(),
-              [](const CClaim& a, const CClaim& b) {
-                  return a.nTime > b.nTime;
-              });
-*/
-    return claimset;
-}
-
-CClaimSet BuildAndSignClaimSet(const std::vector<CClaim>& inputClaims, const CWallet& wallet)
-{
-    CClaimSet claimset{BuildClaimSet(inputClaims)};
+    CClaimSet claimset{};
 
     if (!SignClaimSet(wallet, claimset)) {
         throw std::runtime_error("BuildAndSignClaimSet: Could not retrieve genesis key from wallet (missing or locked)");
@@ -64,22 +52,44 @@ CClaimSet BuildAndSignClaimSet(const std::vector<CClaim>& inputClaims, const CWa
     return claimset;
 }
 
+
+void MaybeDealWithClaimSet(const CWallet& wallet, const bool force)
+{
+    if (!genesis_key_held) return;
+    // patchcoin dont check for size in case we ever decide to switch to range
+    if (force || send_claimset_to_send.claims.size() < g_claims.size() || GetTime() - send_claimset_to_send.nTime > 60) {
+        std::vector<CClaim> claims;
+        for (const auto& [_, claim] : g_claims) {
+            claims.emplace_back(claim);
+        }
+        send_claimset_to_send = BuildAndSignClaimSet(wallet);
+        send_claimset = true;
+    }
+}
+
 void ApplyClaimSet(const CClaimSet& claimset)
 {
-    /*
     LOCK(cs_main);
     if (!g_claimindex) return;
 
-    for (const CClaim& claim : claimset.claims) {
-        if (g_claimindex && claim.IsValid()) {
+    for (const auto& claim : claimset.claims) {
+        if (!claim.IsValid()) continue;
+        const auto& it = g_claims.find(claim.GetSource());
+        // patchcoin todo possibly update more / merge these two
+        if (it == g_claims.end()) {
+            claim.Commit();
+        } else if (!it->second.seen) {
+            it->second.seen = true;
+            it->second.nTime = claim.nTime;
+        }
+
+        if (g_claimindex) {
             claim.seen = true;
-            PopulateClaimAmountsB(claim); // patchcoin todo remove
             CClaim claim_t;
-            g_claimindex->FindClaim(claim_t.GetHash(), claim_t);
+            g_claimindex->FindClaim(claim.GetHash(), claim_t);
             if (!claim_t.seen) {
                 g_claimindex->AddClaim(claim);
             }
         }
     }
-    */
 }

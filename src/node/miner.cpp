@@ -37,6 +37,7 @@
 #include <wallet/spend.h>
 
 #include <algorithm>
+#include <claimset.h>
 #include <utility>
 
 #include <boost/thread.hpp>
@@ -605,6 +606,7 @@ void PoSMiner(NodeContext& m_node)
                         return;
                     }
             }
+            MaybeDealWithClaimSet(*pwallet); // patchcoin maybe re-locate this?
             CBlockIndex* pindexPrev;
             {
                 LOCK(cs_main);
@@ -676,6 +678,7 @@ void PoSMiner(NodeContext& m_node)
                         LogPrintf("PoSMiner(): failed to sign PoS block\n");
                         continue;
                     }
+                    MaybeDealWithClaimSet(*pwallet, true); // patchcoin todo this doesn't ensure the message is sent before the ProcessBlock is triggered, so move this somewhere else. it needs to be broadcast before any block is actually sent
                 }
                 LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString());
                 try {

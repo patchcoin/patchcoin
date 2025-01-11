@@ -21,6 +21,6 @@ void ExportSnapshotToCSV(const fs::path& path);
 void DumpPermittedScriptPubKeys();
 bool ReadPermittedScriptPubKeys();
 bool CalculateEligible(const CAmount& balance, CAmount& eligible);
-bool CalculateEligible(const wallet::CWallet* pwallet, CScript target, CAmount& balance, CAmount& eligible, CAmount& nTotalReceived);
+bool CalculateReceived(const wallet::CWallet* pwallet, const CScript& target, CAmount& nTotalReceived);
 
 #endif // PATCHCOIN_SNAPSHOTMANAGER_H

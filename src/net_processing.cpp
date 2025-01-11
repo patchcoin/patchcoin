@@ -262,10 +262,6 @@ struct Peer {
     /** Whether a ping has been requested by the user */
     std::atomic<bool> m_ping_queued{false};
 
-    mutable RecursiveMutex m_claims_inventory_mutex;
-    std::set<CClaim> m_claims_seen GUARDED_BY(m_claims_inventory_mutex);
-    std::set<CClaim> m_claims_sent GUARDED_BY(m_claims_inventory_mutex);
-
     bool m_peercoin_snapshot_held{false};
     int  m_peercoin_snapshot_sent{0};
     // patchcoin todo: confirm that node has snapshot and the latest claimset, otherwise, do not send data.
@@ -1458,7 +1454,7 @@ void PeerManagerImpl::PushNodeVersion(CNode& pnode, const Peer& peer)
     const bool tx_relay{!RejectIncomingTxs(pnode)};
     const bool peercoin_snapshot_held{hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot}; // patchcoin todo potentially extend this check
     std::vector<CClaim> claims;
-    const bool claims_held{g_claimindex && g_claimindex->GetAllClaims(claims) && !claims.empty()};
+    const bool claims_held{!g_claims.empty()}; // patchcoin todo depend on nTime of latest claim
     m_connman.PushMessage(&pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERSION, PROTOCOL_VERSION, my_services, nTime,
             your_services, addr_you, // Together the pre-version-31402 serialization of CAddress "addrYou" (without nTime)
             my_services, CService(), // Together the pre-version-31402 serialization of CAddress "addrMe" (without nTime)
@@ -3327,9 +3323,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!vRecv.empty())
             vRecv >> fRelay;
         if (!vRecv.empty())
-            vRecv >> peer->m_peercoin_snapshot_held; // patchcoin todo move down
+            vRecv >> peer->m_peercoin_snapshot_held;   // patchcoin todo move down
         if (!vRecv.empty())
-            vRecv >> peer->m_claims_held;
+            vRecv >> peer->m_claims_held;    // patchcoin todo move down
         // Disconnect if we connected to ourself
         if (pfrom.IsInboundConn() && !m_connman.CheckIncomingNonce(nNonce))
         {
@@ -4094,9 +4090,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             peer->m_peercoin_snapshot_sent = 20;
             return;
         }
-        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-        ss << scriptPubKeysOfPeercoinSnapshot;
-        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, ss));
+        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, scriptPubKeysOfPeercoinSnapshot));
         peer->m_peercoin_snapshot_sent += 1;
         return;
     }
@@ -4341,102 +4335,108 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     }
 
     if (msg_type == NetMsgType::CLAIM) {
-        // patchcoin todo ensure we actually hold data related to hashScriptPubKeysOfPeercoinSnapshot as this check currently doesn't account for concurrency issues
-        // claim.IsValid() does this same check so run it here first to avoid evicting peer wrongfully
-        if (hashScriptPubKeysOfPeercoinSnapshot != m_chainparams.GetConsensus().hashPeercoinSnapshot)
-            return;
-        if (!g_claimindex) {
-            LogPrint(BCLog::NET, "Claim received but ClaimIndex is not available.\n");
-            return;
-        }
+        // patchcoin todo check if we can produce a claim set?
+        if (!g_claimindex) return;
 
-        // patchcoin todo: try{}?
-        // patchcoin todo: try to debounce if we get same claims repeatedly
-        CClaim claim;
-        vRecv >> claim;
-
-        try {
-            claim.Init();
-            if (!claim.IsValid()) {
-                throw std::runtime_error("invalid claim");
-            }
-            if (g_claimindex->ClaimExists(claim.GetHash()))
-                return;
-        } catch (const std::exception& e) {
+        CClaim dummy;
+        if (!dummy.SnapshotIsValid()) return;
+        vRecv >> dummy;
+        const std::string source_address = dummy.GetSourceAddress();
+        const auto it = scriptPubKeysOfPeercoinSnapshot.find(dummy.GetScriptFromAddress(source_address));
+        if (it == scriptPubKeysOfPeercoinSnapshot.end()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
 
-        // patchcoin todo more antispam
-        LOCK(cs_main);
-
-        std::vector<CClaim> claims;
-        if (g_claimindex && g_claimindex->GetAllClaims(claims)) {
-            for (const CClaim& claimFromDb : claims) {
-                // bool debounce = GetTime() - claim.nTime < 2 * 60; // patchcoin todo this might be too excessive
-                if (claimFromDb.GetSource() == claim.GetSource()) {
-                    /*
-                    if (debounce) {
-                        Misbehaving(*peer, 10, strprintf("duplicate claim from same address claim=%s, source=%s",
-                            claimRef->GetHash().ToString(), HexStr(claimRef->source)));
-                    }
-                    */
-
-                    return;
-                }
-                if (claimFromDb.GetTarget() == claim.GetTarget()) {
-                    /*
-                    if (debounce) {
-                        Misbehaving(*peer, 10, strprintf("duplicate claim to same address claim=%s, target=%s",
-                            claimRef->GetHash().ToString(), HexStr(claimRef->target)));
-                    }
-                    */
-
-                    return;
-                }
-            }
-        } else {
-            LogPrint(BCLog::NET, "Unable to access ClaimIndex");
+        CClaim claim(source_address, dummy.GetSignatureString(), dummy.GetTargetAddress());
+        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget() || !claim.IsValid()) {
+            Misbehaving(*peer, 100, "invalid claim");
             return;
         }
+
+        const CScript& source = claim.GetSource();
         /*
-        {
-            LOCK(cs_claims_seen);
-            // patchcoin todo not sure if these go well together
-            if (claims_seen.count(claim) || (g_claimindex && g_claimindex->ClaimExists(claim.GetHash()))) {
-                LogPrint(BCLog::NET, "Duplicate claim ignored: %s\n", claim.GetHash().ToString());
-                return;
-            }
-
-            claims_seen.insert(claim);
-        }
-        */
-        /*
-
-        {
-            LOCK(peer->m_claims_inventory_mutex);
-            peer->m_claims_seen.insert(claim);
-            peer->m_claims_sent.insert(claim);
-        }
-        */
-
-        // patchcoin todo silently fail?
-        // patchcoin todo don't re-insert. especially if we care about timestamps
-        if (g_claimindex && g_claimindex->AddClaim(claim)) {
-            LogPrint(BCLog::NET, "Processed new claim: %s\n", claim.GetHash().ToString());
+        const auto it2 = last_claimset_received.claims.find(source);
+        const auto it3 = send_claimset_to_send.claims.find(source);
+        if (it2 != last_claimset_received.claims.end() || it3 != send_claimset_to_send.claims.end()) {
             if (!peer->m_scack_sent) {
                 m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
                 peer->m_scack_sent = true;
             }
+            return;
         }
+        */
+
+        {
+            LOCK(cs_claims_seen);
+            if (GetTime() - claims_seen[claim.GetHash()] < 1.5 * 60)
+                return;
+            claims_seen[claim.GetHash()] = GetTime();
+        }
+
+        {
+            LOCK(cs_main);
+
+            if (claim.IsUniqueSource()) { // first time we register this thing
+                if (claim.Commit() && g_claimindex->AddClaim(claim)) {
+                    if (!peer->m_scack_sent) {
+                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
+                        peer->m_scack_sent = true;
+                    } else
+                        return; // db error?
+                }
+            } else {
+                const auto& it4 = g_claims.find(claim.GetSource());
+                if (it4 != g_claims.end() && it4->second.seen) {
+                    return;
+                }
+            }
+
+            // patchcoin todo check last claimset as well
+            // patchcoin todo potentially start maintaining list of seen claims in memory. while this operation shouldn't be particularly demanding, I'm unsure how well it scales
+            /* CClaim dbClaim;
+            if (g_claimindex->FindClaim(claim.GetHash(), dbClaim) && dbClaim.seen) {
+               return;
+            }
+            */
+
+            /*
+            if (g_claimindex->AddClaim(claim)) {
+                LogPrint(BCLog::NET, "Processed new claim: %s\n", claim.GetHash().ToString());
+                if (!peer->m_scack_sent) {
+                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
+                    peer->m_scack_sent = true;
+                }
+            }
+            */
+
+            /* patchcoin todo if claim is good, broadcast claimset
+            if (genesis_key_held) {
+                std::vector<CClaim> claims;
+                if (g_claimindex->GetAllClaims(claims) && !claims.empty()) {
+                    send_claimset_to_send = BuildAndSignClaimSet(claims, keystore);
+                }
+                send_claimset = true;
+            }
+            */
+
+            m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+                AssertLockHeld(::cs_main);
+                if (pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+                const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+                m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIM, claim));
+            });
+        }
+
         return;
     }
 
     if (msg_type == NetMsgType::SENDCLAIMSET)
     {
-        if (hashScriptPubKeysOfPeercoinSnapshot != m_chainparams.GetConsensus().hashPeercoinSnapshot)
-            return;
-        /*
+        if (genesis_key_held) return; // we could listen for multi address claims but that's likely not worth
+        CClaim dummy;
+        if (!dummy.SnapshotIsValid()) return;
+
         CClaimSet claimSet;
         vRecv >> claimSet;
         {
@@ -4444,13 +4444,23 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             if (!claimSet.IsValid()) {
                 Misbehaving(*peer, 100, "invalid claimset");
             }
+            for (auto& claim : claimSet.claims) {
+                claim.Init();
+            }
             m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
                 AssertLockHeld(::cs_main);
                 if (pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
-                m_connman.PushMessage(pnode, msgMaker.Make(NetMsgType::SENDCLAIMSET, claimSet));
+                const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+                m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::SENDCLAIMSET, claimSet));
             });
-            /*
-            if (last_claimset_received.IsEmpty() || claimSet.claims.begin()->nTime > last_claimset_received.claims.begin()->nTime) {
+            // 2025-01-08T22:43:58Z [net] received: claimset (845 bytes) peer=0, that's for 5 claims
+            // patchcoin todo this kinda makes including every claim on every broadcast impractical
+            // patchcoin todo possibly restrict max claims to say 100
+            // patchcoin todo the system doesn't need to be super elaborate, it should just give enough range to properly oversee the claiming process as a whole since generally we're just generating regular transactions
+            // patchcoin todo possibly host a site somewhere which allows interested parties to check on every available claim
+            // patchcoin todo then adjust block checks accordingly -> if we have the claims and want to check against them, that's cool. if not then we simply trust regular block checks
+            // patchcoin todo as such, checking for size like this doesn't make sense
+            if (last_claimset_received.IsEmpty() || claimSet > last_claimset_received) {
                 LogPrint(BCLog::NET, "Received new claim set: %s\n", claimSet.GetHash().ToString());
                 ApplyClaimSet(claimSet);
             }
@@ -4460,7 +4470,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
             peer->m_scack_sent = true;
         }
-        */
         return;
     }
 
@@ -5687,9 +5696,10 @@ void PeerManagerImpl::MaybeSendClaims(CNode& node_to, Peer& peer, std::chrono::m
 
 void PeerManagerImpl::MaybeSendClaimSet(CNode& node_to)
 {
-    if (!send_claimset) return;
+    if (!send_claimset) return; // patchcoin todo yes we do want to share it if we have it in memory
     const CNetMsgMaker msgMaker(node_to.GetCommonVersion());
     m_connman.PushMessage(&node_to, msgMaker.Make(NetMsgType::SENDCLAIMSET, send_claimset_to_send));
+    send_claimset = false; // patchcoin todo
 }
 
 void PeerManagerImpl::MaybeSendAddr(CNode& node, Peer& peer, std::chrono::microseconds current_time)
@@ -5924,9 +5934,10 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         }
     }
 
-    MaybeSendClaims(*pto, *peer, current_time);
+    MaybeSendClaims(*pto, *peer, current_time); // patchcoin todo
     MaybeSendClaimSet(*pto); // patchcoin todo it would be preferred to relay claim set over individual claims, if we have it
 
+    // patchcoin todo this doesn't ensure our claims are updated, only that they exist
     if (!peer->m_claims_held) {
         return true;
     }

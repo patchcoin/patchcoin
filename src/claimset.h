@@ -12,18 +12,47 @@
 #include <cstdint>
 #include <wallet/wallet.h>
 
+// patchcoin todo:
+// do we actually need or want this?
+
 typedef std::vector<unsigned char> valtype;
+
+class CClaimSetClaim : public CClaim
+{
+public:
+    SERIALIZE_METHODS(CClaimSetClaim, obj)
+    {
+        READWRITEAS(CClaim, obj);
+        READWRITE(obj.nTime);
+    }
+};
 
 class CClaimSet
 {
 public:
+    // patchcoin todo re-check here -> scripts claims dont currently link to the script set, so fix that
+    // also, again, not being re-layed on connection currently
+    // maybe also store claimset in a special key or something and then load that on startup. that way we dont need to load individual claims(might be cool or bad not sure yet)
     // patchcoin todo move this to private
-    std::map<CScript, CClaim> claims;
+    std::vector<CClaimSetClaim> claims;
     int64_t nTime;
     std::vector<unsigned char> vchSig;
     // patchcoin todo move this to private
-    CClaimSet() : nTime(0)
+    CClaimSet() : nTime(GetTime())
     {
+        std::vector<CClaim> sortedClaims;
+        sortedClaims.reserve(g_claims.size());
+        for (const auto& [_, claim] : g_claims) {
+            sortedClaims.push_back(claim);
+        }
+        std::sort(sortedClaims.begin(), sortedClaims.end(),
+                  [](const CClaim& a, const CClaim& b) {
+                      return a.nTime > b.nTime;
+                  });
+        for (const auto& claim : sortedClaims) {
+            AddClaim(static_cast<const CClaimSetClaim&>(claim));
+        }
+        return;
     }
 
     SERIALIZE_METHODS(CClaimSet, obj)
@@ -33,27 +62,18 @@ public:
             READWRITE(obj.vchSig);
     }
 
-    bool AddClaim(const CClaim& claim)
+    bool AddClaim(const CClaimSetClaim& claim)
     {
         if (!claim.IsValid()) {
             return false;
         }
-        if (claims.find(claim.GetSource()) != claims.end()) {
+        if (std::any_of(claims.begin(), claims.end(), [&](const CClaim& claim_new) {
+            return claim.GetSource() == claim_new.GetSource();
+        })) {
             return false;
         }
-        claims.emplace(claim.GetSource(), claim);
+        claims.emplace_back(claim);
         return true;
-    }
-
-    bool AddClaims(const std::vector<CClaim>& newClaims)
-    {
-        bool allAdded = true;
-        for (const auto& claim : newClaims) {
-            if (!AddClaim(claim)) {
-                allAdded = false;
-            }
-        }
-        return allAdded;
     }
 
     bool IsEmpty() const
@@ -81,8 +101,9 @@ public:
             return false;
         }
 
-        for (const auto& [hash, claim] : claims) {
-            if (!claim.IsValid()) {
+        for (const auto& claim : claims) {
+            CClaim tempClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
+            if (!tempClaim.IsValid()) {
                 return false;
             }
         }
@@ -92,25 +113,11 @@ public:
 
     uint256 GetHash() const;
 
-    std::vector<CClaim> GetSortedClaims() const
-    {
-        std::vector<CClaim> sortedClaims;
-        sortedClaims.reserve(claims.size());
-        for (const auto& [hash, claim] : claims) {
-            sortedClaims.push_back(claim);
-        }
-        std::sort(sortedClaims.begin(), sortedClaims.end(),
-                  [](const CClaim& a, const CClaim& b) {
-                      return a.nTime > b.nTime;
-                  });
-        return sortedClaims;
-    }
-
     friend bool operator==(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() == b.GetHash(); }
     friend bool operator!=(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() != b.GetHash(); }
     // patchcoin todo:
-    friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.nTime < b.nTime; }
-    friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.nTime > b.nTime; }
+    friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() < b.claims.size(); }
+    friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() > b.claims.size(); }
 };
 
 CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims);
@@ -118,5 +125,7 @@ CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims);
 CClaimSet BuildAndSignClaimSet(const std::vector<CClaim>& inputClaims, const CWallet& wallet);
 
 void ApplyClaimSet(const CClaimSet& claimSet);
+
+void MaybeDealWithClaimSet(const CWallet& wallet, bool force = false);
 
 #endif // PATCHCOIN_CLAIMSET_H

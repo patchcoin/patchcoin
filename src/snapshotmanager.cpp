@@ -167,20 +167,19 @@ bool CalculateEligible(const CAmount& balance, CAmount& eligible) {
     return true;
 }
 
-bool CalculateEligible(const CWallet* pwallet, CScript& target, CAmount& balance, CAmount& eligible, CAmount& nTotalReceived) {
+bool CalculateReceived(const CWallet* pwallet, const CScript& target, CAmount& nTotalReceived) {
     if (!pwallet) return false;
 
     for (const auto& [_, wtx] : pwallet->mapWallet) {
         for (const CTxOut& txout : wtx.tx->vout) {
             if (txout.scriptPubKey == target) {
-                // patchcoin todo add to stats
                 if (!MoneyRange(nTotalReceived += txout.nValue))
                     return false;
             }
         }
     }
 
-    return CalculateEligible(balance, eligible);
+    return true;
 }
 
 bool LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CAmount& balance, CAmount& eligible)

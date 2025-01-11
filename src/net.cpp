@@ -2085,7 +2085,6 @@ void CConnman::ThreadMessageHandler()
                     return;
             }
         }
-        send_claimset = false; // patchcoin todo this doesnt belong here, can check for timestamp of last claim in index -> either that or next block timer
 
         WAIT_LOCK(mutexMsgProc, lock);
         if (!fMoreWork) {

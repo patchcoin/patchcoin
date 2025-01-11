@@ -219,6 +219,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView*
     transactionView->setSortingEnabled(true);
     transactionView->verticalHeader()->hide();
 
+    /*
     QSettings settings;
     if (!transactionView->horizontalHeader()->restoreState(settings.value("TransactionViewHeaderState").toByteArray())) {
         transactionView->setColumnWidth(TransactionTableModel::Status, STATUS_COLUMN_WIDTH);
@@ -229,6 +230,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView*
         transactionView->horizontalHeader()->setMinimumSectionSize(MINIMUM_COLUMN_WIDTH);
         transactionView->horizontalHeader()->setStretchLastSection(true);
     }
+    */
 
     contextMenu = new QMenu(this);
     contextMenu->setObjectName("contextMenu");
@@ -339,9 +341,11 @@ void TransactionView::snapshotTableContextMenuRequested(const QPoint &pos)
         return;
     }
 
+    /*
     if (snapshotTable->currentColumn() != 0) {
         return;
     }
+    */
 
     claimAddressAction->setEnabled(true);
     searchAddressAction->setEnabled(true);

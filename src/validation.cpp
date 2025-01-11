@@ -3495,6 +3495,42 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     if (fCheckMerkleRoot && fCheckSignature && (block.IsProofOfStake() || !IsBTC16BIPsEnabled(block.GetBlockTime())) && !CheckBlockSignature(block))
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-blk-sign", strprintf("%s : bad block signature", __func__));
 
+    // patchcoin todo add this check but it should be within a certain range, say 500 blocks, depending on the size of the claimset being broadcast
+    // patchcoin todo we could also require the claimset to be a certain size. invalidate it if it's lower
+    /*
+    if (block.IsProofOfStake() && block.vtx[1]->vout[1].scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
+        // patchcoin todo add date check : 180 days?
+        if (block.vtx[1]->vout.size() > 3) {
+            for (unsigned int i = 2; i < block.vtx[1]->vout.size() - 1; i++) {
+                if (block.vtx[1]->vout[i].scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey)
+                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-genesis-out", strprintf("%s : genesis scriptPubKey found in invalid position", __func__));
+            }
+        }
+        // patchcoin todo add more checks?
+        // patchcoin todo we're currently only checking the first vtx, maybe search others too
+        assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
+        assert(g_claimindex);
+
+        std::vector<CClaim> claims;
+        assert(g_claimindex->GetAllClaims(claims)); // patchcoin todo look up by included target, not all of them
+        bool maybeValid = false; // patchcoin this check doesn't actually work just yet :^)
+        for (const CTxOut& txout : block.vtx[1]->vout) {
+            if (txout.scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
+                maybeValid = true;
+                break;
+            }
+            for (const CClaim& claim : claims) {
+                if (txout.scriptPubKey == claim.GetTarget()) {
+                    maybeValid = true;
+                    break;
+                }
+            }
+        }
+        if (!maybeValid)
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-genesis-out", strprintf("%s : bad genesis output", __func__));
+    }
+    */
+
     return true;
 }
 
@@ -4996,33 +5032,6 @@ bool GetCoinAge(const CTransaction& tx, const CCoinsViewCache &view, uint64_t& n
     return true;
 }
 
-bool PopulateClaimAmounts(std::vector<CClaim>& claims)
-{
-    /*
-    for (auto& claim : claims) {
-        CTxDestination sourceDest;
-        if (!ExtractDestination(claim.source, sourceDest)) {
-            claim.nEligible = 0;
-            claim.nTotalReceived = 0;
-            continue;
-        }
-
-        std::string addr = EncodeDestination(sourceDest);
-
-        CAmount balance{0}, eligible{0};
-        if (LookupPeercoinAddress(addr, balance, eligible)) {
-            claim.nTotalReceived = balance;
-            claim.nEligible = eligible;
-        } else {
-            claim.nTotalReceived = 0;
-            claim.nEligible = 0;
-        }
-    }
-    */
-
-    return true;
-}
-
 // peercoin: sign block
 typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
@@ -5030,13 +5039,14 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
     std::vector<valtype> vSolutions;
     const CTxOut& txout = genesis_key_held ? Params().GenesisBlock().vtx[0]->vout[0] : block.vtx[1]->vout[1];
 
+    /*
     if (genesis_key_held && g_claimindex) { // patchcoin todo move this
         std::vector<CClaim> claims;
         if (g_claimindex->GetAllClaims(claims) && !claims.empty()) {
-            PopulateClaimAmounts(claims);
             send_claimset_to_send = BuildAndSignClaimSet(claims, keystore);
         }
     }
+    */
 
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;
@@ -5049,8 +5059,8 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
             return false;
         if (key.GetPubKey() != CPubKey(vchPubKey))
             return false;
-        if (genesis_key_held)
-            send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
+        // if (genesis_key_held)
+        //     send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         return key.Sign(block.GetHash(), block.vchBlockSig, 0);
     }
     else
@@ -5060,14 +5070,34 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
         address = PKHash(pubKey);
         PKHash* pkhash = std::get_if<PKHash>(&address);
         SigningResult res = keystore.SignBlockHash(block.GetHash(), *pkhash, block.vchBlockSig);
-        if (genesis_key_held)
-            send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
+        // if (genesis_key_held)
+        //    send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         if (res == SigningResult::OK)
             return true;
         return false;
     }
 }
 
+// peercoin: check block signature
+bool CheckBlockSignature(const CBlock& block)
+{
+    if (block.GetHash() == Params().GetConsensus().hashGenesisBlock)
+        return block.vchBlockSig.empty();
+
+    std::vector<valtype> vSolutions;
+    const CTxOut& txout = block.vtx[1]->vout[1];
+
+    if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
+        return false;
+
+    const valtype& vchPubKey = vSolutions[0];
+    CPubKey key(vchPubKey);
+    if (block.vchBlockSig.empty())
+        return false;
+    return key.Verify(block.GetHash(), block.vchBlockSig);
+}
+
+/*
 // peercoin: check block signature
 bool CheckBlockSignature(const CBlock& block)
 {
@@ -5104,6 +5134,7 @@ bool CheckBlockSignature(const CBlock& block)
     }
     return isValid;
 }
+*/
 
 std::optional<uint256> ChainstateManager::SnapshotBlockhash() const
 {

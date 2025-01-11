@@ -1067,6 +1067,7 @@ static RPCHelpMan migratewallet()
     };
 }
 
+/*
 static RPCHelpMan buildclaimset()
 {
     return RPCHelpMan{
@@ -1178,6 +1179,7 @@ static RPCHelpMan buildclaimset()
         }
     };
 }
+*/
 
 
 // addresses
@@ -1324,7 +1326,7 @@ static const CRPCCommand commands[] =
     { "wallet",             &importcoinstake,                },
     { "wallet",             &listminting,                    },
     { "wallet",             &reservebalance,                 },
-    { "wallet",             &buildclaimset,                  },
+    // { "wallet",             &buildclaimset,                  },
 };
 // clang-format on
     return commands;

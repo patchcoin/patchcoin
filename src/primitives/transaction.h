@@ -160,9 +160,6 @@ class CTxOut
 public:
     CAmount nValue;
     CScript scriptPubKey;
-    // patchcoin todo: add claim data here to link this transaction to a peercoin address?
-    // it should be optional and only be relevant if the input key matches the genesis key
-    // const std::vector<unsigned char> signature;
 
     CTxOut()
     {
