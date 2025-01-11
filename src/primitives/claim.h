@@ -187,36 +187,36 @@ public:
     bool IsValid() const
     {
         if (IsAnyNull()) {
-            LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
-                sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
+            // LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
+            //    sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
             return false;
         }
         if (IsSourceTarget() || IsSourceTargetAddress()) {
-            LogPrintf("[claim] error: input matches output address");
+            // LogPrintf("[claim] error: input matches output address");
             return false;
         }
         if (!SnapshotIsValid()) {
-            LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
+            // LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
             return false;
         }
         if (snapshotIt == snapshot->end()) {
-            LogPrintf("[claim] error: source script not found in snapshot\n");
+            // LogPrintf("[claim] error: source script not found in snapshot\n");
             return false;
         }
         if (sourceAddress.empty() || GetScriptFromAddress(sourceAddress).empty() || source == nullptr || GetAddressFromScript(*source).empty()) {
-            LogPrintf("[claim] error: failed to extract destination from source script\n");
+            // LogPrintf("[claim] error: failed to extract destination from source script\n");
             return false;
         }
         if (targetAddress.empty() || GetScriptFromAddress(targetAddress).empty() || GetAddressFromScript(target).empty()) {
-            LogPrintf("[claim] error: failed to extract destination from target script\n");
+            // LogPrintf("[claim] error: failed to extract destination from target script\n");
             return false;
         }
         if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
-            LogPrintf("[claim] error: peercoin balance out of range\n");
+            // LogPrintf("[claim] error: peercoin balance out of range\n");
             return false;
         }
         if (!MoneyRange(GetEligible())) {
-            LogPrintf("[claim] error: eligible balance out of range\n");
+            // LogPrintf("[claim] error: eligible balance out of range\n");
             return false;
         }
         MessageVerificationResult res = MessageVerify(
@@ -226,7 +226,7 @@ public:
             PEERCOIN_MESSAGE_MAGIC
         );
         if (res != MessageVerificationResult::OK) {
-            LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
+            // LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
             return false;
         }
         // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
