@@ -78,7 +78,7 @@ public:
         return address;
     }
 
-    static std::string LocateAddress(size_t pos)
+    static std::string LocateAddress(const size_t pos)
     {
         std::string address;
         const CClaim dummy;

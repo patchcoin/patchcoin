@@ -16,10 +16,13 @@ class CWallet;
 
 std::set<std::string> invalid;
 
-uint256 HashScriptPubKeysOfPeercoinSnapshot(std::map<CScript, CAmount> scripts) {
-    CHashWriter ss(SER_GETHASH, 0);
-    for (const auto& script : scripts) {
+uint256 HashScriptPubKeysOfPeercoinSnapshot(std::map<CScript, CAmount>& scripts) {
+    HashWriter ss{};
+    size_t position = 0;
+    for (const auto& [script, amount] : scripts) {
+        ss << position++;
         ss << script;
+        ss << amount;
     }
     return ss.GetHash();
 }

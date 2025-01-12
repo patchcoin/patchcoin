@@ -14,7 +14,7 @@ namespace wallet
 inline std::map<CScript, CAmount> scriptPubKeysOfPeercoinSnapshot;
 inline node::SnapshotMetadata peercoinSnapshotMetadata;
 inline uint256 hashScriptPubKeysOfPeercoinSnapshot;
-uint256 HashScriptPubKeysOfPeercoinSnapshot(std::map<CScript, CAmount> scripts = scriptPubKeysOfPeercoinSnapshot);
+uint256 HashScriptPubKeysOfPeercoinSnapshot(std::map<CScript, CAmount>& scripts = scriptPubKeysOfPeercoinSnapshot);
 bool LoadSnapshotOnStartup(const ArgsManager& args);
 bool LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CAmount& balance, CAmount& eligible);
 void ExportSnapshotToCSV(const fs::path& path);
