@@ -64,7 +64,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
 static CBlock CreateGenesisBlock(uint32_t nTimeTx, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
     const char* pszTimestamp = "In the blockchain’s fog, coins drift, a patchwork of dreams — miners rest their picks.";
-    const CScript genesisOutputScript = CScript() << ParseHex("035953072c26119035b5566f00f5d5a0d9621e38b65f9c75fa283fc49cebb550c6") << OP_CHECKSIG;
+    const CScript genesisOutputScript = CScript() << ParseHex("032acb5d626d3a7480f6b8b05852cb4d71a5390ae75f608ed88b1aba24b1c6a977") << OP_CHECKSIG;
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTimeTx, nTimeBlock, nNonce, nBits, nVersion, genesisReward);
 }
 
@@ -147,12 +147,12 @@ public:
         nDefaultPort = 9901;
         m_assumed_blockchain_size = 0;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
+        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
+        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        consensus.hashPeercoinSnapshot = uint256S("0x93662d6e602ab03eef252ff4f50895923d8e26306350dacd383330504fa9f037");
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
@@ -183,7 +183,7 @@ public:
 
         checkpointData = {
             {
-                {     0, uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e")},
+                {     0, uint256S("0x40024c648fa673e6fbb0bc49a2c76964c7bae667af6c742b3ba22df8ec14834d")},
             }
         };
 
@@ -242,12 +242,12 @@ public:
         nDefaultPort = 9903;
         m_assumed_blockchain_size = 1;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
+        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
+        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        consensus.hashPeercoinSnapshot = uint256S("0x93662d6e602ab03eef252ff4f50895923d8e26306350dacd383330504fa9f037");
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -393,12 +393,12 @@ public:
 
         nDefaultPort = 38333;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
+        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
+        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        consensus.hashPeercoinSnapshot = uint256S("0x93662d6e602ab03eef252ff4f50895923d8e26306350dacd383330504fa9f037");
 
         vFixedSeeds.clear();
 
@@ -503,12 +503,12 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, MAX_MONEY);
+        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x54aa1bb762d741cb1b5e61cbc9ae504c0aa2cde01e3f7bc25efb73ee5a4b991e"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcce4a56c5aab7c8ad0610237e994cde59eba33e7edc37fc0cf38925321684a7d"));
-        consensus.hashPeercoinSnapshot = uint256S("0xadd9b1b1ac70e465f0910c80b9c0dc94c2a937882d91f28ea91e282a1beceabe");
+        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
+        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        consensus.hashPeercoinSnapshot = uint256S("0x93662d6e602ab03eef252ff4f50895923d8e26306350dacd383330504fa9f037");
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

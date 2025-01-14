@@ -4451,12 +4451,12 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             LogPrint(BCLog::NET, "Received new claim set: %s, claimTime: %s\n", claimSet.GetHash().ToString(), claimSet.claims[0].nTime);
+            for (auto& claim : claimSet.claims) {
+                claim.Init();
+            }
             if (!claimSet.IsValid()) {
                 Misbehaving(*peer, 100, "invalid claimset");
                 return;
-            }
-            for (auto& claim : claimSet.claims) {
-                claim.Init();
             }
             m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
                 AssertLockHeld(::cs_main);

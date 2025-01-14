@@ -25,6 +25,10 @@ public:
         READWRITEAS(CClaim, obj);
         READWRITE(obj.nTime);
     }
+
+    CClaimSetClaim() = default;
+    CClaimSetClaim(const std::string& source_address, const std::string& signature_string, const std::string& target_address)
+        : CClaim(source_address, signature_string, target_address) {}
 };
 
 class CClaimSet
@@ -34,7 +38,7 @@ public:
     // also, again, not being re-layed on connection currently
     // maybe also store claimset in a special key or something and then load that on startup. that way we dont need to load individual claims(might be cool or bad not sure yet)
     // patchcoin todo move this to private
-    std::vector<CClaim> claims;
+    std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
     // patchcoin todo move this to private
@@ -51,15 +55,18 @@ public:
 
     bool AddClaim(const CClaim& claim)
     {
-        if (!claim.IsValid()) {
+        CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
+        claimSetClaim.nTime = claim.nTime;
+        claimSetClaim.Init();
+        if (!claimSetClaim.IsValid()) {
             return false;
         }
-        if (std::any_of(claims.begin(), claims.end(), [&](const CClaim& claim_new) {
+        if (std::any_of(claims.begin(), claims.end(), [&](const CClaimSetClaim& claim_new) {
             return claim.GetSource() == claim_new.GetSource();
         })) {
             return false;
         }
-        claims.emplace_back(claim);
+        claims.emplace_back(claimSetClaim);
         return true;
     }
 
@@ -89,7 +96,6 @@ public:
 
     bool IsValid() const
     {
-        return true; // patchcoin fix me
         if (vchSig.empty()) {
             return false;
         }
@@ -109,9 +115,7 @@ public:
         }
 
         for (const auto& claim : claims) {
-            CClaim tempClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
-            tempClaim.Init();
-            if (!tempClaim.IsValid()) {
+            if (!claim.IsValid()) {
                 return false;
             }
         }

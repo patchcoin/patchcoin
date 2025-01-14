@@ -80,28 +80,24 @@ void ApplyClaimSet(const CClaimSet& claimset)
     LOCK(cs_main);
     if (!g_claimindex) return;
 
-    for (const auto& claim : claimset.claims) {
-        if (!claim.IsValid()) continue;
+    for (const auto& cClaim : claimset.claims) {
+        if (!cClaim.IsValid()) return;
+        const CClaim claim(cClaim.GetSourceAddress(), cClaim.GetSignatureString(), cClaim.GetTargetAddress());
+        claim.nTime = cClaim.nTime;
+        if (!claim.IsValid()) return;
         const auto& it = g_claims.find(claim.GetSource());
-        // patchcoin todo possibly update more / merge these two
         if (it == g_claims.end()) {
-            claim.Commit();
-        } else if (!it->second.seen) {
-            it->second.seen = true;
-            // it->second.nTime = claim.nTime;
-        }
-        claim.seen = true;
-        g_claimindex->AddClaim(claim);
-
-        /* patchcoin todo
-        if (g_claimindex) {
             claim.seen = true;
+            if (!(claim.Commit() && g_claimindex->AddClaim(claim)))
+                return;
+        } else {
+            it->second.seen = true;
+            it->second.nTime = claim.nTime;
             CClaim claim_t;
             g_claimindex->FindClaim(claim.GetSource(), claim_t);
-            if (!claim_t.seen) {
-                g_claimindex->AddClaim(claim);
-            }
+            claim_t.nTime = claim.nTime;
+            claim_t.seen = true;
+            g_claimindex->AddClaim(claim_t);
         }
-        */
     }
 }

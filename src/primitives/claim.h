@@ -124,18 +124,14 @@ public:
     {
         std::vector<unsigned char> signature;
         CScript target_script;
-        READWRITE(obj.snapshotPos);
+        SER_WRITE(obj, signature = obj.GetSignature());
+        SER_WRITE(obj, target_script = obj.GetTarget());
+        READWRITE(obj.snapshotPos, signature, target_script);
+        if (s.GetType() & SER_DISK)
+            READWRITE(obj.nTime, obj.seen);  // patchcoin todo potentially track transactions related to the claim + tally
         SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
-        if (!(s.GetType() & SER_GETHASH)) {
-            SER_WRITE(obj, signature = obj.GetSignature());
-            SER_WRITE(obj, target_script = obj.GetTarget());
-            // patchcoin todo add SER_NETWORK check -> nTime + seen only used on ClaimSet
-            READWRITE(signature, target_script); // patchcoin todo potentially track transactions related to the claim + tally
-            if (s.GetType() & SER_DISK)
-                READWRITE(obj.nTime, obj.seen);
-            SER_READ(obj, obj.signatureString = EncodeBase64(signature));
-            SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
-        }
+        SER_READ(obj, obj.signatureString = EncodeBase64(signature));
+        SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
     }
 
     std::string GetSourceAddress() const { return sourceAddress; }
@@ -269,7 +265,7 @@ public:
     {
         if (!(IsValid() && IsUnique()))
             return false;
-        g_claims.try_emplace(GetSource(), std::move(*this));
+        g_claims.try_emplace(GetSource(), *this);
         return !IsUniqueSource();
     }
 
