@@ -79,15 +79,21 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
         return;
     }
 
-    std::vector<CClaim> allClaims;
-    for (const auto& [_, claim] : g_claims) {
-        allClaims.emplace_back(claim);
-    }
-
-    if (allClaims.empty()) {
+    if (g_claims.empty()) {
         infoLabel->setText(tr("No claims found in index."));
         return;
     }
+
+    std::vector<CClaim> allClaims;
+    allClaims.reserve(g_claims.size());
+    for (const auto& [_, claim] : g_claims) {
+        allClaims.emplace_back(claim);
+    }
+    std::sort(allClaims.begin(), allClaims.end(),
+              [](const CClaim& a, const CClaim& b) {
+                  return a.nTime > b.nTime;
+              });
+
     /*
     CClaimSet claimset;
     try {

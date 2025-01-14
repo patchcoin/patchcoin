@@ -27,9 +27,9 @@ public:
 
     bool AddClaim(const CClaim& claim);
 
-    bool ClaimExists(const uint256& hash) const;
+    bool ClaimExists(const CScript& source) const;
 
-    bool FindClaim(const uint256& hash, CClaim& claim) const;
+    bool FindClaim(const CScript& source, CClaim& claim) const;
 
     bool GetAllClaims(std::vector<CClaim>& claims) const;
 };

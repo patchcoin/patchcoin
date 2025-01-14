@@ -1526,7 +1526,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         if (status == node::ChainstateLoadStatus::SUCCESS) {
             // patchcoin todo verify OOE, unsure about this loop
             uiInterface.InitMessage(_("Loading peercoin utxo snapshot…").translated);
-            if (!LoadSnapshotOnStartup(args)) {
+            if (!SnapshotManager::Peercoin().LoadSnapshotOnStartup(args)) {
                 uiInterface.InitMessage(_("Unable to load peercoin utxo snapshot.").translated);
             }
             g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);

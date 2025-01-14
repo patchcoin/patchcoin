@@ -14,9 +14,9 @@ class ClaimIndex::DB : public BaseIndex::DB
 public:
     explicit DB(size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
 
-    bool WriteClaim(const uint256& hash, const CClaim& claim);
+    bool WriteClaim(const CScript& source, const CClaim& claim);
 
-    bool ReadClaim(const uint256& hash, CClaim& claim);
+    bool ReadClaim(const CScript& source, CClaim& claim);
 
     bool ReadAllClaims(std::vector<CClaim>& claims);
 };
@@ -27,14 +27,14 @@ ClaimIndex::DB::DB(size_t n_cache_size, bool f_memory, bool f_wipe)
 {
 }
 
-bool ClaimIndex::DB::WriteClaim(const uint256& hash, const CClaim& claim)
+bool ClaimIndex::DB::WriteClaim(const CScript& source, const CClaim& claim)
 {
-    return Write(std::make_pair(DB_CLAIMINDEX, hash), claim);
+    return Write(std::make_pair(DB_CLAIMINDEX, source), claim);
 }
 
-bool ClaimIndex::DB::ReadClaim(const uint256& hash, CClaim& claim)
+bool ClaimIndex::DB::ReadClaim(const CScript& source, CClaim& claim)
 {
-    if (Read(std::make_pair(DB_CLAIMINDEX, hash), claim)) {
+    if (Read(std::make_pair(DB_CLAIMINDEX, source), claim)) {
         claim.Init(); // patchcoin todo: check valid?
         return true;
     }
@@ -47,7 +47,7 @@ bool ClaimIndex::DB::ReadAllClaims(std::vector<CClaim>& claims)
     claims.clear();
 
     for (it->Seek(DB_CLAIMINDEX); it->Valid(); it->Next()) {
-        std::pair<uint8_t, uint256> key;
+        std::pair<uint8_t, CScript> key;
         CClaim claim;
 
         if (it->GetKey(key) && key.first == DB_CLAIMINDEX) {
@@ -84,18 +84,18 @@ BaseIndex::DB& ClaimIndex::GetDB() const
 
 bool ClaimIndex::AddClaim(const CClaim& claim)
 {
-    return m_db->WriteClaim(claim.GetHash(), claim);
+    return m_db->WriteClaim(claim.GetSource(), claim);
 }
 
-bool ClaimIndex::ClaimExists(const uint256& hash) const
+bool ClaimIndex::ClaimExists(const CScript& source) const
 {
     CClaim claim;
-    return m_db->ReadClaim(hash, claim);
+    return m_db->ReadClaim(source, claim);
 }
 
-bool ClaimIndex::FindClaim(const uint256& hash, CClaim& claim) const
+bool ClaimIndex::FindClaim(const CScript& source, CClaim& claim) const
 {
-    return m_db->ReadClaim(hash, claim);
+    return m_db->ReadClaim(source, claim);
 }
 
 bool ClaimIndex::GetAllClaims(std::vector<CClaim>& claims) const

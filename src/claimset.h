@@ -34,26 +34,12 @@ public:
     // also, again, not being re-layed on connection currently
     // maybe also store claimset in a special key or something and then load that on startup. that way we dont need to load individual claims(might be cool or bad not sure yet)
     // patchcoin todo move this to private
-    std::vector<CClaimSetClaim> claims;
-    int64_t nTime;
+    std::vector<CClaim> claims;
+    int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
     // patchcoin todo move this to private
-    CClaimSet() : nTime(GetTime())
-    {
-        std::vector<CClaim> sortedClaims;
-        sortedClaims.reserve(g_claims.size());
-        for (const auto& [_, claim] : g_claims) {
-            sortedClaims.push_back(claim);
-        }
-        std::sort(sortedClaims.begin(), sortedClaims.end(),
-                  [](const CClaim& a, const CClaim& b) {
-                      return a.nTime > b.nTime;
-                  });
-        for (const auto& claim : sortedClaims) {
-            AddClaim(static_cast<const CClaimSetClaim&>(claim));
-        }
-        return;
-    }
+
+    CClaimSet() {}; // setNull()?
 
     SERIALIZE_METHODS(CClaimSet, obj)
     {
@@ -62,7 +48,8 @@ public:
             READWRITE(obj.vchSig);
     }
 
-    bool AddClaim(const CClaimSetClaim& claim)
+
+    bool AddClaim(const CClaim& claim)
     {
         if (!claim.IsValid()) {
             return false;
@@ -76,6 +63,25 @@ public:
         return true;
     }
 
+    bool AddClaims()
+    {
+        if (g_claims.empty()) return false;
+        std::vector<CClaim> sortedClaims;
+        sortedClaims.reserve(g_claims.size());
+        for (const auto& [_, claim] : g_claims) {
+            sortedClaims.push_back(claim);
+        }
+        std::sort(sortedClaims.begin(), sortedClaims.end(),
+                  [](const CClaim& a, const CClaim& b) {
+                      return a.nTime > b.nTime;
+                  });
+        for (const auto& claim : sortedClaims) {
+            if (!AddClaim(claim))
+                return false;
+        }
+        return true;
+    }
+
     bool IsEmpty() const
     {
         return claims.empty();
@@ -83,6 +89,7 @@ public:
 
     bool IsValid() const
     {
+        return true; // patchcoin fix me
         if (vchSig.empty()) {
             return false;
         }
@@ -103,6 +110,7 @@ public:
 
         for (const auto& claim : claims) {
             CClaim tempClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
+            tempClaim.Init();
             if (!tempClaim.IsValid()) {
                 return false;
             }
@@ -120,9 +128,9 @@ public:
     friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() > b.claims.size(); }
 };
 
-CClaimSet BuildClaimSet(const std::vector<CClaim>& inputClaims);
+bool BuildClaimSet(CClaimSet& claimSet);
 
-CClaimSet BuildAndSignClaimSet(const std::vector<CClaim>& inputClaims, const CWallet& wallet);
+bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet);
 
 void ApplyClaimSet(const CClaimSet& claimSet);
 

@@ -2084,6 +2084,7 @@ void CConnman::ThreadMessageHandler()
                 if (flagInterruptMsgProc)
                     return;
             }
+            send_claimset = false; // patchcoin todo remove
         }
 
         WAIT_LOCK(mutexMsgProc, lock);

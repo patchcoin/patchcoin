@@ -20,9 +20,7 @@ namespace wallet {
 class CWallet;
 } // namespace wallet
 
-// inline std::set<std::shared_ptr<const CScript>> g_claims_sources;
-// inline std::set<const CScript> g_claims_targets;
-inline std::map<CScript, CClaim> g_claims; // unique ptr to scriptsOfPeercoinScnapshot / use getHash instead?
+extern std::map<const CScript, const CClaim> g_claims; // unique ptr to scriptsOfPeercoinScnapshot / use getHash instead?
 
 class CClaim
 {
@@ -30,32 +28,34 @@ public:
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
 
 private:
-    std::shared_ptr<const std::map<CScript, CAmount>> snapshot = std::make_shared<std::map<CScript, CAmount>>(scriptPubKeysOfPeercoinSnapshot);
-    std::shared_ptr<const uint256> hashSnapshot = std::make_shared<uint256>(hashScriptPubKeysOfPeercoinSnapshot);
+    // static const SnapshotManager& sman;
+    static const std::map<CScript, CAmount>& snapshot;
+    static const uint256& hashSnapshot;
+
     SnapshotIterator snapshotIt;
 
     size_t snapshotPos;
     std::string sourceAddress;
     std::string signatureString;
     std::string targetAddress;
-    std::shared_ptr<const CScript> source; // patchcoin todo move to unique_ptr?
+    std::shared_ptr<const CScript> source;
     std::vector<unsigned char> signature;
     CScript target;
     std::shared_ptr<const CAmount> peercoinBalance;
 
 public:
-    int64_t nTime = GetTime(); // patchcoin todo set this on receive or create, not here
-
+    mutable int64_t nTime = GetTime();
     mutable bool seen = false;
     bool markedValid = false;
     CAmount nTotalReceived = 0;
+
     CClaim()
     {
         SetNull();
     }
 
     bool SnapshotIsValid() const {
-        return hashSnapshot && hashSnapshot != nullptr && *hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot && snapshot && snapshot != nullptr && !snapshot->empty();
+        return hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot && !SnapshotManager::Peercoin().GetScriptPubKeys().empty();
     }
 
     static CScript GetScriptFromAddress(const std::string& address)
@@ -81,10 +81,11 @@ public:
     static std::string LocateAddress(const size_t pos)
     {
         std::string address;
+        // const auto& snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
         const CClaim dummy;
-        if (dummy.SnapshotIsValid() && pos < scriptPubKeysOfPeercoinSnapshot.size()) {
-            const auto it = std::next(scriptPubKeysOfPeercoinSnapshot.begin(), pos);
-            if (it != scriptPubKeysOfPeercoinSnapshot.end()) {
+        if (dummy.SnapshotIsValid() && pos < snapshot.size()) {
+            const auto& it = std::next(snapshot.begin(), pos);
+            if (it != snapshot.end()) {
                 address = GetAddressFromScript(it->first);
             }
         }
@@ -100,9 +101,10 @@ public:
         }
         target = GetScriptFromAddress(targetAddress); // patchcoin todo maybe sign this
         if (SnapshotIsValid()) {
-            snapshotIt = snapshot->find(source_script);
-            if (snapshotIt != snapshot->end()) {
-                snapshotPos = std::distance(snapshot->begin(), snapshotIt);
+            // const auto& snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
+            snapshotIt = snapshot.find(source_script);
+            if (snapshotIt != snapshot.end()) {
+                snapshotPos = std::distance(snapshot.begin(), snapshotIt);
                 source = std::make_shared<CScript>(snapshotIt->first);
                 peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
             }
@@ -120,14 +122,9 @@ public:
 
     SERIALIZE_METHODS(CClaim, obj)
     {
-        CScript /*source_script,*/ target_script;
         std::vector<unsigned char> signature;
-        // SER_WRITE(obj, source_script = GetScriptFromAddress(obj.sourceAddress)); // patchcoin todo could also just write a bunch of hashes and then match that against pub key list. this might lower data needed to be shared per claimset, not sure
-        // READWRITE(source_script);
-        // SER_READ(obj, obj.sourceAddress = GetAddressFromScript(source_script)); // patchcoin todo and then retrieve that here
-        // assert(obj.SnapshotIsValid() && obj.snapshotPos < obj.snapshot->size()); // patchcoin todo move this away. this wont be fun to deal with on network
-        // SER_WRITE();
-        READWRITE(obj.snapshotPos); // patchcoin todo there is little point in hashing just this number
+        CScript target_script;
+        READWRITE(obj.snapshotPos);
         SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
         if (!(s.GetType() & SER_GETHASH)) {
             SER_WRITE(obj, signature = obj.GetSignature());
@@ -145,23 +142,26 @@ public:
     std::string GetSignatureString() const { return signatureString; }
     std::string GetTargetAddress() const { return targetAddress; }
 
-    // patchcoin todo calculate once and set them, no need to fully run that in the constructor
-    CScript GetSource() const { return *source; }
+    CScript GetSource() const { return source ? *source : CScript(); } // patchcoin todo: recheck
     std::vector<unsigned char> GetSignature() const { return signature; }
     CScript GetTarget() const { return target; }
 
-    CAmount GetPeercoinBalance() const { return (snapshotIt != snapshot->end()) ? *peercoinBalance : 0; }
+    CAmount GetPeercoinBalance() const {
+        return snapshotIt != SnapshotManager::Peercoin().GetScriptPubKeys().end() ? *peercoinBalance : 0;
+    }
+
     CAmount GetEligible() const
     {
         CAmount eligible = 0;
-        if (!(CalculateEligible(GetPeercoinBalance(), eligible) && MoneyRange(eligible)))
+        if (!SnapshotManager::Peercoin().CalculateEligible(GetPeercoinBalance(), eligible) || !MoneyRange(eligible)) {
             return 0;
-
+        }
         return eligible;
     }
+
     bool GetReceived(const wallet::CWallet* pwallet, CAmount& received) const
     {
-        return CalculateReceived(pwallet, target, received);
+        return SnapshotManager::Peercoin().CalculateReceived(pwallet, target, received);
     }
 
     void SetNull()
@@ -169,10 +169,10 @@ public:
         sourceAddress.clear();
         signatureString.clear();
         targetAddress.clear();
-        source = nullptr;
+        source.reset();
         signature.clear();
         target.clear();
-        peercoinBalance = nullptr;
+        peercoinBalance.reset();
         seen = false;
         nTotalReceived = 0;
     }
@@ -180,43 +180,43 @@ public:
     bool IsAnyNull() const
     {
         return sourceAddress.empty() || signatureString.empty() || targetAddress.empty()
-               || source == nullptr || signature.empty() || target.empty()
-               || peercoinBalance == nullptr;
+            || !source || signature.empty() || target.empty() || !peercoinBalance
+            || GetSource().empty() || GetSignature().empty()  || GetTarget().empty();
     }
 
     bool IsValid() const
     {
         if (IsAnyNull()) {
-            // LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
-            //    sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
+            LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
+               sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
             return false;
         }
         if (IsSourceTarget() || IsSourceTargetAddress()) {
-            // LogPrintf("[claim] error: input matches output address");
+            LogPrintf("[claim] error: input matches output address");
             return false;
         }
         if (!SnapshotIsValid()) {
-            // LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
+            LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
             return false;
         }
-        if (snapshotIt == snapshot->end()) {
-            // LogPrintf("[claim] error: source script not found in snapshot\n");
+        if (snapshotIt == snapshot.end()) {
+            LogPrintf("[claim] error: source script not found in snapshot\n");
             return false;
         }
         if (sourceAddress.empty() || GetScriptFromAddress(sourceAddress).empty() || source == nullptr || GetAddressFromScript(*source).empty()) {
-            // LogPrintf("[claim] error: failed to extract destination from source script\n");
+            LogPrintf("[claim] error: failed to extract destination from source script\n");
             return false;
         }
         if (targetAddress.empty() || GetScriptFromAddress(targetAddress).empty() || GetAddressFromScript(target).empty()) {
-            // LogPrintf("[claim] error: failed to extract destination from target script\n");
+            LogPrintf("[claim] error: failed to extract destination from target script\n");
             return false;
         }
         if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
-            // LogPrintf("[claim] error: peercoin balance out of range\n");
+            LogPrintf("[claim] error: peercoin balance out of range\n");
             return false;
         }
         if (!MoneyRange(GetEligible())) {
-            // LogPrintf("[claim] error: eligible balance out of range\n");
+            LogPrintf("[claim] error: eligible balance out of range\n");
             return false;
         }
         MessageVerificationResult res = MessageVerify(
@@ -226,7 +226,7 @@ public:
             PEERCOIN_MESSAGE_MAGIC
         );
         if (res != MessageVerificationResult::OK) {
-            // LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
+            LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
             return false;
         }
         // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
@@ -255,7 +255,8 @@ public:
         return source && !source->empty() && g_claims.count(*source) == 0;
     }
 
-    bool IsUniqueTarget() const {
+    bool IsUniqueTarget() const
+    {
         if (target.empty()) return false;
         // patchcoin todo ensure consistency with claimset
         return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
@@ -265,39 +266,19 @@ public:
     }
 
     bool Commit() const
-    {// patchcoin todo try erase first?
+    {
         if (!(IsValid() && IsUnique()))
             return false;
-        const CClaim claim(GetSourceAddress(), GetSignatureString(), GetTargetAddress());
-        g_claims.try_emplace(claim.GetSource(), claim); // patchcoin todo GetHash()
+        g_claims.try_emplace(GetSource(), std::move(*this));
         return !IsUniqueSource();
     }
 
     uint256 GetHash() const;
 
-    friend bool operator==(const CClaim& a, const CClaim& b)
-    {
-        return a.GetHash() == b.GetHash();
-    }
-
-    friend bool operator!=(const CClaim& a, const CClaim& b)
-    {
-        return a.GetHash() != b.GetHash();
-    }
-
-    /*
-
-    std::string ToString() const
-    {
-        std::ostringstream oss;
-        oss << "CClaim{sourceAddress: " << sourceAddress
-            << ", targetAddress: " << targetAddress
-            << ", eligible: " << GetEligible()
-            << ", balance: " << GetPeercoinBalance()
-            << ", time: " << nTime << "}";
-        return oss.str();
-    }
-    */
+    friend bool operator==(const CClaim& a, const CClaim& b) { return a.GetSource() == b.GetSource(); }
+    friend bool operator!=(const CClaim& a, const CClaim& b) { return a.GetSource() != b.GetSource(); }
+    friend bool operator<(const CClaim& a, const CClaim& b) { return a.nTime < b.nTime; }
+    friend bool operator>(const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; }
 };
 
 #endif // PATCHCOIN_PRIMITIVES_CLAIM_H

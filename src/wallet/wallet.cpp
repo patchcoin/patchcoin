@@ -3791,7 +3791,10 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
 
     if (genesisKeyOut == scriptPubKeyOut) {
         // patchcoin todo use existing or build new claimset?
-        g_claimindex && g_claimindex->GetAllClaims(claims);
+        // g_claimindex && g_claimindex->GetAllClaims(claims);
+        for (const auto& [_, claim] : g_claims) {
+            claims.push_back(claim);
+        }
         std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
             return a.nTime < b.nTime;
         });

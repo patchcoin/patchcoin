@@ -262,6 +262,7 @@ struct Peer {
     /** Whether a ping has been requested by the user */
     std::atomic<bool> m_ping_queued{false};
 
+    Mutex m_send_peercoin_snapshot_mutex;
     bool m_peercoin_snapshot_held{false};
     int  m_peercoin_snapshot_sent{0};
     // patchcoin todo: confirm that node has snapshot and the latest claimset, otherwise, do not send data.
@@ -694,8 +695,6 @@ private:
      *  We use mockable time for ping timeouts, so setmocktime may cause pings
      *  to time out. */
     void MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::microseconds now);
-
-    void MaybeSendClaims(CNode& node_to, Peer& peer, std::chrono::microseconds now);
 
     void MaybeSendClaimSet(CNode& node_to);
 
@@ -1452,8 +1451,7 @@ void PeerManagerImpl::PushNodeVersion(CNode& pnode, const Peer& peer)
     uint64_t your_services{addr.nServices};
 
     const bool tx_relay{!RejectIncomingTxs(pnode)};
-    const bool peercoin_snapshot_held{hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot}; // patchcoin todo potentially extend this check
-    std::vector<CClaim> claims;
+    const bool peercoin_snapshot_held{SnapshotManager::Peercoin().Hash() == Params().GetConsensus().hashPeercoinSnapshot}; // patchcoin todo potentially extend this check
     const bool claims_held{!g_claims.empty()}; // patchcoin todo depend on nTime of latest claim
     m_connman.PushMessage(&pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERSION, PROTOCOL_VERSION, my_services, nTime,
             your_services, addr_you, // Together the pre-version-31402 serialization of CAddress "addrYou" (without nTime)
@@ -2690,16 +2688,13 @@ bool PeerManagerImpl::MaybeSendGetHeaders(CNode& pfrom, const CBlockLocator& loc
 
     const auto current_time = NodeClock::now();
 
-    bool peercoinSnapshotAndClaimsHeld = false;
-    std::vector<CClaim> claims;
-    if (peer.m_scack_sent && hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot
-        && g_claimindex && g_claimindex->GetAllClaims(claims) && !claims.empty()) {
-        peercoinSnapshotAndClaimsHeld = true;
-    }
+    SnapshotManager& sman = SnapshotManager::Peercoin();
+    // patchcoin todo claims not being empty doesn't guarantee anything, extend check to claimset
+    bool snapshotAndClaimsHeld = peer.m_scack_sent && sman.Hash() == Params().GetConsensus().hashPeercoinSnapshot && !g_claims.empty();
 
     // Only allow a new getheaders message to go out if we don't have a recent
     // one already in-flight
-    if (peercoinSnapshotAndClaimsHeld && current_time - peer.m_last_getheaders_timestamp > HEADERS_RESPONSE_TIME) {
+    if (snapshotAndClaimsHeld && current_time - peer.m_last_getheaders_timestamp > HEADERS_RESPONSE_TIME) {
         if (!peer.m_scack_sent) {
             // patchcoin todo not sure if this is the best place to do this, since getheaders tends to have some delay
             m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
@@ -3279,6 +3274,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         std::string cleanSubVer;
         int starting_height = -1;
         bool fRelay = true;
+        bool peercoinSnapshotHeld = true;
+        bool claimsHeld = true;
 
         vRecv >> nVersion >> Using<CustomUintFormatter<8>>(nServices) >> nTime;
         if (nTime < 0) {
@@ -3323,9 +3320,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!vRecv.empty())
             vRecv >> fRelay;
         if (!vRecv.empty())
-            vRecv >> peer->m_peercoin_snapshot_held;   // patchcoin todo move down
+            vRecv >> peercoinSnapshotHeld;
         if (!vRecv.empty())
-            vRecv >> peer->m_claims_held;    // patchcoin todo move down
+            vRecv >> claimsHeld;
         // Disconnect if we connected to ourself
         if (pfrom.IsInboundConn() && !m_connman.CheckIncomingNonce(nNonce))
         {
@@ -3373,6 +3370,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             pfrom.cleanSubVer = cleanSubVer;
         }
         peer->m_starting_height = starting_height;
+
+        peer->m_peercoin_snapshot_held = peercoinSnapshotHeld;
+        peer->m_claims_held = claimsHeld;
 
         // Only initialize the Peer::TxRelay m_relay_txs data structure if:
         // - this isn't an outbound block-relay-only connection, and
@@ -4084,49 +4084,51 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     if (msg_type == NetMsgType::GETPEERCOINSNAPSHOT) {
         // patchcoin todo reset after timeout or if the other side acks and or for some reason needs to re-request the snapshot
         if (peer->m_peercoin_snapshot_sent >= 20) return;
-        LOCK(cs_main);
-        uint256 hash{HashScriptPubKeysOfPeercoinSnapshot(scriptPubKeysOfPeercoinSnapshot)};
-        if (hash != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
-            peer->m_peercoin_snapshot_sent = 20;
-            return;
+        {
+            LOCK(cs_main);
+            SnapshotManager& sman = SnapshotManager::Peercoin();
+            if (sman.Hash() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
+                peer->m_peercoin_snapshot_sent = 20;
+                return;
+            }
+            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman.GetScriptPubKeys()));
+            peer->m_peercoin_snapshot_sent += 1;
         }
-        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, scriptPubKeysOfPeercoinSnapshot));
-        peer->m_peercoin_snapshot_sent += 1;
         return;
     }
 
     if (msg_type == NetMsgType::SENDPEERCOINSNAPSHOT) {
         const uint256 hashPeercoinSnapshot = m_chainparams.GetConsensus().hashPeercoinSnapshot;
-        if (hashScriptPubKeysOfPeercoinSnapshot == hashPeercoinSnapshot)
         {
-            return;
-        }
-        try {
             LOCK(cs_main);
-            std::map<CScript, CAmount> scripts;
-            vRecv >> scripts;
-            uint256 hash{HashScriptPubKeysOfPeercoinSnapshot(scripts)};
-            if (hash == hashPeercoinSnapshot) {
-                hashScriptPubKeysOfPeercoinSnapshot = hash;
-                scriptPubKeysOfPeercoinSnapshot = scripts;
-                DumpPermittedScriptPubKeys();
-                if (!peer->m_scack_sent) {
-                    bool claims_held;
-                    std::vector<CClaim> claims;
-                    claims_held = g_claimindex && g_claimindex->GetAllClaims(claims) && !claims.empty();
-                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, claims_held));
-                    if (claims_held)
-                        peer->m_scack_sent = true;
-                }
-            } else {
-                Misbehaving(*peer, 100, "invalid snapshot");
+            SnapshotManager& sman = SnapshotManager::Peercoin();
+            if (sman.Hash() == hashPeercoinSnapshot) {
+                return;
             }
-            // patchcoin todo could use this to reset peer->m_peercoin_snapshot_sent
-            // patchcoin would need to still limit it on the sender side, otherwise it could be used to spam
-            // pFrom->PushMessage(msgMaker.Make("scriptpubkeysack", receivedScripts));
-        } catch (const std::exception& e) {
-            // patchcoin todo ask again?
-            LogPrintf("Error processing 'scriptpubkeys' message: %s\n", e.what());
+
+            try {
+                std::map<CScript, CAmount> scripts;
+                vRecv >> scripts;
+                uint256 hash{sman.GetHash(scripts)};
+
+                if (hash == hashPeercoinSnapshot) {
+                    sman.UpdateScriptPubKeys(scripts);
+                    sman.DumpPermittedScriptPubKeys();
+                    if (!peer->m_scack_sent) {
+                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, g_claims.empty()));
+                        if (!g_claims.empty())
+                            peer->m_scack_sent = true;
+                    }
+                } else {
+                    Misbehaving(*peer, 100, "invalid snapshot");
+                }
+                // patchcoin todo could use this to reset peer->m_peercoin_snapshot_sent
+                // patchcoin would need to still limit it on the sender side, otherwise it could be used to spam
+                // pFrom->PushMessage(msgMaker.Make("scriptpubkeysack", receivedScripts));
+            } catch (const std::exception& e) {
+                // Something went wrong during deserialization or hashing
+                LogPrintf("Error processing 'SENDPEERCOINSNAPSHOT' message: %s\n", e.what());
+            }
         }
         return;
     }
@@ -4342,14 +4344,21 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!dummy.SnapshotIsValid()) return;
         vRecv >> dummy;
         const std::string source_address = dummy.GetSourceAddress();
+        /*
         const auto it = scriptPubKeysOfPeercoinSnapshot.find(dummy.GetScriptFromAddress(source_address));
         if (it == scriptPubKeysOfPeercoinSnapshot.end()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
+        */
 
         CClaim claim(source_address, dummy.GetSignatureString(), dummy.GetTargetAddress());
-        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget() || !claim.IsValid()) {
+        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
+            Misbehaving(*peer, 100, "invalid claim");
+            return;
+        }
+        claim.Init();
+        if (!claim.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
@@ -4369,9 +4378,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         {
             LOCK(cs_claims_seen);
-            if (GetTime() - claims_seen[claim.GetHash()] < 1.5 * 60)
+            if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
                 return;
-            claims_seen[claim.GetHash()] = GetTime();
+            claims_seen[claim.GetSource()] = GetTime();
         }
 
         {
@@ -4433,7 +4442,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
     if (msg_type == NetMsgType::SENDCLAIMSET)
     {
-        if (genesis_key_held) return; // we could listen for multi address claims but that's likely not worth
+        if (genesis_key_held) return;
         CClaim dummy;
         if (!dummy.SnapshotIsValid()) return;
 
@@ -4441,8 +4450,10 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         vRecv >> claimSet;
         {
             LOCK(cs_main);
+            LogPrint(BCLog::NET, "Received new claim set: %s, claimTime: %s\n", claimSet.GetHash().ToString(), claimSet.claims[0].nTime);
             if (!claimSet.IsValid()) {
                 Misbehaving(*peer, 100, "invalid claimset");
+                return;
             }
             for (auto& claim : claimSet.claims) {
                 claim.Init();
@@ -5645,61 +5656,13 @@ void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::mic
     }
 }
 
-void PeerManagerImpl::MaybeSendClaims(CNode& node_to, Peer& peer, std::chrono::microseconds now)
-{
-    /*
-    std::set<CClaim> claims_to_send;
-
-    {
-        LOCK(peer.m_claims_inventory_mutex);
-        // patchcoin todo it would be much preferable to send a claimset if we hold it
-        if (g_claimindex && claims_to_send.empty() && claims_seen.empty()) {
-            std::vector<CClaim> claims;
-            g_claimindex->GetAllClaims(claims);
-            for (const auto& claim : claims) {
-                claims_seen.insert(claim);
-            }
-        }
-    }
-
-    {
-        // Prepare hash set of already-sent claims
-        std::set<uint256> sent_hashes;
-        LOCK(peer.m_claims_inventory_mutex);
-        for (const auto& claim : peer.m_claims_sent) {
-            sent_hashes.insert(claim.GetHash());
-        }
-
-        // Add claims to send if not already sent
-        LOCK(cs_claims_seen);
-        for (const auto& claim : claims_seen) {
-            if (sent_hashes.count(claim.GetHash()) == 0) {
-                claims_to_send.insert(claim);
-            }
-        }
-    }
-
-    if (!claims_to_send.empty()) {
-        const CNetMsgMaker msgMaker(node_to.GetCommonVersion());
-
-        for (const auto& claim : claims_to_send) {
-            m_connman.PushMessage(&node_to, msgMaker.Make(NetMsgType::CLAIM, claim.GetSource(), claim.GetSignature(), claim.GetTarget()));
-            LogPrint(BCLog::NET, "Sent CLAIM: %s to peer %d\n", claim.GetHash().ToString(), node_to.GetId());
-        }
-
-        // Update m_claims_sent
-        LOCK(peer.m_claims_inventory_mutex);
-        peer.m_claims_sent.insert(claims_to_send.begin(), claims_to_send.end());
-    }
-    */
-}
-
 void PeerManagerImpl::MaybeSendClaimSet(CNode& node_to)
 {
-    if (!send_claimset) return; // patchcoin todo yes we do want to share it if we have it in memory
+    if (!send_claimset || send_claimset_to_send.claims.empty()) return; // patchcoin todo yes we do want to share it if we have it in memory
     const CNetMsgMaker msgMaker(node_to.GetCommonVersion());
+    LogPrint(BCLog::NET, "send new claim set: %s, claimTime: %s\n", send_claimset_to_send.GetHash().ToString(), send_claimset_to_send.claims[0].nTime);
     m_connman.PushMessage(&node_to, msgMaker.Make(NetMsgType::SENDCLAIMSET, send_claimset_to_send));
-    send_claimset = false; // patchcoin todo
+    // send_claimset = false; // patchcoin todo this wont work
 }
 
 void PeerManagerImpl::MaybeSendAddr(CNode& node, Peer& peer, std::chrono::microseconds current_time)
@@ -5918,24 +5881,21 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
     MaybeSendAddr(*pto, *peer, current_time);
 
     {
-        LOCK(cs_main);
         if (!peer->m_peercoin_snapshot_held) {
-            if (peer->m_peercoin_snapshot_sent >= 1) return true; // patchcoin todo / add a timer
-            uint256 hash{HashScriptPubKeysOfPeercoinSnapshot(scriptPubKeysOfPeercoinSnapshot)};
-            if (hash != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
+            LOCK(peer->m_send_peercoin_snapshot_mutex);
+            if (peer->m_peercoin_snapshot_sent >= 1) return true;
+            SnapshotManager& sman = SnapshotManager::Peercoin();
+            if (sman.Hash() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
                 peer->m_peercoin_snapshot_sent = 20;
                 return true;
             }
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss << scriptPubKeysOfPeercoinSnapshot;
-            m_connman.PushMessage(pto, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, ss));
+            m_connman.PushMessage(pto, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman.GetScriptPubKeys()));
             peer->m_peercoin_snapshot_sent += 1;
             return true;
         }
     }
 
-    MaybeSendClaims(*pto, *peer, current_time); // patchcoin todo
-    MaybeSendClaimSet(*pto); // patchcoin todo it would be preferred to relay claim set over individual claims, if we have it
+    MaybeSendClaimSet(*pto);
 
     // patchcoin todo this doesn't ensure our claims are updated, only that they exist
     if (!peer->m_claims_held) {

@@ -37,34 +37,42 @@ bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet)
     }
 }
 
-CClaimSet BuildAndSignClaimSet(const CWallet& wallet)
+bool BuildClaimSet(CClaimSet& claimSet)
 {
-    CClaimSet claimset{};
+    return claimSet.AddClaims();
+}
 
-    if (!SignClaimSet(wallet, claimset)) {
-        throw std::runtime_error("BuildAndSignClaimSet: Could not retrieve genesis key from wallet (missing or locked)");
-    }
 
-    if (!claimset.IsValid()) {
-        throw std::runtime_error("BuildAndSignClaimSet: Internal error — ClaimSet not valid after signing");
-    }
+bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet)
+{
+    if (!BuildClaimSet(claimSet))
+        return false;
 
-    return claimset;
+    if (!SignClaimSet(wallet, claimSet))
+        return false;
+
+    if (!claimSet.IsValid())
+        return false;
+
+    return true;
 }
 
 
 void MaybeDealWithClaimSet(const CWallet& wallet, const bool force)
 {
-    if (!genesis_key_held) return;
+    if (!genesis_key_held || g_claims.empty()) return;
     // patchcoin dont check for size in case we ever decide to switch to range
+
+    /*
     if (force || send_claimset_to_send.claims.size() < g_claims.size() || GetTime() - send_claimset_to_send.nTime > 60) {
-        std::vector<CClaim> claims;
-        for (const auto& [_, claim] : g_claims) {
-            claims.emplace_back(claim);
-        }
-        send_claimset_to_send = BuildAndSignClaimSet(wallet);
-        send_claimset = true;
+        // send_claimset_to_send = BuildAndSignClaimSet(wallet);
     }
+    */
+    CClaimSet cset;
+    if (BuildAndSignClaimSet(cset, wallet) && !cset.claims.empty()) {
+        send_claimset_to_send = cset;
+        send_claimset = true;
+    };
 }
 
 void ApplyClaimSet(const CClaimSet& claimset)
@@ -80,16 +88,20 @@ void ApplyClaimSet(const CClaimSet& claimset)
             claim.Commit();
         } else if (!it->second.seen) {
             it->second.seen = true;
-            it->second.nTime = claim.nTime;
+            // it->second.nTime = claim.nTime;
         }
+        claim.seen = true;
+        g_claimindex->AddClaim(claim);
 
+        /* patchcoin todo
         if (g_claimindex) {
             claim.seen = true;
             CClaim claim_t;
-            g_claimindex->FindClaim(claim.GetHash(), claim_t);
+            g_claimindex->FindClaim(claim.GetSource(), claim_t);
             if (!claim_t.seen) {
                 g_claimindex->AddClaim(claim);
             }
         }
+        */
     }
 }

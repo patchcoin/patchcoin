@@ -274,11 +274,13 @@ void TransactionView::PopulateSnapshotTable()
 {
     if (!snapshotTable) return;
 
-    snapshotTable->clearContents(); // clear old rows
-    snapshotTable->setRowCount((int)scriptPubKeysOfPeercoinSnapshot.size());
+    SnapshotManager& sman = SnapshotManager::Peercoin();
+
+    snapshotTable->clearContents();
+    snapshotTable->setRowCount((int)sman.GetScriptPubKeys().size());
 
     int row = 0;
-    for (const auto& [scriptPubKey, balance] : scriptPubKeysOfPeercoinSnapshot) {
+    for (const auto& [scriptPubKey, balance] : sman.GetScriptPubKeys()) {
         std::string address;
         CTxDestination dest;
         ExtractDestination(scriptPubKey, dest);
@@ -293,7 +295,7 @@ void TransactionView::PopulateSnapshotTable()
         snapshotTable->setItem(row, 1, valItem);
 
         CAmount eligible = 0;
-        CalculateEligible(balance, eligible);
+        sman.CalculateEligible(balance, eligible);
         QString elStr = BitcoinUnits::format(BitcoinUnit::BTC, eligible, false, BitcoinUnits::SeparatorStyle::ALWAYS);
         QTableWidgetItem* elItem = new QTableWidgetItem(elStr);
         elItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);

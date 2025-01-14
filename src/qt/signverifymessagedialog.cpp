@@ -269,7 +269,7 @@ bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     }
 }
 
-std::map<uint256, int64_t> debounce;
+std::map<const CScript, int64_t> debounce;
 
 void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 {
@@ -326,8 +326,8 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
                 return;
             }
         }
-        if (GetTime() - debounce[claim.GetHash()] < 2 * 60) {
-            int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetHash()]);
+        if (GetTime() - debounce[claim.GetSource()] < 2 * 60) {
+            int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetSource()]);
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
 
@@ -354,7 +354,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
             ui->statusLabel_VM->setText(timeText);
             return;
         }
-        debounce[claim.GetHash()] = GetTime();
+        debounce[claim.GetSource()] = GetTime();
         // CClaim& dbClaim = claim;
         // patchcoin todo check claimset
         // if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))

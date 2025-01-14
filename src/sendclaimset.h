@@ -6,7 +6,7 @@
 // patchcoin todo this entire section doesnt need to be global. move it.
 
 inline RecursiveMutex cs_claims_seen;
-inline std::map<uint256, int64_t> claims_seen;
+inline std::map<const CScript, int64_t> claims_seen;
 
 inline bool send_claimset{false};
 inline CClaimSet send_claimset_to_send{};

@@ -2673,7 +2673,7 @@ RPCHelpMan lookupaddress()
     CAmount balance = 0;
     CAmount eligible = 0;
     CScript script = GetScriptForDestination(dest);
-    if (!LookupPeercoinScriptPubKey(script, balance, eligible)) {
+    if (!SnapshotManager::Peercoin().LookupPeercoinScriptPubKey(script, balance, eligible)) {
         if (error_msg.empty()) error_msg = "Unable to find address";
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error_msg);
     };
@@ -2711,7 +2711,7 @@ RPCHelpMan exportsnapshot()
     const fs::path path{AbsPathForConfigVal(EnsureArgsman(node), fs::u8path(request.params[0].get_str()))};
 
     try {
-        ExportSnapshotToCSV(path);
+        SnapshotManager::Peercoin().ExportSnapshotToCSV(path);
     } catch (const std::exception& e) {
         throw JSONRPCError(RPC_MISC_ERROR, strprintf("Failed to export snapshot: %s", e.what()));
     }

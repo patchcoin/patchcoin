@@ -1,13 +1,18 @@
 #include <primitives/claim.h>
 
 #include <hash.h>
-#include <tinyformat.h>
-#include <util/strencodings.h>
+
+std::map<const CScript, const CClaim> g_claims;
+
+// const CClaim::sman = SnapshotManager::Peercoin();
+const std::map<CScript, CAmount>& CClaim::snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
+const uint256& CClaim::hashSnapshot = SnapshotManager::Peercoin().Hash();
 
 uint256 CClaim::GetHash() const
 {
     return SerializeHash(*this);
 }
+
 /*
 std::string CClaim::ToString() const
 {
