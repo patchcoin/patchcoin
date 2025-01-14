@@ -11,6 +11,7 @@
 #include <vector>
 #include <cstdint>
 #include <wallet/wallet.h>
+#include <logging.h>
 
 // patchcoin todo:
 // do we actually need or want this?

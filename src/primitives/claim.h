@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cassert>
 #include <optional>
+#include <logging.h>
 
 class CClaim;
 
