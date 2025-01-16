@@ -311,7 +311,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
         LOCK(cs_main);
         if (claim.IsUniqueSource()) {
             // g_claims should be imperative over claimindex, as such overwrite it whenever
-            if (!(claim.Commit() && g_claimindex->AddClaim(claim))) {
+            if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
                 ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
                 ui->statusLabel_VM->setText(
                     QString("<nobr>") + tr("Database error.") + QString("</nobr>"));

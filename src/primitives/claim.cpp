@@ -2,7 +2,7 @@
 
 #include <hash.h>
 
-std::map<const CScript, const CClaim> g_claims;
+std::map<const CScript, CClaim> g_claims;
 
 // const CClaim::sman = SnapshotManager::Peercoin();
 const std::map<CScript, CAmount>& CClaim::snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();

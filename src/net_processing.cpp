@@ -4387,7 +4387,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             LOCK(cs_main);
 
             if (claim.IsUniqueSource()) { // first time we register this thing
-                if (claim.Commit() && g_claimindex->AddClaim(claim)) {
+                if (claim.Insert() && g_claimindex->AddClaim(claim)) {
                     if (!peer->m_scack_sent) {
                         m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
                         peer->m_scack_sent = true;

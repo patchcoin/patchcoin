@@ -1067,7 +1067,6 @@ static RPCHelpMan migratewallet()
     };
 }
 
-/*
 static RPCHelpMan buildclaimset()
 {
     return RPCHelpMan{
@@ -1077,8 +1076,6 @@ static RPCHelpMan buildclaimset()
         RPCResult{
             RPCResult::Type::OBJ, "", "",
             {
-                {RPCResult::Type::STR_HEX, "claimset_hex", "Hex-encoded ClaimSet data"},
-                {RPCResult::Type::STR_HEX, "signature",    "Signature over the ClaimSet"},
                 {RPCResult::Type::NUM,     "num_claims",   "Number of claims included"},
                 {RPCResult::Type::ARR,     "claims",       "Array of claims with addresses, amounts, etc.",
                     {
@@ -1095,7 +1092,8 @@ static RPCHelpMan buildclaimset()
                             }
                         }
                     }
-                }
+                },
+                {RPCResult::Type::STR_HEX, "hex", "Hex-encoded ClaimSet data"}
             }
         },
         RPCExamples{
@@ -1117,29 +1115,24 @@ static RPCHelpMan buildclaimset()
 
             // PopulateClaimAmounts(allClaims);
 
-            std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
-            if (!pwallet) return UniValue::VNULL;
-
-            EnsureWalletIsUnlocked(*pwallet);
+            // std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
+            // if (!pwallet) return UniValue::VNULL;
+            //
+            // EnsureWalletIsUnlocked(*pwallet);
 
             CClaimSet claimset;
-            try {
-                claimset = BuildAndSignClaimSet(allClaims, *pwallet);
-            } catch (const std::runtime_error& e) {
-                claimset = BuildClaimSet(allClaims);
-            }
+            if (!BuildClaimSet(claimset))
+                return UniValue::VNULL;
 
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss << claimset;
             std::string claimsetHex = HexStr(ss);
 
-
             UniValue claimsArr(UniValue::VARR);
-            for (const auto& c : claimset.GetSortedClaims()) {
+            for (const auto& c : claimset.claims) {
                 UniValue claimObj(UniValue::VOBJ);
 
                 {
-                    // patchcoin todo re-do entire section
                     CTxDestination srcDest;
                     if (ExtractDestination(c.GetSource(), srcDest)) {
                         claimObj.pushKV("source_address", EncodeDestination(srcDest));
@@ -1157,30 +1150,24 @@ static RPCHelpMan buildclaimset()
                 }
 
                 claimObj.pushKV("nTime", (uint64_t)c.nTime);
-
                 claimObj.pushKV("original_amount", ValueFromAmount(c.GetPeercoinBalance())); // patchcoin todo
                 claimObj.pushKV("coins_eligible", ValueFromAmount(c.GetEligible()));
-
                 claimObj.pushKV("source_script", HexStr(c.GetSource()));
                 claimObj.pushKV("target_script", HexStr(c.GetTarget()));
-
-                claimObj.pushKV("signature", HexStr(c.GetSignature()));
+                claimObj.pushKV("signature", c.GetSignatureString());
 
                 claimsArr.push_back(claimObj);
             }
 
             UniValue result(UniValue::VOBJ);
-            result.pushKV("claimset_hex", claimsetHex);
-            result.pushKV("signature", HexStr(claimset.vchSig));
             result.pushKV("num_claims", (uint64_t)claimset.claims.size());
             result.pushKV("claims", claimsArr);
+            result.pushKV("hex", claimsetHex);
 
             return result;
         }
     };
 }
-*/
-
 
 // addresses
 RPCHelpMan getaddressinfo();
@@ -1326,7 +1313,7 @@ static const CRPCCommand commands[] =
     { "wallet",             &importcoinstake,                },
     { "wallet",             &listminting,                    },
     { "wallet",             &reservebalance,                 },
-    // { "wallet",             &buildclaimset,                  },
+    { "wallet",             &buildclaimset,                  },
 };
 // clang-format on
     return commands;

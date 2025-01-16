@@ -3795,12 +3795,25 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         for (const auto& [_, claim] : g_claims) {
             claims.push_back(claim);
         }
-        std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
-            return a.nTime < b.nTime;
-        });
         // patchcoin todo: wait maybe 10-20 claims on network creation?
         if (claims.empty() && chainman.ActiveHeight() == 0)
             return false;
+        std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
+            return a.nTime < b.nTime;
+        });
+        for (const auto& claim : claims) {
+            if (!claim.IsValid())
+                return error("CreateCoinStake : invalid claim found");
+            CAmount nTotalReceived = 0;
+            CAmount nEligible = claim.GetEligible();
+            if (!claim.GetReceived(pwallet, nTotalReceived))
+                return error("CreateCoinStake : unable to calculate claim total received");
+            LogPrintf("BullShit 1: %s\n", FormatMoney(nTotalReceived));
+            if (nTotalReceived > nEligible)
+                return error("CreateCoinStake : claim received too many coins");
+            if (!(MoneyRange(nEligible) && MoneyRange(nTotalReceived)))
+                return error("CreateCoinStake : claim eligible or total received out of range");
+        }
         genesis_key_held = true;
     }
     /*
@@ -3932,7 +3945,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
 
             for (auto &claim : claims)
             {
-                // patchcoin todo tally everything at the end, maybe not even in this loop to absolutely ensure we're not randomly dropping / adding anyting
+                // patchcoin todo tally everything at the end, maybe not even in this loop to absolutely ensure we're not randomly dropping / adding anything
                 // patchcoin todo potentially reset nTotalReceived since this here is just virtual
                 if (!claim.IsValid()) {
                     continue;
@@ -3961,7 +3974,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     }
                     */
                     current -= amountToSend;
-                    nTotalReceived += amountToSend;
+                    // nTotalReceived += amountToSend;
                 }
 
                 if (!MoneyRange(current)) {

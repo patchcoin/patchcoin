@@ -1538,7 +1538,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             std::vector<CClaim> claims;
             g_claimindex->GetAllClaims(claims);
             for (const CClaim& claim : claims) {
-                if (!claim.Commit()) {
+                if (!claim.Insert()) {
                     return false;
                 }
             }

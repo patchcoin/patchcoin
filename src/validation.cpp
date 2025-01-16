@@ -2131,6 +2131,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && parallel_script_checks ? &scriptcheckqueue : nullptr);
     std::vector<PrecomputedTransactionData> txsdata(block.vtx.size());
 
+    std::map<const CScript, std::pair<CClaim*, CAmount>> claims;
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int64_t nValueIn = 0;
@@ -2157,14 +2158,45 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
-            for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            for (unsigned int i = 0; i < tx.vin.size(); i++)
                 nValueIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
-                if (tx.IsCoinStake())
-                    nValueStakeIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
-            }
+
             nValueOut += tx.GetValueOut();
-            if (!tx.IsCoinStake())
+            if (tx.IsCoinStake()) {
+                for (unsigned int i = 0; i < tx.vin.size(); i++) {
+                    nValueStakeIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
+                }
+                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
+                    for (const CTxOut& txout : tx.vout) { // TODO WE NEED TO CHECK IF THE OUTPUTS MATCH UP, YEAH?
+                        for (auto& [_, claim] : g_claims) {
+                            if (txout.scriptPubKey == claim.GetTarget()) {
+                                if (!claim.IsValid()) {
+                                    LogPrintf("ERROR: %s: Invalid claim found.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-invalid-claim");
+                                }
+                                if (claims.count(claim.GetSource()) > 0) {
+                                    LogPrintf("ERROR: %s: Multiple outputs per claim in a single block are not allowed.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-multiple-claim-outputs-per-block");
+                                }
+                                CAmount nTotalReceived = claim.GetTotalReceived(pindex) + txout.nValue;
+                                if (!MoneyRange(nTotalReceived) || nTotalReceived == MAX_MONEY) {
+                                    LogPrintf("ERROR: %s: claim total received out of range.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-amount");
+                                }
+                                if (nTotalReceived > claim.GetEligible()) {
+                                    LogPrintf("ERROR: %s: Claim would exceed eligible.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-would-exceed-eligible");
+                                }
+                                claims[claim.GetSource()] = std::make_pair(&claim, txout.nValue);
+                                LogPrintf("%s: claim address out: source=%s, target=%s, amount=%s, total=%s\n", __func__,
+                                        claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue), FormatMoney(nTotalReceived));
+                            }
+                        }
+                    }
+                }
+            } else {
                 nFees += txfee;
+            }
             if (!MoneyRange(nFees)) {
                 LogPrintf("ERROR: %s: accumulated fee in the block out of range.\n", __func__);
                 return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-txns-accumulated-fee-outofrange");
@@ -2293,6 +2325,15 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (!pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
         pindex->RaiseValidity(BLOCK_VALID_SCRIPTS);
         m_blockman.m_dirty_blockindex.insert(pindex);
+    }
+
+    if (!claims.empty())
+        assert(g_claimindex);
+    for (const auto& [_, p] : claims) {
+        // patchcoin todo error checking
+        p.first->seen = true;
+        p.first->outs[pindex->GetBlockHash()] = p.second;
+        g_claimindex->AddClaim(*p.first);
     }
 
     // add this block to the view's block chain

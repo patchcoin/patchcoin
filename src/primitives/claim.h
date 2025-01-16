@@ -12,6 +12,7 @@
 #include <map>
 #include <algorithm>
 #include <cassert>
+#include <chain.h>
 #include <optional>
 #include <logging.h>
 
@@ -21,7 +22,7 @@ namespace wallet {
 class CWallet;
 } // namespace wallet
 
-extern std::map<const CScript, const CClaim> g_claims; // unique ptr to scriptsOfPeercoinScnapshot / use getHash instead?
+extern std::map<const CScript, CClaim> g_claims; // unique ptr to scriptsOfPeercoinScnapshot / use getHash instead?
 
 class CClaim
 {
@@ -47,8 +48,7 @@ private:
 public:
     mutable int64_t nTime = GetTime();
     mutable bool seen = false;
-    bool markedValid = false;
-    CAmount nTotalReceived = 0;
+    mutable std::map<uint256, CAmount> outs;
 
     CClaim()
     {
@@ -129,7 +129,7 @@ public:
         SER_WRITE(obj, target_script = obj.GetTarget());
         READWRITE(obj.snapshotPos, signature, target_script);
         if (s.GetType() & SER_DISK)
-            READWRITE(obj.nTime, obj.seen);  // patchcoin todo potentially track transactions related to the claim + tally
+            READWRITE(obj.nTime, obj.seen, obj.outs);
         SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
         SER_READ(obj, obj.signatureString = EncodeBase64(signature));
         SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
@@ -161,6 +161,24 @@ public:
         return SnapshotManager::Peercoin().CalculateReceived(pwallet, target, received);
     }
 
+    CAmount GetTotalReceived(CBlockIndex* pindex) const
+    {
+        CAmount eligible = GetEligible();
+        CAmount received = 0;
+        while (pindex && received < eligible) {
+            const auto& it = outs.find(pindex->GetBlockHash());
+            if (it != outs.end()) {
+                received += it->second;
+            }
+            if (received > eligible) { // this shouldn't happen
+                received = MAX_MONEY;
+                break;
+            }
+            pindex = pindex->pprev;
+        }
+        return received;
+    }
+
     void SetNull()
     {
         sourceAddress.clear();
@@ -171,7 +189,7 @@ public:
         target.clear();
         peercoinBalance.reset();
         seen = false;
-        nTotalReceived = 0;
+        outs.clear();
     }
 
     bool IsAnyNull() const
@@ -262,12 +280,12 @@ public:
         });
     }
 
-    bool Commit() const
+    bool Insert() const
     {
         if (!(IsValid() && IsUnique()))
             return false;
-        g_claims.try_emplace(GetSource(), *this);
-        return !IsUniqueSource();
+        const auto [_, inserted]{g_claims.try_emplace(GetSource(), *this)};
+        return inserted && !IsUniqueSource();
     }
 
     uint256 GetHash() const;

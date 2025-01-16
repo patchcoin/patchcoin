@@ -88,7 +88,7 @@ void ApplyClaimSet(const CClaimSet& claimset)
         const auto& it = g_claims.find(claim.GetSource());
         if (it == g_claims.end()) {
             claim.seen = true;
-            if (!(claim.Commit() && g_claimindex->AddClaim(claim)))
+            if (!(claim.Insert() && g_claimindex->AddClaim(claim)))
                 return;
         } else {
             it->second.seen = true;
