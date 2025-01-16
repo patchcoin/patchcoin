@@ -2724,6 +2724,118 @@ RPCHelpMan exportsnapshot()
     };
 }
 
+static RPCHelpMan getclaims()
+{
+    return RPCHelpMan{
+        "getclaims",
+        "\nRetrieve a list of claims with details such as Peercoin and Patchcoin addresses, balances, and signatures.\n"
+        "Optionally, you can filter claims by:\n"
+        "- Providing a single address using the address parameter (partial matches allowed, case-insensitive).\n"
+        "- Limiting the number of results using the limit parameter.\n"
+        "If no parameters are provided, all claims will be returned.\n",
+        {
+            {"address", RPCArg::Type::STR, RPCArg::DefaultHint{"all addresses"}, "Search for claims with this single address or partial match (case-insensitive, matches both Peercoin and Patchcoin addresses)."},
+            {"limit", RPCArg::Type::NUM, RPCArg::DefaultHint{100}, "Maximum number of claims to return (0 for no limit).",
+                RPCArgOptions{
+                    .skip_type_check = true,
+                    .type_str = {"", "string or numeric"},
+                }},
+        },
+        RPCResult{
+            RPCResult::Type::ARR, "", "Array of claims with their details.",
+            {
+                {RPCResult::Type::OBJ, "", "A claim object",
+                    {
+                        {RPCResult::Type::STR,       "peercoin_address",  "Peercoin address"},
+                        {RPCResult::Type::STR,       "patchcoin_address", "Patchcoin address"},
+                        {RPCResult::Type::STR_HEX,   "signature",         "Hex-encoded signature of the claim"},
+                        {RPCResult::Type::STR_AMOUNT,"peercoin_balance",  "Balance at snapshot height in Peercoin"},
+                        {RPCResult::Type::STR_AMOUNT,"patchcoin_eligible","Eligible amount for distribution in Patchcoin"},
+                        {RPCResult::Type::STR_AMOUNT,"total_received",    "Amount total received so far in Patchcoin"},
+                        {RPCResult::Type::NUM,       "nTime",             "Claim timestamp"},
+                    }
+                }
+            }
+        },
+        RPCExamples{
+            HelpExampleCli("getclaims", R"("address" 10)") +
+            HelpExampleCli("getclaims", R"("" 5)") +
+            HelpExampleRpc("getclaims", R"({"address": "address", "limit": 10})")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    const std::string address{request.params[0].isNull() ? "" : request.params[0].get_str()};
+    int limit = 100;
+
+    if (request.params[1].isNum()) {
+        limit = request.params[1].getInt<int>();
+    } else if (request.params[1].isStr()) {
+        try {
+            limit = std::stoi(request.params[1].get_str());
+        } catch (const std::exception&) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "The 'limit' parameter must be a number.");
+        }
+    }
+
+    std::vector<std::reference_wrapper<const CClaim>> sorted;
+    sorted.reserve(g_claims.size());
+
+    for (const auto& [_, claim] : g_claims) {
+        const std::string& peercoinAddr = ToLower(claim.GetSourceAddress());
+        const std::string& patchcoinAddr = ToLower(claim.GetTargetAddress());
+
+        bool match = false;
+
+        if (!address.empty() &&
+            (peercoinAddr.find(address) != std::string::npos ||
+             patchcoinAddr.find(address) != std::string::npos)) {
+            match = true;
+        }
+
+        if (address.empty()) {
+            match = true;
+        }
+
+        if (match) {
+            sorted.push_back(claim);
+        }
+    }
+
+    std::sort(sorted.begin(), sorted.end(), [](const CClaim& a, const CClaim& b) {
+        return a.nTime > b.nTime;
+    });
+
+    NodeContext& node = EnsureAnyNodeContext(request.context);
+    ChainstateManager& chainman = EnsureChainman(node);
+
+    {
+        LOCK(cs_main);
+        CBlockIndex* pindex = chainman.ActiveChain().Tip();
+
+        UniValue claimsArr(UniValue::VARR);
+        int count = 0;
+        for (const auto& c : sorted) {
+            if (limit > 0 && count >= limit) break;
+
+            const CClaim& claim = c.get();
+            UniValue claimObj(UniValue::VOBJ);
+            claimObj.pushKV("peercoin_address", claim.GetSourceAddress());
+            claimObj.pushKV("patchcoin_address", claim.GetTargetAddress());
+            claimObj.pushKV("signature", claim.GetSignatureString());
+            claimObj.pushKV("peercoin_balance", ValueFromAmount(claim.GetPeercoinBalance()));
+            claimObj.pushKV("patchcoin_eligible", ValueFromAmount(claim.GetEligible()));
+            claimObj.pushKV("total_received", ValueFromAmount(claim.GetTotalReceived(pindex)));
+            claimObj.pushKV("nTime", (uint64_t)claim.nTime);
+            claimsArr.push_back(claimObj);
+
+            count++;
+        }
+        return claimsArr;
+    }
+}
+    };
+}
+
 void RegisterBlockchainRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
@@ -2746,6 +2858,7 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"blockchain", &scantxoutset},
         {"blockchain", &scanblocks},
         {"blockchain", &getblockfilter},
+        {"blockchain", &getclaims},
         {"hidden", &invalidateblock},
         {"hidden", &reconsiderblock},
         {"hidden", &waitfornewblock},

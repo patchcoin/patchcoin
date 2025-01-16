@@ -1067,108 +1067,6 @@ static RPCHelpMan migratewallet()
     };
 }
 
-static RPCHelpMan buildclaimset()
-{
-    return RPCHelpMan{
-        "buildclaimset",
-        "\nGather all claims from g_claimindex, retrieve their eligible/original amounts, build a ClaimSet, and sign.\n",
-        {},
-        RPCResult{
-            RPCResult::Type::OBJ, "", "",
-            {
-                {RPCResult::Type::NUM,     "num_claims",   "Number of claims included"},
-                {RPCResult::Type::ARR,     "claims",       "Array of claims with addresses, amounts, etc.",
-                    {
-                        {RPCResult::Type::OBJ, "claim", "",
-                            {
-                                {RPCResult::Type::STR,       "source_address",   "Decoded address for source"},
-                                {RPCResult::Type::STR,       "target_address",   "Decoded address for target"},
-                                {RPCResult::Type::NUM,       "nTime",            "Claim timestamp"},
-                                {RPCResult::Type::STR_AMOUNT,"original_amount",  "Original or total amount tracked"},
-                                {RPCResult::Type::STR_AMOUNT,"coins_eligible",   "Eligible amount for distribution"},
-                                {RPCResult::Type::STR_HEX,   "source_script",    "Hex-encoded source script"},
-                                {RPCResult::Type::STR_HEX,   "target_script",    "Hex-encoded target script"},
-                                {RPCResult::Type::STR_HEX,   "signature",        "Hex-encoded signature"},
-                            }
-                        }
-                    }
-                },
-                {RPCResult::Type::STR_HEX, "hex", "Hex-encoded ClaimSet data"}
-            }
-        },
-        RPCExamples{
-            HelpExampleCli("buildclaimset", "") +
-            HelpExampleRpc("buildclaimset", "")
-        },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
-        {
-            if (!g_claimindex) {
-                throw JSONRPCError(RPC_MISC_ERROR, "ClaimIndex not available");
-            }
-            std::vector<CClaim> allClaims;
-            if (!g_claimindex->GetAllClaims(allClaims)) {
-                throw JSONRPCError(RPC_MISC_ERROR, "Failed to retrieve claims from index");
-            }
-            if (allClaims.empty()) {
-                throw JSONRPCError(RPC_MISC_ERROR, "No claims found");
-            }
-
-            // PopulateClaimAmounts(allClaims);
-
-            // std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
-            // if (!pwallet) return UniValue::VNULL;
-            //
-            // EnsureWalletIsUnlocked(*pwallet);
-
-            CClaimSet claimset;
-            if (!BuildClaimSet(claimset))
-                return UniValue::VNULL;
-
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss << claimset;
-            std::string claimsetHex = HexStr(ss);
-
-            UniValue claimsArr(UniValue::VARR);
-            for (const auto& c : claimset.claims) {
-                UniValue claimObj(UniValue::VOBJ);
-
-                {
-                    CTxDestination srcDest;
-                    if (ExtractDestination(c.GetSource(), srcDest)) {
-                        claimObj.pushKV("source_address", EncodeDestination(srcDest));
-                    } else {
-                        claimObj.pushKV("source_address", "unrecognized");
-                    }
-                }
-                {
-                    CTxDestination tgtDest;
-                    if (ExtractDestination(c.GetTarget(), tgtDest)) {
-                        claimObj.pushKV("target_address", EncodeDestination(tgtDest));
-                    } else {
-                        claimObj.pushKV("target_address", "unrecognized");
-                    }
-                }
-
-                claimObj.pushKV("nTime", (uint64_t)c.nTime);
-                claimObj.pushKV("original_amount", ValueFromAmount(c.GetPeercoinBalance())); // patchcoin todo
-                claimObj.pushKV("coins_eligible", ValueFromAmount(c.GetEligible()));
-                claimObj.pushKV("source_script", HexStr(c.GetSource()));
-                claimObj.pushKV("target_script", HexStr(c.GetTarget()));
-                claimObj.pushKV("signature", c.GetSignatureString());
-
-                claimsArr.push_back(claimObj);
-            }
-
-            UniValue result(UniValue::VOBJ);
-            result.pushKV("num_claims", (uint64_t)claimset.claims.size());
-            result.pushKV("claims", claimsArr);
-            result.pushKV("hex", claimsetHex);
-
-            return result;
-        }
-    };
-}
-
 // addresses
 RPCHelpMan getaddressinfo();
 RPCHelpMan getnewaddress();
@@ -1313,7 +1211,6 @@ static const CRPCCommand commands[] =
     { "wallet",             &importcoinstake,                },
     { "wallet",             &listminting,                    },
     { "wallet",             &reservebalance,                 },
-    { "wallet",             &buildclaimset,                  },
 };
 // clang-format on
     return commands;
