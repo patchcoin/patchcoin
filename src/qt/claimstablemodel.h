@@ -11,6 +11,7 @@ struct ClaimData {
     QString sourceAddress;
     QString targetAddress;
     QString time;
+    double received;
     double eligible;
     double original;
 };

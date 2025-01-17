@@ -49,7 +49,7 @@ QVariant ClaimsTableModel::data(const QModelIndex &index, int role) const
             case 1: return claim.sourceAddress;
             case 2: return claim.targetAddress;
             case 3: return claim.time;
-            case 4: return BitcoinUnits::format(BitcoinUnit::BTC, claim.original, false, BitcoinUnits::SeparatorStyle::ALWAYS);
+            case 4: return BitcoinUnits::format(BitcoinUnit::BTC, claim.received, false, BitcoinUnits::SeparatorStyle::ALWAYS);
             case 5: return BitcoinUnits::format(BitcoinUnit::BTC, claim.eligible, false, BitcoinUnits::SeparatorStyle::ALWAYS);
             default: return QVariant();
         }
@@ -74,8 +74,8 @@ QVariant ClaimsTableModel::headerData(int section, Qt::Orientation orientation, 
                 case 1: return tr("PPC Address");
                 case 2: return tr("PTC Address");
                 case 3: return tr("Date");
-                case 4: return tr("PPC");
-                case 5: return tr("PTC");
+                case 4: return tr("Received");
+                case 5: return tr("Eligible");
             default:;
             }
         }
@@ -112,6 +112,7 @@ void ClaimsTableModel::updateData(const std::vector<CClaim>& claims)
         QDateTime dt = QDateTime::fromSecsSinceEpoch(c.nTime);
         data.time = GUIUtil::dateTimeStr(dt);
 
+        data.received = c.nTotalReceived;
         data.original = c.GetPeercoinBalance(); // patchcoin todo
         data.eligible = c.GetEligible();
 

@@ -2178,18 +2178,35 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                                     LogPrintf("ERROR: %s: Multiple outputs per claim in a single block are not allowed.\n", __func__);
                                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-multiple-claim-outputs-per-block");
                                 }
-                                CAmount nTotalReceived = claim.GetTotalReceived(pindex) + txout.nValue;
-                                if (!MoneyRange(nTotalReceived) || nTotalReceived == MAX_MONEY) {
-                                    LogPrintf("ERROR: %s: claim total received out of range.\n", __func__);
+                                CAmount nTotalReceived = 0;
+                                unsigned int nOutputs = 0;
+                                if (!claim.GetTotalReceived(pindex, nTotalReceived, nOutputs)) {
+                                    LogPrintf("ERROR: %s: Failed to get total received amount.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-total-received");
+                                }
+                                nOutputs += 1;
+                                // patchcoin todo maxOutputs currently has no look-ahead, and could lead to breakage
+                                if (nOutputs > claim.MAX_POSSIBLE_OUTPUTS || (genesis_key_held && (nOutputs > claim.MAX_OUTPUTS || nOutputs > claim.GetMaxOutputs()))) {
+                                    LogPrintf("ERROR: %s: Claim outputs would exceed allowed outputs.\n", __func__);
+                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-output-amount");
+                                }
+                                nTotalReceived += txout.nValue;
+                                if (!MoneyRange(nTotalReceived)) {
+                                    LogPrintf("ERROR: %s: Claim total received out of range.\n", __func__);
                                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-amount");
                                 }
-                                if (nTotalReceived > claim.GetEligible()) {
+                                if (nTotalReceived > claim.GetEligible()) { // this is the real check
                                     LogPrintf("ERROR: %s: Claim would exceed eligible.\n", __func__);
                                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-would-exceed-eligible");
                                 }
                                 claims[claim.GetSource()] = std::make_pair(&claim, txout.nValue);
-                                LogPrintf("%s: claim address out: source=%s, target=%s, amount=%s, total=%s\n", __func__,
-                                        claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue), FormatMoney(nTotalReceived));
+                                // LogPrintf("%s: Claim address out: source=%s, target=%s, amount=%s, total=%s/%s, outputs=%s/%s\n", __func__,
+                                //         claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue), FormatMoney(nTotalReceived), FormatMoney(claim.GetEligible()), nOutputs, claim.GetMaxOutputs());
+                                LogPrintf("%s: Claim address out: source=%s, target=%s, amount=%s, total=%s/%s, outputs=%s%s\n", __func__,
+                                          claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue),
+                                          FormatMoney(nTotalReceived), FormatMoney(claim.GetEligible()), nOutputs,
+                                          genesis_key_held ? std::string("/") + std::to_string(claim.GetMaxOutputs()) : std::string(""));
+
                             }
                         }
                     }
@@ -2331,8 +2348,12 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         assert(g_claimindex);
     for (const auto& [_, p] : claims) {
         // patchcoin todo error checking
+        CAmount nTotalReceived = 0;
+        unsigned int outputs = 0;
+        p.first->GetTotalReceived(pindex, nTotalReceived, outputs);
         p.first->seen = true;
         p.first->outs[pindex->GetBlockHash()] = p.second;
+        p.first->nTotalReceived = nTotalReceived + p.second;
         g_claimindex->AddClaim(*p.first);
     }
 

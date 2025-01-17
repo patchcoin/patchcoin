@@ -251,7 +251,7 @@ bool SnapshotManager::CalculateEligible(const CAmount& balance, CAmount& eligibl
 {
     if (!MoneyRange(balance)) return false;
 
-    eligible = std::min(balance * 10, 50000 * COIN);
+    eligible = std::min(balance * 10, MAX_CLAIM_REWARD);
     if (!MoneyRange(eligible)) {
         eligible = 0;
         return false;

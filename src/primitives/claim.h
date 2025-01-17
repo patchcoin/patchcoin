@@ -30,13 +30,11 @@ public:
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
 
 private:
-    // static const SnapshotManager& sman;
     static const std::map<CScript, CAmount>& snapshot;
     static const uint256& hashSnapshot;
-
     SnapshotIterator snapshotIt;
-
     size_t snapshotPos;
+
     std::string sourceAddress;
     std::string signatureString;
     std::string targetAddress;
@@ -46,9 +44,15 @@ private:
     std::shared_ptr<const CAmount> peercoinBalance;
 
 public:
+    double GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue) / static_cast<double>(Params().GetConsensus().genesisOutputs);
+    // patchcoin todo not accurate and merely serves as a static fence-in
+    unsigned int MAX_POSSIBLE_OUTPUTS = std::min(16u, static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
+    unsigned int MAX_OUTPUTS;
+    // patchcoin todo do we want these mutable?
     mutable int64_t nTime = GetTime();
     mutable bool seen = false;
     mutable std::map<uint256, CAmount> outs;
+    mutable CAmount nTotalReceived = 0;
 
     CClaim()
     {
@@ -108,6 +112,7 @@ public:
                 snapshotPos = std::distance(snapshot.begin(), snapshotIt);
                 source = std::make_shared<CScript>(snapshotIt->first);
                 peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
+                MAX_OUTPUTS = GetMaxOutputs();
             }
         }
     }
@@ -129,7 +134,7 @@ public:
         SER_WRITE(obj, target_script = obj.GetTarget());
         READWRITE(obj.snapshotPos, signature, target_script);
         if (s.GetType() & SER_DISK)
-            READWRITE(obj.nTime, obj.seen, obj.outs);
+            READWRITE(obj.nTime, obj.seen, obj.outs, obj.nTotalReceived);
         SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
         SER_READ(obj, obj.signatureString = EncodeBase64(signature));
         SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
@@ -156,27 +161,37 @@ public:
         return eligible;
     }
 
+    CAmount GetMaxOutputs() const
+    {
+        // patchcoin todo not accurate and merely serves as a static fence-in
+        // patchcoin todo add look-ahead, similar to
+        const unsigned int maxOutputs = static_cast<unsigned int>(std::ceil(static_cast<double>(GetEligible()) / GENESIS_OUTPUTS_AMOUNT)) + 4;
+        return std::min(maxOutputs, MAX_POSSIBLE_OUTPUTS);
+    }
+
     bool GetReceived(const wallet::CWallet* pwallet, CAmount& received) const
     {
         return SnapshotManager::Peercoin().CalculateReceived(pwallet, target, received);
     }
 
-    CAmount GetTotalReceived(CBlockIndex* pindex) const
+    bool GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const
     {
         CAmount eligible = GetEligible();
-        CAmount received = 0;
-        while (pindex && received < eligible) {
+        while (pindex && outputs < outs.size()) {
             const auto& it = outs.find(pindex->GetBlockHash());
             if (it != outs.end()) {
+                outputs++;
                 received += it->second;
-            }
-            if (received > eligible) { // this shouldn't happen
-                received = MAX_MONEY;
-                break;
             }
             pindex = pindex->pprev;
         }
-        return received;
+        if (received > eligible) {
+            return false;
+        }
+        if (outputs > MAX_POSSIBLE_OUTPUTS /*|| outputs > MAX_OUTPUTS || outputs > GetMaxOutputs()*/) {
+            return false;
+        }
+        return true;
     }
 
     void SetNull()

@@ -25,17 +25,16 @@
 #include <cstring>
 #include <type_traits>
 
-static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTimeTx, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
-{
-    int desiredOutputs = 5000;
 
+static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTimeTx, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& nReward, const int& nOutputs)
+{
     CMutableTransaction txNew;
     txNew.nVersion = 3;
     txNew.vin.resize(1);
     txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(9999) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
 
-    CAmount outValue = genesisReward / desiredOutputs;
-    for (int i=0; i<desiredOutputs; i++) {
+    CAmount outValue = nReward / nOutputs;
+    for (int i=0; i<nOutputs; i++) {
         txNew.vout.push_back(CTxOut(outValue, genesisOutputScript));
     }
 
@@ -61,11 +60,11 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
  *     CTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CBlock CreateGenesisBlock(uint32_t nTimeTx, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+static CBlock CreateGenesisBlock(uint32_t nTimeTx, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& nReward, const int& nOutputs)
 {
     const char* pszTimestamp = "In the blockchain’s fog, coins drift, a patchwork of dreams — miners rest their picks.";
-    const CScript genesisOutputScript = CScript() << ParseHex("032acb5d626d3a7480f6b8b05852cb4d71a5390ae75f608ed88b1aba24b1c6a977") << OP_CHECKSIG;
-    return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTimeTx, nTimeBlock, nNonce, nBits, nVersion, genesisReward);
+    const CScript genesisOutputScript = CScript() << ParseHex("031927287154a0983d617652c79e36766af3cb1a0cbeb3ff9e682e44c06c751f6a") << OP_CHECKSIG;
+    return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTimeTx, nTimeBlock, nNonce, nBits, nVersion, nReward, nOutputs);
 }
 
 /**
@@ -147,11 +146,13 @@ public:
         nDefaultPort = 9901;
         m_assumed_blockchain_size = 0;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
+        consensus.genesisValue = 21000000 * COIN;
+        consensus.genesisOutputs = 5000;
+        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, consensus.genesisValue, consensus.genesisOutputs);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        assert(consensus.hashGenesisBlock == uint256S("0x45b86fc04ce2b0dac5148137a45c48cfa71c223a896ab47bf3f55422c3b96bee"));
+        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
         consensus.hashPeercoinSnapshot = uint256S("0x1d34360cf3475fd86d9c1ff43862bbfff6891bfaf1b39074f999a96a939e45b0");
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -242,11 +243,13 @@ public:
         nDefaultPort = 9903;
         m_assumed_blockchain_size = 1;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
+        consensus.genesisValue = 21000000 * COIN;
+        consensus.genesisOutputs = 5000;
+        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, consensus.genesisValue, consensus.genesisOutputs);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        assert(consensus.hashGenesisBlock == uint256S("0x45b86fc04ce2b0dac5148137a45c48cfa71c223a896ab47bf3f55422c3b96bee"));
+        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
         consensus.hashPeercoinSnapshot = uint256S("0x1d34360cf3475fd86d9c1ff43862bbfff6891bfaf1b39074f999a96a939e45b0");
 
         vFixedSeeds.clear();
@@ -393,11 +396,13 @@ public:
 
         nDefaultPort = 38333;
 
-        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
+        consensus.genesisValue = 21000000 * COIN;
+        consensus.genesisOutputs = 5000;
+        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, consensus.genesisValue, consensus.genesisOutputs);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        assert(consensus.hashGenesisBlock == uint256S("0x45b86fc04ce2b0dac5148137a45c48cfa71c223a896ab47bf3f55422c3b96bee"));
+        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
         consensus.hashPeercoinSnapshot = uint256S("0x1d34360cf3475fd86d9c1ff43862bbfff6891bfaf1b39074f999a96a939e45b0");
 
         vFixedSeeds.clear();
@@ -503,11 +508,13 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(0, 1731229535, 2u,  0x207fffff, 3, MAX_MONEY);
+        consensus.genesisValue = 21000000 * COIN;
+        consensus.genesisOutputs = 5000;
+        genesis = CreateGenesisBlock(0, 1731229535, 3u,  0x207fffff, 3, consensus.genesisValue, consensus.genesisOutputs);
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x31a85b95ca89e199039ebcd933ff378b3e714e2736b080fc752b61673bce164c"));
-        assert(genesis.hashMerkleRoot == uint256S("0xcf4501c6e51f8de2ede5586ada670e2012e3d220a52e05e3bfa755bc951a21ab"));
+        assert(consensus.hashGenesisBlock == uint256S("0x45b86fc04ce2b0dac5148137a45c48cfa71c223a896ab47bf3f55422c3b96bee"));
+        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
         consensus.hashPeercoinSnapshot = uint256S("0x1d34360cf3475fd86d9c1ff43862bbfff6891bfaf1b39074f999a96a939e45b0");
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.

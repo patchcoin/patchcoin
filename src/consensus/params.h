@@ -14,6 +14,8 @@
 #include <map>
 #include <vector>
 
+#include "amount.h"
+
 namespace Consensus {
 
 /**
@@ -155,6 +157,9 @@ struct Params {
     int64_t nStakeMaxAge;
     int64_t nModifierInterval;
     int nCoinbaseMaturity;  // Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
+
+    CAmount genesisValue;
+    int genesisOutputs;
 };
 
 } // namespace Consensus

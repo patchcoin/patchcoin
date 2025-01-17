@@ -2824,7 +2824,7 @@ static RPCHelpMan getclaims()
             claimObj.pushKV("signature", claim.GetSignatureString());
             claimObj.pushKV("peercoin_balance", ValueFromAmount(claim.GetPeercoinBalance()));
             claimObj.pushKV("patchcoin_eligible", ValueFromAmount(claim.GetEligible()));
-            claimObj.pushKV("total_received", ValueFromAmount(claim.GetTotalReceived(pindex)));
+            claimObj.pushKV("total_received", ValueFromAmount(claim.nTotalReceived));
             claimObj.pushKV("nTime", (uint64_t)claim.nTime);
             claimsArr.push_back(claimObj);
 
