@@ -143,7 +143,7 @@ public:
         pchMessageStart[1] = 0xf4;
         pchMessageStart[2] = 0xd4;
         pchMessageStart[3] = 0xdd;
-        nDefaultPort = 9901;
+        nDefaultPort = 7801;
         m_assumed_blockchain_size = 0;
 
         consensus.genesisValue = 21000000 * COIN;
@@ -240,7 +240,7 @@ public:
         pchMessageStart[1] = 0x85;
         pchMessageStart[2] = 0xd8;
         pchMessageStart[3] = 0xf0;
-        nDefaultPort = 9903;
+        nDefaultPort = 7803;
         m_assumed_blockchain_size = 1;
 
         consensus.genesisValue = 21000000 * COIN;
@@ -478,7 +478,7 @@ public:
         pchMessageStart[1] = 0xce;
         pchMessageStart[2] = 0x91;
         pchMessageStart[3] = 0xa6;
-        nDefaultPort = 9903;
+        nDefaultPort = 7803;
         m_assumed_blockchain_size = 0;
         m_assumed_chain_state_size = 0;
 
