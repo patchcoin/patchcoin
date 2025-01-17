@@ -2805,12 +2805,8 @@ static RPCHelpMan getclaims()
         return a.nTime > b.nTime;
     });
 
-    NodeContext& node = EnsureAnyNodeContext(request.context);
-    ChainstateManager& chainman = EnsureChainman(node);
-
     {
         LOCK(cs_main);
-        CBlockIndex* pindex = chainman.ActiveChain().Tip();
 
         UniValue claimsArr(UniValue::VARR);
         int count = 0;
