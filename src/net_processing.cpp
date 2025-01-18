@@ -1123,16 +1123,6 @@ static bool CanServeWitnesses(const Peer& peer)
     return peer.m_their_services & NODE_WITNESS;
 }
 
-// patchcoin todo get rid of this
-struct ScriptVectorMessage {
-    std::map<CScript, CAmount> scripts;
-
-    SERIALIZE_METHODS(ScriptVectorMessage, obj)
-    {
-        READWRITE(obj.scripts);
-    }
-};
-
 std::chrono::microseconds PeerManagerImpl::NextInvToInbounds(std::chrono::microseconds now,
                                                              std::chrono::seconds average_interval)
 {

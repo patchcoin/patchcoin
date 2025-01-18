@@ -22,7 +22,7 @@ namespace wallet {
 class CWallet;
 } // namespace wallet
 
-extern std::map<const CScript, CClaim> g_claims; // unique ptr to scriptsOfPeercoinScnapshot / use getHash instead?
+extern std::map<const CScript, CClaim> g_claims;
 
 class CClaim
 {

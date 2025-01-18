@@ -101,6 +101,7 @@ private:
     QMenu* snapshotContextMenu{nullptr};
     QAction* claimAddressAction{nullptr};
     QAction* searchAddressAction{nullptr};
+    QTimer* waitForSnapshot{nullptr};
 
 private Q_SLOTS:
     void contextualMenu(const QPoint &);

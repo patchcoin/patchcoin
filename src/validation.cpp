@@ -2200,9 +2200,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-would-exceed-eligible");
                                 }
                                 claims[claim.GetSource()] = std::make_pair(&claim, txout.nValue);
-                                // LogPrintf("%s: Claim address out: source=%s, target=%s, amount=%s, total=%s/%s, outputs=%s/%s\n", __func__,
-                                //         claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue), FormatMoney(nTotalReceived), FormatMoney(claim.GetEligible()), nOutputs, claim.GetMaxOutputs());
-                                LogPrintf("%s: Claim address out: source=%s, target=%s, amount=%s, total=%s/%s, outputs=%s%s\n", __func__,
+                                LogPrintf("%s: Claim processed: source=%s target=%s amount=%s total=%s/%s outputs=%s%s\n", __func__,
                                           claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue),
                                           FormatMoney(nTotalReceived), FormatMoney(claim.GetEligible()), nOutputs,
                                           genesis_key_held ? std::string("/") + std::to_string(claim.GetMaxOutputs()) : std::string(""));

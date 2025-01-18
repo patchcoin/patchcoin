@@ -177,7 +177,9 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView*
     snapshotTable->setSortingEnabled(false);
     snapshotTable->verticalHeader()->hide();
     snapshotTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    waitForSnapshot = new QTimer(this);
     connect(snapshotTable, &QTableWidget::customContextMenuRequested, this, &TransactionView::snapshotTableContextMenuRequested);
+    connect(waitForSnapshot, &QTimer::timeout, this, &TransactionView::PopulateSnapshotTable);
     snapshotContextMenu = new QMenu(this);
     snapshotContextMenu->setObjectName("snapshotContextMenu");
     claimAddressAction = snapshotContextMenu->addAction(tr("Claim address"), this, &TransactionView::claimSnapshotAddress);
@@ -268,6 +270,10 @@ TransactionView::~TransactionView()
 {
     QSettings settings;
     settings.setValue("TransactionViewHeaderState", transactionView->horizontalHeader()->saveState());
+    if (waitForSnapshot) {
+        waitForSnapshot->stop();
+        delete waitForSnapshot;
+    }
 }
 
 void TransactionView::PopulateSnapshotTable()
@@ -275,6 +281,9 @@ void TransactionView::PopulateSnapshotTable()
     if (!snapshotTable) return;
 
     SnapshotManager& sman = SnapshotManager::Peercoin();
+    if (sman.GetScriptPubKeys().empty())
+        return;
+    waitForSnapshot->stop();
 
     snapshotTable->clearContents();
     snapshotTable->setRowCount((int)sman.GetScriptPubKeys().size());
@@ -421,8 +430,8 @@ void TransactionView::setModel(WalletModel *_model)
 
         // Watch-only signal
         connect(_model, &WalletModel::notifyWatchonlyChanged, this, &TransactionView::updateWatchOnlyColumn);
-        PopulateSnapshotTable();
 
+        waitForSnapshot->start(1000);
         buildClaimSetWidget->setModel(_model);
     }
 }
