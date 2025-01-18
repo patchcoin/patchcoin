@@ -111,18 +111,18 @@ public:
         consensus.defaultAssumeValid = uint256S("0x000000000000000000035c3f0d31e71a5ee24c5aaf3354689f65bd7b07dee632"); // 784000
 */
         consensus.BIP34Height = 0;
-        consensus.BIP34Hash = uint256();
+        consensus.BIP34Hash = uint256{};
         consensus.powLimit =            uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.bnInitialHashTarget = uint256S("00000007ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
         consensus.nTargetTimespan = 7 * 24 * 60 * 60;  // one week
-        consensus.nStakeTargetSpacing = 60; // 10-minute block spacing
+        consensus.nStakeTargetSpacing = 10 * 60; // 10-minute block spacing
         consensus.nTargetSpacingWorkMax = 12 * consensus.nStakeTargetSpacing; // 2-hour
         consensus.nPowTargetSpacing = consensus.nStakeTargetSpacing;
-        consensus.nStakeMinAge = -99999999; // minimum age for coin age
+        consensus.nStakeMinAge = 60 * 60 * 24 * 30; // minimum age for coin age
         consensus.nStakeMaxAge = 60 * 60 * 24 * 90;
         consensus.nModifierInterval = 6 * 60 * 60; // Modifier interval: time to elapse before new modifier is computed
-        consensus.nCoinbaseMaturity = 2;
+        consensus.nCoinbaseMaturity = 500;
 
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
@@ -144,7 +144,7 @@ public:
         pchMessageStart[2] = 0xd4;
         pchMessageStart[3] = 0xdd;
         nDefaultPort = 7801;
-        m_assumed_blockchain_size = 0;
+        m_assumed_blockchain_size = 1;
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 5000;
@@ -212,8 +212,8 @@ public:
         strNetworkID = CBaseChainParams::TESTNET;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
-        consensus.BIP34Height = 293368;
-        consensus.BIP34Hash = uint256S("00000002c0b976c7a5c9878f1cec63fb4d88d68d614aedeaf8158c42d904795e");
+        consensus.BIP34Height = 0;
+        consensus.BIP34Hash = uint256{};
         consensus.powLimit =            uint256S("0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~arith_uint256(0) >> 28;
         consensus.bnInitialHashTarget = uint256S("00000007ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~arith_uint256(0) >> 29;
 
@@ -231,10 +231,10 @@ public:
         consensus.nRuleChangeActivationThreshold = 1512; // 75% for testchains
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
 
-        consensus.SegwitHeight = 394215;
+        consensus.SegwitHeight = 0;
 
-        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000a39348f70f067a");  // 500000
-        consensus.defaultAssumeValid = uint256S("0xa40f64181ee4a3bedda2eae0107d9da0e049fe285b6e6e2a7f1f11697f22c7ed"); // 500000
+        consensus.nMinimumChainWork = uint256S("0x");  // 500000
+        consensus.defaultAssumeValid = uint256S("0x"); // 500000
 
         pchMessageStart[0] = 0xa9;
         pchMessageStart[1] = 0x85;
@@ -255,10 +255,10 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
         // nodes with support for servicebits filtering should be at the top
-        vSeeds.emplace_back("tseed.peercoin.net");
-        vSeeds.emplace_back("tseed2.peercoin.net");
-        vSeeds.emplace_back("tseed.peercoin-library.org");
-        vSeeds.emplace_back("testseed.ppcoin.info");
+        // vSeeds.emplace_back("tseed.peercoin.net");
+        // vSeeds.emplace_back("tseed2.peercoin.net");
+        // vSeeds.emplace_back("tseed.peercoin-library.org");
+        // vSeeds.emplace_back("testseed.ppcoin.info");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
@@ -279,20 +279,7 @@ public:
 
         checkpointData = {
             {
-                {     0, uint256S("0x00000001f757bb737f6596503e17cd17b0658ce630cc727c0cca81aec47c9f06")},
-                { 19080, uint256S("0xb054d63d41852d71b611eaa8eca37d9fddca69b5013cf0966d453402ec8005ce")},
-                { 30583, uint256S("0x5179c0c496b5d25ab81ffe14273ea6928c6ff81c0a0d6a83b5d7d41d64886300")},
-                { 99999, uint256S("0xa7b03b14b8673683d972ab81775f3e85fea4fe689874b5956183466535dc651c")},
-                {219999, uint256S("0x0691bb86c92762c5c4c5a3723585ebeb7ec59310bbb0bdb6666551ab24ad919e")},
-                {336000, uint256S("0xf07adf61615c529f7c282b858d13d3e037b197324cb12e0669c461947494c4e3")},
-                {372751, uint256S("0x000000000000148db599b217c117b5104f5043c55f6ca2a8a065d9fab9f9bba1")},
-                {382019, uint256S("0x3ab75769d7957d9bf0857b5019d0a0e41044fa9ecf30b2f9c32aa457b0864ce5")},
-                {408500, uint256S("0x1636ac08b073d26b28fa40243d58dd5deb215752efe094c92c61998e4e9baf3f")},
-                {412691, uint256S("0x0e20318be88f07f521453435b37cfc516c3de07264a78ed7170985a1126126ab")},
-                {441299, uint256S("0x4091d0836a37c50ceee876000ac0cb251fd10031dab901d2c0677cd86283096e")},
-                {442735, uint256S("0x1b83b33894d51be0b8b323bfab093f638915236e0e40ba3b52bb33fdbc4053cd")},
-                {516308, uint256S("0x0000000ed333c5fa4be2c941f3c3a0680c3a7d582cbf74f4516f8503474e2585")},
-                {573702, uint256S("0xc41259778268fe3bba597c7707fe400d9a7d66b4d6d2a9593c898fd69fb56a5f")},
+                {     0, uint256S("0x45b86fc04ce2b0dac5148137a45c48cfa71c223a896ab47bf3f55422c3b96bee")},
             }
         };
 
@@ -450,11 +437,10 @@ public:
         consensus.nTargetSpacingWorkMax = 12 * consensus.nStakeTargetSpacing; // 2-hour
         consensus.nPowTargetSpacing = consensus.nStakeTargetSpacing;
 
-        consensus.nStakeMinAge = 60 * 60 * 24 * 30; // test net min age is 1 day
+        consensus.nStakeMinAge = 60 * 60 * 24; // test net min age is 1 day
         consensus.nStakeMaxAge = 60 * 60 * 24 * 90;
         consensus.nModifierInterval = 60 * 20; // Modifier interval: time to elapse before new modifier is computed
-        consensus.nCoinbaseMaturity = 500;
-        // patchcoin todo check lower values
+        consensus.nCoinbaseMaturity = 60;
 
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;

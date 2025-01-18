@@ -14,7 +14,7 @@
 #include <map>
 #include <vector>
 
-#include "amount.h"
+#include <consensus/amount.h>
 
 namespace Consensus {
 

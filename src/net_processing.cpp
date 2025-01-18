@@ -6370,6 +6370,5 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
             m_connman.PushMessage(pto, msgMaker.Make(NetMsgType::GETDATA, vGetData));
     } // release cs_main
     //MaybeSendFeefilter(*pto, *peer, current_time);
-
     return true;
 }

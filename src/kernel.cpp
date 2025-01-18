@@ -393,8 +393,6 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
     nStakeModifierTime = pindex->GetBlockTime();
     int64_t nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
 
-    /* todo patchcoin */
-    /*
     if (nStakeModifierTime + params.nStakeMinAge - nStakeModifierSelectionInterval <= (int64_t) nTimeTx)
     {
         // Best block is still more than
@@ -405,10 +403,8 @@ static bool GetKernelStakeModifierV05(CBlockIndex* pindexPrev, unsigned int nTim
         else
             return false;
     }
-    */
     // loop to find the stake modifier earlier by
     // (nStakeMinAge minus a selection interval)
-    // patchcoin todo check if pindex->nHeight is correct
     while (nStakeModifierTime + params.nStakeMinAge - nStakeModifierSelectionInterval >(int64_t) nTimeTx)
     {
         if (!pindex->pprev)
@@ -471,7 +467,6 @@ static bool GetKernelStakeModifierV03(CBlockIndex* pindexPrev, uint256 hashBlock
         pindex = (!tmpChain.empty() && pindex->nHeight >= tmpChain[0]->nHeight - 1)? tmpChain[n++] : chainstate.m_chain.Next(pindex);
         if (n > tmpChain.size() || pindex == NULL) // check if tmpChain[n+1] exists
         {   // reached best block; may happen if node is behind on block chain
-            // patchcoin todo check if pindex->nHeight is proper
             if (fPrintProofOfStake || (old_pindex->GetBlockTime() + params.nStakeMinAge - nStakeModifierSelectionInterval > TicksSinceEpoch<std::chrono::seconds>(GetAdjustedTime())))
                 return error("GetKernelStakeModifier() : reached best block %s at height %d from block %s",
                     old_pindex->GetBlockHash().ToString(), old_pindex->nHeight, hashBlockFrom.ToString());
@@ -529,7 +524,7 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     unsigned int nTimeBlockFrom = blockFrom.GetBlockTime();
 
     // patchcoin todo
-    if (!pindexPrev->pprev && pindexPrev->nMint == MAX_MONEY && blockFrom.GetHash() == params.hashGenesisBlock)
+    if (!pindexPrev->pprev && pindexPrev->nMint == params.genesisValue && blockFrom.GetHash() == params.hashGenesisBlock)
         return true;
 
     if (nTimeTx < (txPrev->nTime? txPrev->nTime : nTimeBlockFrom))  // Transaction timestamp violation
@@ -583,10 +578,8 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     }
 
     // Now check if proof-of-stake hash meets target protocol
-    /* patchcoin todo
     if (CBigNum(hashProofOfStake) > bnCoinDayWeight * bnTargetPerCoinDay)
         return false;
-    */
     if (gArgs.GetBoolArg("-debug", false) && !fPrintProofOfStake)
     {
         if (IsProtocolV03(nTimeTx)) {
@@ -689,7 +682,6 @@ unsigned int GetStakeModifierChecksum(const CBlockIndex* pindex)
 // Check stake modifier hard checkpoints
 bool CheckStakeModifierCheckpoints(int nHeight, unsigned int nStakeModifierChecksum)
 {
-    return true;
     bool fTestNet = Params().NetworkIDString() == CBaseChainParams::TESTNET;
     if (fTestNet && mapStakeModifierTestnetCheckpoints.count(nHeight))
         return nStakeModifierChecksum == mapStakeModifierTestnetCheckpoints[nHeight];

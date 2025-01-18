@@ -43,7 +43,6 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, cons
     ui->publishClaimButton_SM->setEnabled(m_client_model->node().context()->connman->GetNodeCount(ConnectionDirection::Both) > 0);
     ui->clearButton_VM->setIcon(QIcon(":/icons/remove"));
 
-
     GUIUtil::setupAddressWidget(ui->addressIn_SM, this);
     GUIUtil::setupAddressWidget(ui->addressIn_VM, this);
 

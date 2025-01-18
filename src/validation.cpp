@@ -69,8 +69,6 @@
 #include <kernel.h>
 #include <bignum.h>
 #include <claimset.h>
-#include <key_io.h>
-#include <snapshotmanager.h>
 #include <timedata.h>
 #include <wallet/wallet.h>
 
@@ -666,15 +664,15 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     TxValidationState& state = ws.m_state;
     std::unique_ptr<CTxMemPoolEntry>& entry = ws.m_entry;
 
-    if (GetTime() - m_active_chainstate.m_chain[m_active_chainstate.m_chain.Height() == 0 ? 0 : 1]->GetBlockTime() < 100 * 24 * 60 * 60) {
+    if (!CheckTransaction(tx, state)) {
+        return false; // state filled in by CheckTransaction
+    }
+
+    if (GetTime() - m_active_chainstate.m_chain[m_active_chainstate.m_chain.Height() == 0 ? 0 : 1]->GetBlockTime() < 180 * 24 * 60 * 60) {
         for (const CTxIn& txin : tx.vin) {
             if (txin.prevout.hash == Params().GetConsensus().hashGenesisTx)
                 return state.Invalid(TxValidationResult::TX_CONSENSUS, "genesis-input");
         }
-    }
-
-    if (!CheckTransaction(tx, state)) {
-        return false; // state filled in by CheckTransaction
     }
     // Time (prevent mempool memory exhaustion attack)
     // moved from CheckTransaction() to here, because it makes no sense to make GetAdjustedTime() a part of the consensus rules - user can set his clock to whatever he wishes.
@@ -2026,6 +2024,11 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     const auto time_start{SteadyClock::now()};
     const CChainParams& params{m_chainman.GetParams()};
 
+    if (block_hash != params.GetConsensus().hashGenesisBlock && pindex->IsProofOfWork()) {
+        LogPrintf("ERROR: %s: proof of work not allowed\n", __func__);
+        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-block-pow");
+    }
+
     if (pindex->nStakeModifier == 0 && pindex->nStakeModifierChecksum == 0 && !PeercoinContextualBlockChecks(block, state, pindex, fJustCheck, m_chainman.ActiveChainstate()))
         return error("%s: failed PoS check %s", __func__, state.ToString());
 
@@ -2135,7 +2138,6 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int64_t nValueIn = 0;
-    int64_t nValueStakeIn = 0;
     int64_t nValueOut = 0;
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
@@ -2160,14 +2162,12 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
             }
             for (unsigned int i = 0; i < tx.vin.size(); i++)
                 nValueIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
-
             nValueOut += tx.GetValueOut();
             if (tx.IsCoinStake()) {
-                for (unsigned int i = 0; i < tx.vin.size(); i++) {
-                    nValueStakeIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
-                }
-                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
-                    for (const CTxOut& txout : tx.vout) { // TODO WE NEED TO CHECK IF THE OUTPUTS MATCH UP, YEAH?
+                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == params.GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
+                    // patchcoin todo: if we don't hold claims at this point, maybe we need to wait for them higher up the chain
+                    // patchcoin todo: as it stands, claims are opt-in only
+                    for (const CTxOut& txout : tx.vout) {
                         for (auto& [_, claim] : g_claims) {
                             if (txout.scriptPubKey == claim.GetTarget()) {
                                 if (!claim.IsValid()) {
@@ -2181,7 +2181,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                                 CAmount nTotalReceived = 0;
                                 unsigned int nOutputs = 0;
                                 if (!claim.GetTotalReceived(pindex, nTotalReceived, nOutputs)) {
-                                    LogPrintf("ERROR: %s: Failed to get total received amount.\n", __func__);
+                                    LogPrintf("ERROR: %s: Failed to get claim total received amount.\n", __func__);
                                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-total-received");
                                 }
                                 nOutputs += 1;
@@ -2265,27 +2265,22 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, IsProtocolV12(pindex));
     }
 
-    if (block_hash != params.GetConsensus().hashGenesisBlock && block.IsProofOfWork() && block.vtx[0]->GetValueOut() > nFees) {
-        LogPrintf("ERROR: %s: coinbase pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[0]->GetValueOut(), nFees);
-        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
-    }
+    const int64_t nMint = nValueOut - nValueIn + nFees;
+    const int64_t nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
 
-    if (block.IsProofOfStake()) {
-        CAmount nReward = block.vtx[1]->GetValueOut() - nValueStakeIn;
-        if (!MoneyRange(nReward)) {
+    if (block_hash != params.GetConsensus().hashGenesisBlock) {
+        if (nMint > nFees) {
+            LogPrintf("ERROR: %s: coinstake/base pays too much (actual=%d vs limit=%d)\n", __func__, nMint, nFees);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
+        }
+        if (nMint > params.GetConsensus().genesisValue) {
             LogPrintf("ERROR: %s: reward in the block out of range\n", __func__);
             return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-txns-reward-outofrange");
         }
-        if (nReward > nFees) {
-            LogPrintf("ERROR: %s: coinstake pays too much (actual=%d vs limit=%d)\n", __func__, block.vtx[1]->GetValueOut(), nFees);
-            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
-        }
     }
 
-    int64_t nMoneySupply = (pindex->pprev ? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
-
-    if (!MoneyRange(nMoneySupply)) {
-        LogPrintf("ERROR: %s: total network value would exceed %d %s\n", __func__, FormatMoney(MAX_MONEY), CURRENCY_UNIT);
+    if (nMoneySupply > params.GetConsensus().genesisValue) {
+        LogPrintf("ERROR: %s: total network value would exceed %d %s\n", __func__, FormatMoney(params.GetConsensus().genesisValue), CURRENCY_UNIT);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-ms-amount");
     }
 
@@ -2315,7 +2310,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         return true;
 
     // peercoin: track money supply and mint amount info
-    pindex->nMint = nValueOut - nValueIn + nFees;
+    pindex->nMint = nMint;
     pindex->nMoneySupply = nMoneySupply;
 
     // peercoin increment nHeightStake if block is proof of stake
@@ -3557,42 +3552,6 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     if (fCheckMerkleRoot && fCheckSignature && (block.IsProofOfStake() || !IsBTC16BIPsEnabled(block.GetBlockTime())) && !CheckBlockSignature(block))
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-blk-sign", strprintf("%s : bad block signature", __func__));
 
-    // patchcoin todo add this check but it should be within a certain range, say 500 blocks, depending on the size of the claimset being broadcast
-    // patchcoin todo we could also require the claimset to be a certain size. invalidate it if it's lower
-    /*
-    if (block.IsProofOfStake() && block.vtx[1]->vout[1].scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
-        // patchcoin todo add date check : 180 days?
-        if (block.vtx[1]->vout.size() > 3) {
-            for (unsigned int i = 2; i < block.vtx[1]->vout.size() - 1; i++) {
-                if (block.vtx[1]->vout[i].scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey)
-                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-genesis-out", strprintf("%s : genesis scriptPubKey found in invalid position", __func__));
-            }
-        }
-        // patchcoin todo add more checks?
-        // patchcoin todo we're currently only checking the first vtx, maybe search others too
-        assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
-        assert(g_claimindex);
-
-        std::vector<CClaim> claims;
-        assert(g_claimindex->GetAllClaims(claims)); // patchcoin todo look up by included target, not all of them
-        bool maybeValid = false; // patchcoin this check doesn't actually work just yet :^)
-        for (const CTxOut& txout : block.vtx[1]->vout) {
-            if (txout.scriptPubKey == Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
-                maybeValid = true;
-                break;
-            }
-            for (const CClaim& claim : claims) {
-                if (txout.scriptPubKey == claim.GetTarget()) {
-                    maybeValid = true;
-                    break;
-                }
-            }
-        }
-        if (!maybeValid)
-            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-genesis-out", strprintf("%s : bad genesis output", __func__));
-    }
-    */
-
     return true;
 }
 
@@ -3825,7 +3784,7 @@ bool ChainstateManager::AcceptBlockHeader(const CBlockHeader& block, BlockValida
         }
 
         if (!(block.nFlags & CBlockIndex::BLOCK_PROOF_OF_STAKE)) {
-            LogPrint(BCLog::VALIDATION, "%s: Consensus::CheckBlockHeader: %s, %s\n", __func__, hash.ToString(), state.ToString());
+            LogPrint(BCLog::VALIDATION, "%s: block %s is proof or work\n", __func__, hash.ToString());
             return false;
         }
 
@@ -5101,17 +5060,9 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
     std::vector<valtype> vSolutions;
     const CTxOut& txout = genesis_key_held ? Params().GenesisBlock().vtx[0]->vout[0] : block.vtx[1]->vout[1];
 
-    /*
-    if (genesis_key_held && g_claimindex) { // patchcoin todo move this
-        std::vector<CClaim> claims;
-        if (g_claimindex->GetAllClaims(claims) && !claims.empty()) {
-            send_claimset_to_send = BuildAndSignClaimSet(claims, keystore);
-        }
-    }
-    */
-
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;
+
     // Sign
     if (keystore.IsLegacy())
     {
@@ -5121,8 +5072,6 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
             return false;
         if (key.GetPubKey() != CPubKey(vchPubKey))
             return false;
-        // if (genesis_key_held)
-        //     send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         return key.Sign(block.GetHash(), block.vchBlockSig, 0);
     }
     else
@@ -5132,8 +5081,6 @@ bool SignBlock(CBlock& block, const CWallet& keystore)
         address = PKHash(pubKey);
         PKHash* pkhash = std::get_if<PKHash>(&address);
         SigningResult res = keystore.SignBlockHash(block.GetHash(), *pkhash, block.vchBlockSig);
-        // if (genesis_key_held)
-        //    send_claimset = true; // patchcoin maybe move or at least require it to be reliant on genesis key
         if (res == SigningResult::OK)
             return true;
         return false;
@@ -5158,45 +5105,6 @@ bool CheckBlockSignature(const CBlock& block)
         return false;
     return key.Verify(block.GetHash(), block.vchBlockSig);
 }
-
-/*
-// peercoin: check block signature
-bool CheckBlockSignature(const CBlock& block)
-{
-    if (block.GetHash() == Params().GetConsensus().hashGenesisBlock)
-        return block.vchBlockSig.empty();
-
-    assert(hashScriptPubKeysOfPeercoinSnapshot == Params().GetConsensus().hashPeercoinSnapshot);
-    assert(g_claimindex);
-
-    std::vector<CScript> scripts = {block.vtx[1]->vout[1].scriptPubKey};
-    std::vector<CClaim> claims;
-    if (g_claimindex->GetAllClaims(claims)) {
-        for (const CClaim& claim : claims) {
-            if (claim.GetTarget() == scripts[0]) {
-                // patchcoin todo void claims based on 1) time of discovery and 2) inclusion height in chain
-                // patchcoin todo this doesn't need to be done here, but checked for
-                scripts.push_back(Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey);
-                break;
-            }
-        }
-    }
-
-    bool isValid = false;
-    for (const CScript& script : scripts) {
-        std::vector<valtype> vSolutions;
-        if (Solver(script, vSolutions) != TxoutType::PUBKEY)
-            continue;
-
-        const valtype& vchPubKey = vSolutions[0];
-        CPubKey key(vchPubKey);
-        if (block.vchBlockSig.empty())
-            continue;
-        isValid = key.Verify(block.GetHash(), block.vchBlockSig);
-    }
-    return isValid;
-}
-*/
 
 std::optional<uint256> ChainstateManager::SnapshotBlockhash() const
 {
