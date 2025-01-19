@@ -1,6 +1,7 @@
 #include "gradienttoolbutton.h"
 #include <QPainter>
 #include <QStyleOptionToolButton>
+#include <QHoverEvent>
 
 GradientToolButton::GradientToolButton(QWidget *parent)
     : QToolButton(parent)

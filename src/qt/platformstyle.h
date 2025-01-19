@@ -27,6 +27,8 @@ public:
     /** Colorize an image (given filename) with the icon color */
     QImage SingleColorImage(const QString& filename) const;
 
+    QIcon ForceColorizeIcon(const QString& filename, const QColor& color) const;
+
     /** Colorize an icon (given filename) with the icon color */
     QIcon SingleColorIcon(const QString& filename) const;
 
@@ -46,4 +48,3 @@ private:
 };
 
 #endif // BITCOIN_QT_PLATFORMSTYLE_H
-

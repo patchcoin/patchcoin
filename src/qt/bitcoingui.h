@@ -313,6 +313,7 @@ public Q_SLOTS:
 
     /** Show open dialog */
     void openClicked();
+    void setActionIcons(const QAction* activeAction);
 #endif // ENABLE_WALLET
     /** Show configuration dialog */
     void optionsClicked();

@@ -100,6 +100,11 @@ QImage PlatformStyle::SingleColorImage(const QString& filename) const
     return ColorizeImage(filename, SingleColor());
 }
 
+QIcon PlatformStyle::ForceColorizeIcon(const QString& filename, const QColor& color) const
+{
+    return ColorizeIcon(filename, color);
+}
+
 QIcon PlatformStyle::SingleColorIcon(const QString& filename) const
 {
     if (!colorizeIcons)
@@ -134,4 +139,3 @@ const PlatformStyle *PlatformStyle::instantiate(const QString &platformId)
     }
     return nullptr;
 }
-

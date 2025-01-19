@@ -1002,6 +1002,26 @@ void BitcoinGUI::showHelpMessageClicked()
     GUIUtil::bringToFront(helpMessageDialog);
 }
 
+void BitcoinGUI::setActionIcons(const QAction* activeAction) {
+    QMap<QAction*, QString> actionIconMap = {
+        {overviewAction, QStringLiteral(":/icons/overview")},
+        {sendCoinsAction, QStringLiteral(":/icons/send")},
+        {receiveCoinsAction, QStringLiteral(":/icons/receiving_addresses")},
+        {historyAction, QStringLiteral(":/icons/transactions")},
+        {mintingAction, QStringLiteral(":/icons/minting")}
+    };
+
+    for (auto it = actionIconMap.begin(); it != actionIconMap.end(); ++it) {
+        QAction* action = it.key();
+        QString iconPath = it.value();
+        if (action == activeAction) {
+            action->setIcon(platformStyle->ForceColorizeIcon(iconPath, {0, 38, 0}));
+        } else {
+            action->setIcon(platformStyle->ForceColorizeIcon(iconPath, {237, 249, 244}));
+        }
+    }
+}
+
 #ifdef ENABLE_WALLET
 void BitcoinGUI::openClicked()
 {
@@ -1015,29 +1035,35 @@ void BitcoinGUI::openClicked()
 void BitcoinGUI::gotoOverviewPage()
 {
     overviewAction->setChecked(true);
+    setActionIcons(overviewAction);
     if (walletFrame) walletFrame->gotoOverviewPage();
 }
 
 void BitcoinGUI::gotoHistoryPage()
 {
     historyAction->setChecked(true);
+    setActionIcons(historyAction);
     if (walletFrame) walletFrame->gotoHistoryPage();
 }
 
 void BitcoinGUI::gotoMintingPage()
 {
+    mintingAction->setChecked(true);
+    setActionIcons(mintingAction);
     if (walletFrame) walletFrame->gotoMintingPage();
 }
 
 void BitcoinGUI::gotoReceiveCoinsPage()
 {
     receiveCoinsAction->setChecked(true);
+    setActionIcons(receiveCoinsAction);
     if (walletFrame) walletFrame->gotoReceiveCoinsPage();
 }
 
 void BitcoinGUI::gotoSendCoinsPage(QString addr)
 {
     sendCoinsAction->setChecked(true);
+    setActionIcons(sendCoinsAction);
     if (walletFrame) walletFrame->gotoSendCoinsPage(addr);
 }
 
@@ -1340,7 +1366,8 @@ void BitcoinGUI::message(const QString& title, QString message, unsigned int sty
 void BitcoinGUI::changeEvent(QEvent *e)
 {
     if (e->type() == QEvent::PaletteChange) {
-        overviewAction->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/overview")));
+        overviewAction->setChecked(true);
+        setActionIcons(overviewAction);
         sendCoinsAction->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/send")));
         receiveCoinsAction->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/receiving_addresses")));
         historyAction->setIcon(platformStyle->SingleColorIcon(QStringLiteral(":/icons/transactions")));
