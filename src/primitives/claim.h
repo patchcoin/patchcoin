@@ -33,7 +33,7 @@ private:
     static const std::map<CScript, CAmount>& snapshot;
     static const uint256& hashSnapshot;
     SnapshotIterator snapshotIt;
-    size_t snapshotPos;
+    uint32_t snapshotPos;
 
     std::string sourceAddress;
     std::string signatureString;
@@ -83,12 +83,12 @@ public:
         return address;
     }
 
-    static std::string LocateAddress(const size_t pos)
+    static std::string LocateAddress(const uint32_t pos)
     {
         std::string address;
         // const auto& snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
         const CClaim dummy;
-        if (dummy.SnapshotIsValid() && pos < snapshot.size()) {
+        if (dummy.SnapshotIsValid() && pos < static_cast<uint32_t>(snapshot.size())) {
             const auto& it = std::next(snapshot.begin(), pos);
             if (it != snapshot.end()) {
                 address = GetAddressFromScript(it->first);
