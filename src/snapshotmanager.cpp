@@ -36,7 +36,7 @@ const SnapshotManager& PeercoinSnapshot()
 uint256 SnapshotManager::GetHash(std::map<CScript, CAmount>& scripts)
 {
     HashWriter ss{};
-    size_t position = 0;
+    uint32_t position = 0;
     for (const auto& [script, amount] : scripts) {
         ss << position++;
         ss << script;
