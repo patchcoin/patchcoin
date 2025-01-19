@@ -207,6 +207,8 @@ private:
     void createActions();
     /** Create the menu bar and sub-menus. */
     void createMenuBar();
+
+    void addGradientToolButton(QToolBar* toolbar, QAction* action);
     /** Create the toolbars */
     void createToolBars();
     /** Create system tray icon and notification */

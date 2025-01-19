@@ -46,6 +46,8 @@
 #include <regex>
 #endif //ENABLE_WALLET
 
+#include <qt/gradienttoolbutton.h>
+
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -78,6 +80,7 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
+class GradientToolButton;
 
 const std::string BitcoinGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MACOS)
@@ -207,7 +210,7 @@ BitcoinGUI::BitcoinGUI(interfaces::Node& node, const PlatformStyle *_platformSty
     progressBar = new GUIUtil::ProgressBar();
     progressBar->setAlignment(Qt::AlignCenter);
     progressBar->setVisible(false);
-    progressBar->setStyleSheet("QProgressBar { background-color: #8C8C8C; text-align: center; color: white; border: 1px solid #4b4b4b; } QProgressBar::chunk { background: #3cb054; margin: 0px; }");
+    progressBar->setStyleSheet("QProgressBar { background-color: #8C8C8C; text-align: center; color: #002600; border: 1px solid #4b4b4b; } QProgressBar::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #00db98, stop:0.5 #00ff92, stop:1 #a4ffa3); margin: 0px; }");
 
     statusBar()->addWidget(progressBarLabel);
     statusBar()->addWidget(progressBar);
@@ -615,9 +618,19 @@ void BitcoinGUI::createMenuBar()
     help->addAction(aboutQtAction);
 }
 
+void BitcoinGUI::addGradientToolButton(QToolBar *toolbar, QAction *action)
+{
+    GradientToolButton *button = new GradientToolButton(this);
+    button->setDefaultAction(action);
+
+    button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+    toolbar->addWidget(button);
+}
+
 void BitcoinGUI::createToolBars()
 {
-    if(walletFrame)
+    if (walletFrame)
     {
         QLabel *imageLogo = new QLabel;
         imageLogo->setPixmap(QPixmap(":/images/logo"));
@@ -629,11 +642,11 @@ void BitcoinGUI::createToolBars()
         toolbar->addWidget(imageLogo);
         toolbar->setMovable(false);
         toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        toolbar->addAction(overviewAction);
-        toolbar->addAction(sendCoinsAction);
-        toolbar->addAction(receiveCoinsAction);
-        toolbar->addAction(historyAction);
-        toolbar->addAction(mintingAction);
+        addGradientToolButton(toolbar, overviewAction);
+        addGradientToolButton(toolbar, sendCoinsAction);
+        addGradientToolButton(toolbar, receiveCoinsAction);
+        addGradientToolButton(toolbar, historyAction);
+        addGradientToolButton(toolbar, mintingAction);
         overviewAction->setChecked(true);
 
 #ifdef ENABLE_WALLET
