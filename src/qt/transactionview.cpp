@@ -292,9 +292,10 @@ void TransactionView::PopulateSnapshotTable()
     waitForSnapshot->stop();
 
     snapshotTable->clearContents();
-    snapshotTable->setRowCount(static_cast<int>(validMap.size() + incompMap.size()));
+    snapshotTable->setRowCount(static_cast<int>(validMap.size() + incompMap.size() + /* incompatible header */ 1));
 
     int row = 0;
+    const QBrush greyBrush(Qt::gray);
 
     auto addRowToTable = [&](const auto& scriptPubKey, CAmount balance, bool isCompatible) {
         CTxDestination dest;
@@ -312,16 +313,18 @@ void TransactionView::PopulateSnapshotTable()
         QTableWidgetItem* elItem = new QTableWidgetItem(elStr);
         elItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
+        addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsEditable);
+        valItem->setFlags(valItem->flags() & ~Qt::ItemIsEditable);
+        elItem->setFlags(elItem->flags() & ~Qt::ItemIsEditable);
 
         if (!isCompatible) {
-            QBrush greyBrush(Qt::gray);
             addressItem->setForeground(greyBrush);
             valItem->setForeground(greyBrush);
             elItem->setForeground(greyBrush);
 
-            addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
-            valItem->setFlags(valItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
-            elItem->setFlags(elItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
+            addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsSelectable);
+            valItem->setFlags(valItem->flags() & ~Qt::ItemIsSelectable);
+            elItem->setFlags(elItem->flags() & ~Qt::ItemIsSelectable);
         }
 
         snapshotTable->setItem(row, 0, addressItem);
@@ -333,6 +336,18 @@ void TransactionView::PopulateSnapshotTable()
 
     for (const auto& [scriptPubKey, balance] : validMap) {
         addRowToTable(scriptPubKey, balance, true);
+    }
+
+    if (!incompMap.empty()) {
+        QTableWidgetItem* headerItem = new QTableWidgetItem(tr("Incompatible addresses"));
+        headerItem->setTextAlignment(Qt::AlignCenter);
+        headerItem->setFlags(headerItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
+
+        headerItem->setForeground(greyBrush);
+
+        snapshotTable->setItem(row, 0, headerItem);
+        snapshotTable->setSpan(row, 0, 1, 3);
+        row++;
     }
 
     for (const auto& [scriptPubKey, balance] : incompMap) {

@@ -224,7 +224,7 @@ bool SnapshotManager::LoadSnapshotFromDisk()
         afile >> temp;
         afile.fclose();
 
-        uint256 hash = temp.GetHash();
+        const uint256 hash = temp.GetHash();
         if (hash != Params().GetConsensus().hashPeercoinSnapshot) {
             LogPrintf("LoadSnapshotFromDisk: hash mismatch. got=%s\n", hash.ToString());
             return false;
