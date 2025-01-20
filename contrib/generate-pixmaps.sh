@@ -112,13 +112,18 @@ generate_nsis_wizard_bmp() {
     local total_height=$((target_height + padding_top + padding_bottom))
 
     convert "$base_image" \
+        -filter Lanczos \
         -resize "${target_width}x${target_height}^" \
         -gravity center \
         -crop "${target_width}x${target_height}+0+0" +repage \
-        -background none \
+        -background white \
         -gravity center \
         -extent "${target_width}x$total_height" \
-        -define bmp3:format=bmp3 \
+        -colorspace RGB \
+        -type TrueColor \
+        -depth 24 \
+        -define bmp:format=bmp3 \
+        -compress none \
         "$output_file"
     echo "nsis-wizard.bmp generated: $output_file"
 }
@@ -139,10 +144,14 @@ generate_nsis_header_bmp() {
         -resize "${inner_width}x${inner_height}^" \
         -gravity center \
         -crop "${inner_width}x${inner_height}+0+0" +repage \
-        -background none \
+        -background white \
         -gravity center \
         -extent "${total_width}x${total_height}" \
-        -define bmp3:format=bmp3 \
+        -colorspace RGB \
+        -type TrueColor \
+        -depth 24 \
+        -define bmp:format=bmp3 \
+        -compress none \
         "$output_file"
     echo "nsis-header.bmp generated: $output_file"
 }
