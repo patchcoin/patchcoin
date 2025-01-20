@@ -961,7 +961,7 @@ void CWallet::WalletUpdateSpent(const CTransactionRef &tx)
                     LogPrintf("WalletUpdateSpent: bad wtx %s\n", wtx.GetHash().ToString().c_str());
                 else if (IsMine(wtx.tx->vout[txin.prevout.n]))
                 {
-                    LogPrintf("WalletUpdateSpent found spent coin %sppc %s\n", FormatMoney(CachedTxGetCredit(*this, wtx, ISMINE_SPENDABLE)).c_str(), wtx.GetHash().ToString().c_str());
+                    LogPrintf("WalletUpdateSpent found spent coin %sptc %s\n", FormatMoney(CachedTxGetCredit(*this, wtx, ISMINE_SPENDABLE)).c_str(), wtx.GetHash().ToString().c_str());
                     NotifyTransactionChanged(txin.prevout.hash, CT_UPDATED);
                 }
             }
@@ -4024,7 +4024,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                 );
 
                 if (bDebug)
-                    LogPrintf("rfc28: security level is %f, target amount %f, desired outputs %d from %f ppc\n",
+                    LogPrintf("rfc28: security level is %f, target amount %f, desired outputs %d from %f ptc\n",
                         securityLevel, double(nTargetOutputAmount)/COIN, desiredOutputs, double(current)/COIN);
 
                 CAmount outValue = current / desiredOutputs;

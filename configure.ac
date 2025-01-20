@@ -4,15 +4,15 @@ define(_CLIENT_VERSION_MINOR, 2)
 define(_CLIENT_VERSION_BUILD, 0)
 define(_CLIENT_VERSION_RC, 0)
 define(_CLIENT_VERSION_IS_RELEASE, true)
-define(_COPYRIGHT_YEAR, 2024)
+define(_COPYRIGHT_YEAR, 2025)
 define(_PEERCOIN_VERSION_MAJOR, 0)
 define(_PEERCOIN_VERSION_MINOR, 14)
 define(_PEERCOIN_VERSION_REVISION, 10)
 define(_PEERCOIN_VERSION_BUILD, 0)
 define(_PEERCOIN_VERSION_RC, 0)
 define(_COPYRIGHT_HOLDERS,[The %s developers])
-define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Peercoin]])
-AC_INIT([Peercoin],m4_join([.], _PEERCOIN_VERSION_MAJOR._PEERCOIN_VERSION_MINOR._PEERCOIN_VERSION_REVISION, m4_if(_PEERCOIN_VERSION_BUILD, [0], [], _PEERCOIN_VERSION_BUILD))m4_if(_PEERCOIN_VERSION_RC, [0], [], [rc]_PEERCOIN_VERSION_RC),[https://github.com/peercoin/peercoin/issues],[peercoin],[https://peercoin.net/])
+define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Patchcoin]])
+AC_INIT([Patchcoin],m4_join([.], _PEERCOIN_VERSION_MAJOR._PEERCOIN_VERSION_MINOR._PEERCOIN_VERSION_REVISION, m4_if(_PEERCOIN_VERSION_BUILD, [0], [], _PEERCOIN_VERSION_BUILD))m4_if(_PEERCOIN_VERSION_RC, [0], [], [rc]_PEERCOIN_VERSION_RC),[https://github.com/patchcoin/patchcoin/issues],[patchcoin],[https://patchcoin.org/])
 AC_CONFIG_SRCDIR([src/validation.cpp])
 AC_CONFIG_HEADERS([src/config/bitcoin-config.h])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -34,17 +34,17 @@ if test -n "$PKG_CONFIG_LIBDIR"; then
   PKG_CONFIG="env PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR $PKG_CONFIG"
 fi
 
-BITCOIN_DAEMON_NAME=peercoind
-BITCOIN_GUI_NAME=peercoin-qt
-BITCOIN_TEST_NAME=test_peercoin
-BITCOIN_CLI_NAME=peercoin-cli
-BITCOIN_TX_NAME=peercoin-tx
-BITCOIN_UTIL_NAME=peercoin-util
-BITCOIN_CHAINSTATE_NAME=peercoin-chainstate
-BITCOIN_WALLET_TOOL_NAME=peercoin-wallet
+BITCOIN_DAEMON_NAME=patchcoind
+BITCOIN_GUI_NAME=patchcoin-qt
+BITCOIN_TEST_NAME=test_patchcoin
+BITCOIN_CLI_NAME=patchcoin-cli
+BITCOIN_TX_NAME=patchcoin-tx
+BITCOIN_UTIL_NAME=patchcoin-util
+BITCOIN_CHAINSTATE_NAME=patchcoin-chainstate
+BITCOIN_WALLET_TOOL_NAME=patchcoin-wallet
 dnl Multi Process
-BITCOIN_MP_NODE_NAME=peercoin-node
-BITCOIN_MP_GUI_NAME=peercoin-gui
+BITCOIN_MP_NODE_NAME=patchcoin-node
+BITCOIN_MP_GUI_NAME=patchcoin-gui
 
 dnl Unless the user specified ARFLAGS, force it to be cr
 dnl This is also the default as-of libtool 2.4.7
@@ -1985,10 +1985,10 @@ AC_DEFINE([CLIENT_VERSION_MAJOR], [_CLIENT_VERSION_MAJOR], [Major version])
 AC_DEFINE([CLIENT_VERSION_MINOR], [_CLIENT_VERSION_MINOR], [Minor version])
 AC_DEFINE([CLIENT_VERSION_BUILD], [_CLIENT_VERSION_BUILD], [Version Build])
 AC_DEFINE([CLIENT_VERSION_IS_RELEASE], [_CLIENT_VERSION_IS_RELEASE], [Version is release])
-AC_DEFINE([PEERCOIN_VERSION_MAJOR], [_PEERCOIN_VERSION_MAJOR], [Peercoin major version])
-AC_DEFINE([PEERCOIN_VERSION_MINOR], [_PEERCOIN_VERSION_MINOR], [Peercoin minor version])
-AC_DEFINE([PEERCOIN_VERSION_REVISION], [_PEERCOIN_VERSION_REVISION], [Peercoin build revision])
-AC_DEFINE([PEERCOIN_VERSION_BUILD], [_PEERCOIN_VERSION_BUILD], [Peercoin version Build])
+AC_DEFINE([PEERCOIN_VERSION_MAJOR], [_PEERCOIN_VERSION_MAJOR], [Patchcoin major version])
+AC_DEFINE([PEERCOIN_VERSION_MINOR], [_PEERCOIN_VERSION_MINOR], [Patchcoin minor version])
+AC_DEFINE([PEERCOIN_VERSION_REVISION], [_PEERCOIN_VERSION_REVISION], [Patchcoin build revision])
+AC_DEFINE([PEERCOIN_VERSION_BUILD], [_PEERCOIN_VERSION_BUILD], [Patchcoin version Build])
 AC_DEFINE([COPYRIGHT_YEAR], [_COPYRIGHT_YEAR], [Copyright year])
 AC_DEFINE([COPYRIGHT_HOLDERS], ["_COPYRIGHT_HOLDERS"], [Copyright holder(s) before %s replacement])
 AC_DEFINE([COPYRIGHT_HOLDERS_SUBSTITUTION], ["_COPYRIGHT_HOLDERS_SUBSTITUTION"], [Replacement for %s in copyright holders string])

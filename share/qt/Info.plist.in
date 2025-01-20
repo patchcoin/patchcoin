@@ -34,16 +34,16 @@
   <string>????</string>
 
   <key>CFBundleExecutable</key>
-  <string>Peercoin-Qt</string>
+  <string>Patchcoin-Qt</string>
 
   <key>CFBundleName</key>
-  <string>Peercoin-Qt</string>
+  <string>Patchcoin-Qt</string>
 
   <key>LSHasLocalizedDisplayName</key>
   <true/>
 
   <key>CFBundleIdentifier</key>
-  <string>org.peercoin.Peercoin-Qt</string>
+  <string>org.patchcoin.Patchcoin-Qt</string>
 
   <key>CFBundleURLTypes</key>
   <array>
@@ -51,10 +51,10 @@
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
       <key>CFBundleURLName</key>
-      <string>org.peercoin.PeercoinPayment</string>
+      <string>org.patchcoin.PatchcoinPayment</string>
       <key>CFBundleURLSchemes</key>
       <array>
-        <string>peercoin</string>
+        <string>patchcoin</string>
       </array>
     </dict>
   </array>

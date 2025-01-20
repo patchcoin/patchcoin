@@ -14,14 +14,14 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "Peercoin"
-            VALUE "FileDescription",    "peercoin-wallet (CLI tool for " PACKAGE_NAME " wallets)"
+            VALUE "CompanyName",        "Patchcoin"
+            VALUE "FileDescription",    "patchcoin-wallet (CLI tool for " PACKAGE_NAME " wallets)"
             VALUE "FileVersion",        PACKAGE_VERSION
-            VALUE "InternalName",       "peercoin-wallet"
+            VALUE "InternalName",       "patchcoin-wallet"
             VALUE "LegalCopyright",     COPYRIGHT_STR
             VALUE "LegalTrademarks1",   "Distributed under the MIT software license, see the accompanying file COPYING or http://www.opensource.org/licenses/mit-license.php."
-            VALUE "OriginalFilename",   "peercoin-wallet.exe"
-            VALUE "ProductName",        "peercoin-wallet"
+            VALUE "OriginalFilename",   "patchcoin-wallet.exe"
+            VALUE "ProductName",        "patchcoin-wallet"
             VALUE "ProductVersion",     PACKAGE_VERSION
         END
     END

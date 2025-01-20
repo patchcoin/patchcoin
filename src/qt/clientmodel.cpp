@@ -312,11 +312,11 @@ void ClientModel::checkGithub() {
     std::time_t current_time = std::chrono::system_clock::to_time_t(now);
     std::tm current_date = *std::localtime(&current_time);
     std::tm last_date = *std::localtime(&last_checked_time);
-
+    // patchcoin todo
     if (current_date.tm_yday != last_date.tm_yday) {
         QNetworkAccessManager* nam = new QNetworkAccessManager(this);
         connect(nam, &QNetworkAccessManager::finished, this, &ClientModel::onResult);
-        QUrl url("http://mirror.peercoin.net/latest_release.json");
+        QUrl url("http://mirror.patchcoin.net/latest_release.json");
         nam->get(QNetworkRequest(url));
         last_checked_time = current_time;
     }
@@ -324,7 +324,7 @@ void ClientModel::checkGithub() {
 
 void ClientModel::onResult(QNetworkReply *reply) {
     if(reply->error() == QNetworkReply::NoError) {
-        std::regex versionRgx("v([0-9]+).([0-9]+).([0-9]+)ppc");
+        std::regex versionRgx("v([0-9]+).([0-9]+).([0-9]+)ptc");
         std::smatch matches;
         int newVersion=0;
         QByteArray result = reply->readAll();

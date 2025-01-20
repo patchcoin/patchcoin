@@ -66,8 +66,8 @@
         <translation type="unfinished">Direcciones de recepción</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Estas son tus direcciones de Peercoin para recibir pagos. Siempre revise el monto y la dirección de envío antes de enviar criptomonedas.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Estas son tus direcciones de Patchcoin para recibir pagos. Siempre revise el monto y la dirección de envío antes de enviar criptomonedas.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -452,8 +452,8 @@
         <translation type="unfinished">Proxy &lt;b&gt;habilitado&lt;/b&gt;: %1</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Enviar monedas a una dirección Peercoin</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Enviar monedas a una dirección Patchcoin</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -492,12 +492,12 @@
         <translation type="unfinished">Firmar &amp;mensaje...</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
         <translation>Firmar un mensaje para provar que usted es dueño de esta dirección</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Verificar mensajes comprobando que están firmados con direcciones Peercoin concretas</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Verificar mensajes comprobando que están firmados con direcciones Patchcoin concretas</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -516,8 +516,8 @@
         <translation type="unfinished">Barra de pestañas</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Pide pagos (genera codigos QR and peercoin: URls)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Pide pagos (genera codigos QR and patchcoin: URls)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -785,8 +785,8 @@
         <translation type="unfinished">La billetera está &lt;b&gt;encriptada&lt;/b&gt; y actualmente &lt;b&gt;bloqueda&lt;/b&gt;</translation>
     </message>
     <message>
-        <source>A fatal error occurred. Peercoin can no longer continue safely and will quit.</source>
-        <translation>Ha ocurrido un error fatal. Peercoin no puede seguir seguro y se cerrará.</translation>
+        <source>A fatal error occurred. Patchcoin can no longer continue safely and will quit.</source>
+        <translation>Ha ocurrido un error fatal. Patchcoin no puede seguir seguro y se cerrará.</translation>
     </message>
 </context>
 <context>
@@ -1075,8 +1075,8 @@
         <translation>usar un directorio de datos personalizado:</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>At least %1 GB of data will be stored in this directory, and it will grow over time.</source>
@@ -1118,12 +1118,12 @@
         <translation>Formulario</translation>
     </message>
     <message>
-        <source>Recent transactions may not yet be visible, and therefore your wallet's balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the peercoin network, as detailed below.</source>
-        <translation>Las transacciones recientes aún no pueden ser visibles, y por lo tanto el saldo de su monedero podría ser incorrecto. Esta información será correcta cuando su monedero haya terminado de sincronizarse con la red de peercoin, como se detalla abajo.</translation>
+        <source>Recent transactions may not yet be visible, and therefore your wallet's balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the patchcoin network, as detailed below.</source>
+        <translation>Las transacciones recientes aún no pueden ser visibles, y por lo tanto el saldo de su monedero podría ser incorrecto. Esta información será correcta cuando su monedero haya terminado de sincronizarse con la red de patchcoin, como se detalla abajo.</translation>
     </message>
     <message>
-        <source>Attempting to spend peercoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
-        <translation>La red no aceptará el intentar gastar peercoins que están afectados por transacciones aún no mostradas.</translation>
+        <source>Attempting to spend patchcoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
+        <translation>La red no aceptará el intentar gastar patchcoins que están afectados por transacciones aún no mostradas.</translation>
     </message>
     <message>
         <source>Number of blocks left</source>
@@ -1267,8 +1267,8 @@
         <translation>Gastar cambio sin confirmar</translation>
     </message>
     <message>
-        <source>Automatically open the Peercoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Abre automáticamente el puerto del cliente Peercoin en el router. Esto funciona solo cuando tu router es compatible con UPnP y está habilitado.</translation>
+        <source>Automatically open the Patchcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Abre automáticamente el puerto del cliente Patchcoin en el router. Esto funciona solo cuando tu router es compatible con UPnP y está habilitado.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -1283,8 +1283,8 @@
         <translation>Permitir conexiones entrantes</translation>
     </message>
     <message>
-        <source>Connect to the Peercoin network through a SOCKS5 proxy.</source>
-        <translation>Conectar a la red de Peercoin a través de un proxy SOCKS5</translation>
+        <source>Connect to the Patchcoin network through a SOCKS5 proxy.</source>
+        <translation>Conectar a la red de Patchcoin a través de un proxy SOCKS5</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -1319,8 +1319,8 @@
         <translation>Tor</translation>
     </message>
     <message>
-        <source>Connect to the Peercoin network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Conectar a la red de Peercoin a través de un proxy SOCKS5 diferente para los servicios anónimos de Tor.</translation>
+        <source>Connect to the Patchcoin network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <translation>Conectar a la red de Patchcoin a través de un proxy SOCKS5 diferente para los servicios anónimos de Tor.</translation>
     </message>
     <message>
         <source>&amp;Window</source>
@@ -1427,8 +1427,8 @@
         <translation>Formulario</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
-        <translation>La información entregada puede estar desactualizada. Tu billetera se sincroniza automáticamente con la red de Peercoin después de establecer una conexión, pero este proceso aún no se ha completado.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
+        <translation>La información entregada puede estar desactualizada. Tu billetera se sincroniza automáticamente con la red de Patchcoin después de establecer una conexión, pero este proceso aún no se ha completado.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1509,8 +1509,8 @@
         <translation>Error en la solicitud de pago</translation>
     </message>
     <message>
-        <source>Cannot start peercoin: click-to-pay handler</source>
-        <translation>No se puede iniciar Peercoin: controlador de clic para pagar</translation>
+        <source>Cannot start patchcoin: click-to-pay handler</source>
+        <translation>No se puede iniciar Patchcoin: controlador de clic para pagar</translation>
     </message>
     <message>
         <source>URI handling</source>
@@ -1955,8 +1955,8 @@
         <translation>&amp;mensaje</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Peercoin network.</source>
-        <translation>Mensaje opcional adjunto a la solicitud de pago, que será mostrado cuando la solicitud sea abierta. Nota: Este mensaje no será enviado con el pago a través de la red Peercoin.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Patchcoin network.</source>
+        <translation>Mensaje opcional adjunto a la solicitud de pago, que será mostrado cuando la solicitud sea abierta. Nota: Este mensaje no será enviado con el pago a través de la red Patchcoin.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>

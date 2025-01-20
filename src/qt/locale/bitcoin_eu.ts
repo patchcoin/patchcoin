@@ -66,8 +66,8 @@
         <translation type="unfinished">Helbideak jasotzen</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Hauek dira zuk dirua jaso dezaketen Peercoin helbideak. Egiaztatu beti diru-kopurua eta dirua jasoko duen helbidea zuzen egon daitezen, txanponak bidali baino lehen.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Hauek dira zuk dirua jaso dezaketen Patchcoin helbideak. Egiaztatu beti diru-kopurua eta dirua jasoko duen helbidea zuzen egon daitezen, txanponak bidali baino lehen.</translation>
     </message>
     <message>
         <source>These are your Bitcoin addresses for receiving payments. Use the 'Create new receiving address' button in the receive tab to create new addresses.

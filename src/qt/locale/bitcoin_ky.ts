@@ -187,8 +187,8 @@
 <context>
     <name>Intro</name>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error</source>

@@ -535,7 +535,7 @@
 <context>
     <name>Intro</name>
     <message>
-        <source>Peercoin</source>
+        <source>Patchcoin</source>
         <translation>Пиркойн</translation>
     </message>
     <message>

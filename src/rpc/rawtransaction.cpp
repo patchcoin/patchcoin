@@ -237,7 +237,7 @@ static RPCHelpMan getrawtransaction()
                                          {RPCResult::Type::STR, "desc", "Inferred descriptor for the output"},
                                          {RPCResult::Type::STR_HEX, "hex", "the hex"},
                                          {RPCResult::Type::STR, "type", "The type, eg 'pubkeyhash'"},
-                                         {RPCResult::Type::STR, "address", /*optional=*/true, "The Peercoin address (only if a well-defined address exists)"},
+                                         {RPCResult::Type::STR, "address", /*optional=*/true, "The Patchcoin address (only if a well-defined address exists)"},
                                      }},
                                  }},
                              }},
@@ -460,7 +460,7 @@ static RPCHelpMan decoderawtransaction()
                                     {RPCResult::Type::STR, "desc", "Inferred descriptor for the output"},
                                     {RPCResult::Type::STR_HEX, "hex", "the hex"},
                                     {RPCResult::Type::STR, "type", "The type, eg 'pubkeyhash'"},
-                                    {RPCResult::Type::STR, "address", /*optional=*/true, "The Peercoin address (only if a well-defined address exists)"},
+                                    {RPCResult::Type::STR, "address", /*optional=*/true, "The Patchcoin address (only if a well-defined address exists)"},
                                 }},
                             }},
                         }},
@@ -503,7 +503,7 @@ static RPCHelpMan decodescript()
                 {RPCResult::Type::STR, "asm", "Script public key"},
                 {RPCResult::Type::STR, "desc", "Inferred descriptor for the script"},
                 {RPCResult::Type::STR, "type", "The output type (e.g. " + GetAllOutputTypes() + ")"},
-                {RPCResult::Type::STR, "address", /*optional=*/true, "The Peercoin address (only if a well-defined address exists)"},
+                {RPCResult::Type::STR, "address", /*optional=*/true, "The Patchcoin address (only if a well-defined address exists)"},
                 {RPCResult::Type::STR, "p2sh", /*optional=*/true,
                  "address of P2SH script wrapping this redeem script (not returned for types that should not be wrapped)"},
                 {RPCResult::Type::OBJ, "segwit", /*optional=*/true,
@@ -1006,7 +1006,7 @@ static RPCHelpMan decodepsbt()
 {
     return RPCHelpMan{
         "decodepsbt",
-        "Return a JSON object representing the serialized, base64-encoded partially signed Peercoin transaction.",
+        "Return a JSON object representing the serialized, base64-encoded partially signed Patchcoin transaction.",
                 {
                     {"psbt", RPCArg::Type::STR, RPCArg::Optional::NO, "The PSBT base64 string"},
                 },
@@ -1446,7 +1446,7 @@ static RPCHelpMan decodepsbt()
 static RPCHelpMan combinepsbt()
 {
     return RPCHelpMan{"combinepsbt",
-                "\nCombine multiple partially signed Peercoin transactions into one transaction.\n"
+                "\nCombine multiple partially signed Patchcoin transactions into one transaction.\n"
                 "Implements the Combiner role.\n",
                 {
                     {"txs", RPCArg::Type::ARR, RPCArg::Optional::NO, "The base64 strings of partially signed transactions",

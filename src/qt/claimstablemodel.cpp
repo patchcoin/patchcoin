@@ -71,7 +71,7 @@ QVariant ClaimsTableModel::headerData(int section, Qt::Orientation orientation, 
             switch (section)
             {
                 case 0: return tr("  ");
-                case 1: return tr("PPC Address");
+                case 1: return tr("PTC Address");
                 case 2: return tr("PTC Address");
                 case 3: return tr("Date");
                 case 4: return tr("Received");

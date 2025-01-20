@@ -67,11 +67,11 @@
     </message>
     <message>
         <source>These are your Bitcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>これらは、あなたが知っている送信先の Peercoin アドレスです。コインを送る前に必ず、金額と受取用アドレスを確認してください。</translation>
+        <translation>これらは、あなたが知っている送信先の Patchcoin アドレスです。コインを送る前に必ず、金額と受取用アドレスを確認してください。</translation>
     </message>
     <message>
         <source>These are your Bitcoin addresses for receiving payments. Use the 'Create new receiving address' button in the receive tab to create new addresses.</source>
-        <translation>これらは支払いを受け取るための、あなたの Peercoin アドレスです。新しいアドレスを作成するには受取タブ内の「新しい受取用アドレスを作成」ボタンを使用します。</translation>
+        <translation>これらは支払いを受け取るための、あなたの Patchcoin アドレスです。新しいアドレスを作成するには受取タブ内の「新しい受取用アドレスを作成」ボタンを使用します。</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -163,7 +163,7 @@
     </message>
     <message>
         <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR BITCOINS&lt;/b&gt;!</source>
-        <translation>警告: ウォレットの暗号化後にパスフレーズを忘れてしまった場合、&lt;b&gt;あなたの Peercoin はすべて失われます&lt;/b&gt;！</translation>
+        <translation>警告: ウォレットの暗号化後にパスフレーズを忘れてしまった場合、&lt;b&gt;あなたの Patchcoin はすべて失われます&lt;/b&gt;！</translation>
     </message>
     <message>
         <source>Are you sure you wish to encrypt your wallet?</source>
@@ -184,7 +184,7 @@
     </message>
     <message>
         <source>Remember that encrypting your wallet cannot fully protect your bitcoins from being stolen by malware infecting your computer.</source>
-        <translation>ウォレットを暗号化しても、コンピュータに感染したマルウェアなどによる Peercoin の盗難を完全に防ぐことはできないことにご注意ください。</translation>
+        <translation>ウォレットを暗号化しても、コンピュータに感染したマルウェアなどによる Patchcoin の盗難を完全に防ぐことはできないことにご注意ください。</translation>
     </message>
     <message>
         <source>Wallet to be encrypted</source>
@@ -1712,7 +1712,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Send coins to a Bitcoin address</source>
-        <translation>Peercoin アドレスにコインを送る</translation>
+        <translation>Patchcoin アドレスにコインを送る</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -1756,7 +1756,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Sign messages with your Bitcoin addresses to prove you own them</source>
-        <translation>Peercoin アドレスでメッセージに署名することで、そのアドレスの所有権を証明する</translation>
+        <translation>Patchcoin アドレスでメッセージに署名することで、そのアドレスの所有権を証明する</translation>
     </message>
     <message>
         <source>&amp;Verify message…</source>
@@ -1764,7 +1764,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Verify messages to ensure they were signed with specified Bitcoin addresses</source>
-        <translation>メッセージを検証して、指定された Peercoin アドレスで署名されたことを確認する</translation>
+        <translation>メッセージを検証して、指定された Patchcoin アドレスで署名されたことを確認する</translation>
     </message>
     <message>
         <source>&amp;Load PSBT from file…</source>
@@ -1906,7 +1906,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Open a bitcoin: URI</source>
-        <translation>peercoin: URIを開く</translation>
+        <translation>patchcoin: URIを開く</translation>
     </message>
     <message>
         <source>Open Wallet</source>
@@ -1936,7 +1936,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Show the %1 help message to get a list with possible Bitcoin command-line options</source>
-        <translation>%1 のヘルプ メッセージを表示し、使用可能な Peercoin のコマンドラインオプション一覧を見る。</translation>
+        <translation>%1 のヘルプ メッセージを表示し、使用可能な Patchcoin のコマンドラインオプション一覧を見る。</translation>
     </message>
     <message>
         <source>&amp;Mask values</source>
@@ -2494,7 +2494,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>The entered address "%1" is not a valid Bitcoin address.</source>
-        <translation>入力されたアドレス "%1" は無効な Peercoin アドレスです。</translation>
+        <translation>入力されたアドレス "%1" は無効な Patchcoin アドレスです。</translation>
     </message>
     <message>
         <source>Address "%1" already exists as a receiving address with label "%2" and so cannot be added as a sending address.</source>
@@ -2662,11 +2662,11 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Recent transactions may not yet be visible, and therefore your wallet's balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the bitcoin network, as detailed below.</source>
-        <translation>最近の取引がまだ表示されていない可能性があります。そのため、ウォレットの残高が正しく表示されていないかもしれません。この情報は、ウォレットが Peercoin ネットワークへの同期が完了すると正確なものとなります。詳細は下記を参照してください。</translation>
+        <translation>最近の取引がまだ表示されていない可能性があります。そのため、ウォレットの残高が正しく表示されていないかもしれません。この情報は、ウォレットが Patchcoin ネットワークへの同期が完了すると正確なものとなります。詳細は下記を参照してください。</translation>
     </message>
     <message>
         <source>Attempting to spend bitcoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
-        <translation>まだ表示されていない取引が関係する Peercoin の使用を試みた場合、ネットワークから認証を受けられません。</translation>
+        <translation>まだ表示されていない取引が関係する Patchcoin の使用を試みた場合、ネットワークから認証を受けられません。</translation>
     </message>
     <message>
         <source>Number of blocks left</source>
@@ -2717,7 +2717,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     <name>OpenURIDialog</name>
     <message>
         <source>Open bitcoin URI</source>
-        <translation>peercoin URIを開く</translation>
+        <translation>patchcoin URIを開く</translation>
     </message>
     <message>
         <source>Paste address from clipboard</source>
@@ -2877,7 +2877,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Automatically open the Bitcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>自動的にルーター上の Peercoin クライアントのポートを開放します。あなたのルーターが UPnP に対応していて、それが有効になっている場合のみ動作します。</translation>
+        <translation>自動的にルーター上の Patchcoin クライアントのポートを開放します。あなたのルーターが UPnP に対応していて、それが有効になっている場合のみ動作します。</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -2901,7 +2901,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>Connect to the Bitcoin network through a SOCKS5 proxy.</source>
-        <translation>SOCKS5 プロキシ経由で Peercoin ネットワークに接続する。</translation>
+        <translation>SOCKS5 プロキシ経由で Patchcoin ネットワークに接続する。</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -3086,7 +3086,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Bitcoin network after a connection is established, but this process has not completed yet.</source>
-        <translation>表示されている情報は古い可能性があります。ウォレットは接続確立後に Peercoin ネットワークと自動的に同期しますが、同期処理はまだ完了していません。</translation>
+        <translation>表示されている情報は古い可能性があります。ウォレットは接続確立後に Patchcoin ネットワークと自動的に同期しますが、同期処理はまだ完了していません。</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -3870,7 +3870,7 @@ For more information on using this console, type %6.
     </message>
     <message>
         <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Bitcoin network.</source>
-        <translation>支払いリクエストに添付するメッセージ（任意）。支払リクエスト開始時に表示されます。注意: メッセージは Peercoin ネットワーク上へ送信されません。</translation>
+        <translation>支払いリクエストに添付するメッセージ（任意）。支払リクエスト開始時に表示されます。注意: メッセージは Patchcoin ネットワーク上へ送信されません。</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -4419,7 +4419,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>Warning: Invalid Bitcoin address</source>
-        <translation>警告: 無効な Peercoin アドレス</translation>
+        <translation>警告: 無効な Patchcoin アドレス</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>
@@ -4458,7 +4458,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>The Bitcoin address to send the payment to</source>
-        <translation>支払い先 Peercoin アドレス</translation>
+        <translation>支払い先 Patchcoin アドレス</translation>
     </message>
     <message>
         <source>Paste address from clipboard</source>
@@ -4474,7 +4474,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>The fee will be deducted from the amount being sent. The recipient will receive less bitcoins than you enter in the amount field. If multiple recipients are selected, the fee is split equally.</source>
-        <translation>手数料は送金する金額から差し引かれます。送金先には金額欄で指定した額よりも少ない Peercoin が送られます。送金先が複数ある場合は、手数料は均等に分けられます。</translation>
+        <translation>手数料は送金する金額から差し引かれます。送金先には金額欄で指定した額よりも少ない Patchcoin が送られます。送金先が複数ある場合は、手数料は均等に分けられます。</translation>
     </message>
     <message>
         <source>S&amp;ubtract fee from amount</source>
@@ -4494,7 +4494,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>A message that was attached to the bitcoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Bitcoin network.</source>
-        <translation>peercoin: URIに添付されていたメッセージです。これは参照用として取引とともに保存されます。注意: メッセージは Peercoin ネットワーク上へ送信されません。</translation>
+        <translation>patchcoin: URIに添付されていたメッセージです。これは参照用として取引とともに保存されます。注意: メッセージは Patchcoin ネットワーク上へ送信されません。</translation>
     </message>
 </context>
 <context>
@@ -4520,11 +4520,11 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>You can sign messages/agreements with your addresses to prove you can receive bitcoins sent to them. Be careful not to sign anything vague or random, as phishing attacks may try to trick you into signing your identity over to them. Only sign fully-detailed statements you agree to.</source>
-        <translation>あなたが所有しているアドレスでメッセージや契約書に署名をすることで、それらのアドレスへ送られた Peercoin を受け取ることができることを証明できます。フィッシング攻撃者があなたを騙して、あなたの身分情報に署名させようとしている可能性があるため、よくわからないものやランダムな文字列に対して署名しないでください。あなたが同意した、よく詳細の記された文言にのみ署名するようにしてください。</translation>
+        <translation>あなたが所有しているアドレスでメッセージや契約書に署名をすることで、それらのアドレスへ送られた Patchcoin を受け取ることができることを証明できます。フィッシング攻撃者があなたを騙して、あなたの身分情報に署名させようとしている可能性があるため、よくわからないものやランダムな文字列に対して署名しないでください。あなたが同意した、よく詳細の記された文言にのみ署名するようにしてください。</translation>
     </message>
     <message>
         <source>The Bitcoin address to sign the message with</source>
-        <translation>メッセージの署名に使用する Peercoin アドレス</translation>
+        <translation>メッセージの署名に使用する Patchcoin アドレス</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -4572,7 +4572,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>The Bitcoin address the message was signed with</source>
-        <translation>メッセージの署名に使われた Peercoin アドレス</translation>
+        <translation>メッセージの署名に使われた Patchcoin アドレス</translation>
     </message>
     <message>
         <source>The signed message to verify</source>
@@ -4584,7 +4584,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
     </message>
     <message>
         <source>Verify the message to ensure it was signed with the specified Bitcoin address</source>
-        <translation>メッセージを検証して指定された Peercoin アドレスで署名されたことを確認</translation>
+        <translation>メッセージを検証して指定された Patchcoin アドレスで署名されたことを確認</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

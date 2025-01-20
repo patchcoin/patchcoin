@@ -66,8 +66,8 @@
         <translation type="unfinished">Vastuvõtvad aadressid</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Need on sinu Peercoin aadressid maksete saatmiseks. Ennem müntide saatmist kontrolli alati summat ja makse saaja aadressi.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Need on sinu Patchcoin aadressid maksete saatmiseks. Ennem müntide saatmist kontrolli alati summat ja makse saaja aadressi.</translation>
     </message>
     <message>
         <source>These are your Bitcoin addresses for receiving payments. Use the 'Create new receiving address' button in the receive tab to create new addresses.
@@ -333,8 +333,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Kõvakettal olevate plokkide reindekseerimine...</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Saada münte Peercoini aadressile</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Saada münte Patchcoini aadressile</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -369,12 +369,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Krüpteeri oma rahakoti privaatvõtmed</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Omandi tõestamiseks allkirjasta sõnumid oma Peercoini aadressiga</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Omandi tõestamiseks allkirjasta sõnumid oma Patchcoini aadressiga</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Kinnita sõnumid kindlustamaks et need allkirjastati määratud Peercoini aadressiga</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Kinnita sõnumid kindlustamaks et need allkirjastati määratud Patchcoini aadressiga</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -393,16 +393,16 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Vahelehe tööriistariba</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Loo maksepäring (genereerib QR koodid ja peercoini: URId)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Loo maksepäring (genereerib QR koodid ja patchcoini: URId)</translation>
     </message>
     <message>
         <source>&amp;Command-line options</source>
         <translation>&amp;Käsurea valikud</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to Peercoin network</source>
-        <translation><numerusform>%n aktiivne ühendus Peercoini võrku</numerusform><numerusform>%n aktiivset ühendust Peercoini võrku</numerusform></translation>
+        <source>%n active connection(s) to Patchcoin network</source>
+        <translation><numerusform>%n aktiivne ühendus Patchcoini võrku</numerusform><numerusform>%n aktiivset ühendust Patchcoini võrku</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -655,8 +655,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Muuda saatvat aadressi</translation>
     </message>
     <message>
-        <source>The entered address "%1" is not a valid Peercoin address.</source>
-        <translation>Sisestatud aadress "%1" ei ole korrektne Peercoin aadress.</translation>
+        <source>The entered address "%1" is not a valid Patchcoin address.</source>
+        <translation>Sisestatud aadress "%1" ei ole korrektne Patchcoin aadress.</translation>
     </message>
     <message>
         <source>Could not unlock wallet.</source>
@@ -692,8 +692,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Tere tulemast</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error</source>
@@ -756,8 +756,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Ekspert</translation>
     </message>
     <message>
-        <source>Automatically open the Peercoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Peercoini kliendi pordi automaatne avamine ruuteris. Toimib, kui sinu ruuter aktsepteerib UPnP ühendust.</translation>
+        <source>Automatically open the Patchcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Patchcoini kliendi pordi automaatne avamine ruuteris. Toimib, kui sinu ruuter aktsepteerib UPnP ühendust.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -855,7 +855,7 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Vorm</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
         <translation>Kuvatav info ei pruugi olla ajakohane. Ühenduse loomisel süngitakse sinu rahakott automaatselt Bitconi võrgustikuga, kuid see toiming on hetkel lõpetamata.</translation>
     </message>
     <message>
@@ -1196,8 +1196,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Maksepäring aegunud.</translation>
     </message>
     <message>
-        <source>Warning: Invalid Peercoin address</source>
-        <translation>Hoiatus: Ebakorrektne Peercoin aadress</translation>
+        <source>Warning: Invalid Patchcoin address</source>
+        <translation>Hoiatus: Ebakorrektne Patchcoin aadress</translation>
     </message>
     <message>
         <source>(no label)</source>
@@ -1269,8 +1269,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>&amp;Allkirjastamise teade</translation>
     </message>
     <message>
-        <source>The Peercoin address to sign the message with</source>
-        <translation>Peercoin aadress millega sõnum allkirjastada</translation>
+        <source>The Patchcoin address to sign the message with</source>
+        <translation>Patchcoin aadress millega sõnum allkirjastada</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -1301,8 +1301,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Kopeeri praegune signatuur vahemällu</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this Peercoin address</source>
-        <translation>Allkirjasta sõnum Peercoini aadressi sulle kuulumise tõestamiseks</translation>
+        <source>Sign the message to prove you own this Patchcoin address</source>
+        <translation>Allkirjasta sõnum Patchcoini aadressi sulle kuulumise tõestamiseks</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -1321,12 +1321,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>&amp;Kinnita Sõnum</translation>
     </message>
     <message>
-        <source>The Peercoin address the message was signed with</source>
-        <translation>Peercoin aadress millega sõnum on allkirjastatud</translation>
+        <source>The Patchcoin address the message was signed with</source>
+        <translation>Patchcoin aadress millega sõnum on allkirjastatud</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified Peercoin address</source>
-        <translation>Kinnita sõnum tõestamaks selle allkirjastatust määratud Peercoini aadressiga.</translation>
+        <source>Verify the message to ensure it was signed with the specified Patchcoin address</source>
+        <translation>Kinnita sõnum tõestamaks selle allkirjastatust määratud Patchcoini aadressiga.</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

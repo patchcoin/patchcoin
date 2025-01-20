@@ -62,7 +62,7 @@
         <translation type="unfinished">آدرس‌های گیرنده</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>اینها آدرس‌های شما برای ارسال وجوه هستند. همیشه قبل از ارسال، مقدار و آدرس گیرنده را بررسی کنید.</translation>
     </message>
     <message>
@@ -370,7 +370,7 @@
         <translation>پراکسی &lt;br&gt;فعال شده است: %1&lt;/br&gt;</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
+        <source>Send coins to a Patchcoin address</source>
         <translation>ارسال کوین به آدرس بیت کوین</translation>
     </message>
     <message>
@@ -406,11 +406,11 @@
         <translation>رمزنگاری کلیدهای شخصی متعلق به کیف‌پول</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
         <translation>پیام‌ها را با آدرس بیت‌کوین خود امضا کنید تا مالکیت آن‌ها را اثبات کنید</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
         <translation>پیام‌ها را تائید کنید تا از امضاشدن آن‌ها با آدرس بیت‌کوین مطمئن شوید</translation>
     </message>
     <message>
@@ -430,7 +430,7 @@
         <translation>نوار ابزار</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
         <translation>درخواست پرداخت (ساخت کد QR و بیت‌کوین: URIs)</translation>
     </message>
     <message>
@@ -446,7 +446,7 @@
         <translation>گزینه های خط فرمان</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to Peercoin network</source>
+        <source>%n active connection(s) to Patchcoin network</source>
         <translation><numerusform>%n ارتباط فعال به شبکه بیت‌کوین</numerusform><numerusform>%n ارتباط فعال به شبکه بیت‌کوین</numerusform></translation>
     </message>
     <message>
@@ -1408,7 +1408,7 @@
         <translation>ویرایش آدرس ارسالی</translation>
     </message>
     <message>
-        <source>The entered address "%1" is not a valid Peercoin address.</source>
+        <source>The entered address "%1" is not a valid Patchcoin address.</source>
         <translation>آدرس وارد شده "%1" آدرس معتبر بیت کوین نیست.</translation>
     </message>
     <message>
@@ -1485,7 +1485,7 @@
         <translation>استفاده کردن از پوشه داده مخصوص:</translation>
     </message>
     <message>
-        <source>Peercoin</source>
+        <source>Patchcoin</source>
         <translation>بیت کوین</translation>
     </message>
     <message>
@@ -2051,7 +2051,7 @@
         <translation type="unfinished">حرفه‌ای</translation>
     </message>
     <message>
-        <source>Automatically open the Peercoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <source>Automatically open the Patchcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
         <translation>باز کردن خودکار درگاه شبکهٔ بیت‌کوین روی روترها. تنها زمانی کار می‌کند که روتر از پروتکل UPnP پشتیبانی کند و این پروتکل فعال باشد.</translation>
     </message>
     <message>
@@ -2259,7 +2259,7 @@
         <translation type="unfinished">فرم</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
         <translation>اطلاعات نمایش داده شده ممکن است روزآمد نباشد. wallet شما به صورت خودکار بعد از برقراری اتصال با شبکه bitcoin به روز می شود اما این فرایند هنوز تکمیل نشده است.</translation>
     </message>
     <message>
@@ -2448,7 +2448,7 @@ If you are receiving this error you should request the merchant provide a BIP21 
         <translation type="unfinished">دریافت شد</translation>
     </message>
     <message>
-        <source>Enter a Peercoin address (e.g. %1)</source>
+        <source>Enter a Patchcoin address (e.g. %1)</source>
         <translation>آدرس بیت کوین را وارد کنید (به طور مثال %1)</translation>
     </message>
     <message>
@@ -3426,7 +3426,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
         <translation type="unfinished">آدرس استفاده شده قبلی را انتخاب کنید</translation>
     </message>
     <message>
-        <source>The Peercoin address to send the payment to</source>
+        <source>The Patchcoin address to send the payment to</source>
         <translation>آدرس بیت کوین برای ارسال پرداحت به آن</translation>
     </message>
     <message>
@@ -3468,7 +3468,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
         <translation type="unfinished">&amp;ثبت پیام</translation>
     </message>
     <message>
-        <source>The Peercoin address to sign the message with</source>
+        <source>The Patchcoin address to sign the message with</source>
         <translation>نشانی بیت‌کوین برای امضاء پیغام با آن</translation>
     </message>
     <message>
@@ -3492,7 +3492,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
         <translation type="unfinished">جریان را کپی کنید امضا به سیستم کلیپ بورد</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this Peercoin address</source>
+        <source>Sign the message to prove you own this Patchcoin address</source>
         <translation>پیام را امضا کنید تا ثابت کنید این آدرس بیت‌کوین متعلق به شماست</translation>
     </message>
     <message>
@@ -3512,11 +3512,11 @@ Note:  Since the fee is calculated on a per-byte basis, a fee rate of "100 satos
         <translation type="unfinished">&amp; تأیید پیام</translation>
     </message>
     <message>
-        <source>The Peercoin address the message was signed with</source>
+        <source>The Patchcoin address the message was signed with</source>
         <translation>نشانی بیت‌کوین که پیغام با آن امضاء شده</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified Peercoin address</source>
+        <source>Verify the message to ensure it was signed with the specified Patchcoin address</source>
         <translation>پیام را تایید کنید تا مطمئن شوید که توسط آدرس بیت‌کوین مشخص شده امضا شده است.</translation>
     </message>
     <message>

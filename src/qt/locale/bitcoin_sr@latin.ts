@@ -66,8 +66,8 @@
         <translation type="unfinished">Adresa na koju se prima</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Ovo su Vaše Peercoin adrese na koju se vrše uplate. Uvek proverite iznos i prijemnu adresu pre slanja novčića.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Ovo su Vaše Patchcoin adrese na koju se vrše uplate. Uvek proverite iznos i prijemnu adresu pre slanja novčića.</translation>
     </message>
     <message>
         <source>These are your Bitcoin addresses for receiving payments. Use the 'Create new receiving address' button in the receive tab to create new addresses.</source>
@@ -461,8 +461,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Aktivnost na mreži je prekinuta.</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Pošalji novčiće na Peercoin adresu</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Pošalji novčiće na Patchcoin adresu</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -493,12 +493,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Enkriptuj privatne ključeve novčanika</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Potpišite poruke sa svojim Peercoin adresama da biste dokazali njihovo vlasništvo</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Potpišite poruke sa svojim Patchcoin adresama da biste dokazali njihovo vlasništvo</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Proverite poruke da biste utvrdili sa kojim Peercoin adresama su potpisane</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Proverite poruke da biste utvrdili sa kojim Patchcoin adresama su potpisane</translation>
     </message>
     <message>
         <source>&amp;Load PSBT from file…</source>
@@ -537,8 +537,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Alatke za tabove</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Zatražite plaćanje (generiše QR kodove i peercoin: URI-e)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Zatražite plaćanje (generiše QR kodove i patchcoin: URI-e)</translation>
     </message>
     <message>
         <source>%1 behind</source>
@@ -1160,8 +1160,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
 <context>
     <name>Intro</name>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>%1 will download and store a copy of the Bitcoin block chain.</source>

@@ -66,8 +66,8 @@
         <translation type="unfinished">Derbyn cyfeiriadau</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Rhain ydi eich cyfeiriadau Peercoin ar gyfer gyrru taliadau. Gwnewch yn sicr o'r swm a'r cyfeiriad derbyn cyn gyrru arian.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Rhain ydi eich cyfeiriadau Patchcoin ar gyfer gyrru taliadau. Gwnewch yn sicr o'r swm a'r cyfeiriad derbyn cyn gyrru arian.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -335,8 +335,8 @@
         <translation type="unfinished">Gweithgaredd rhwydwaith wedi anablu.</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Anfon arian i gyfeiriad Peercoin</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Anfon arian i gyfeiriad Patchcoin</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -359,12 +359,12 @@
         <translation type="unfinished">Amgryptio'r allweddi preifat sy'n perthyn i'ch waled</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Arwyddo negeseuon gyda eich cyfeiriadau Peercoin i brofi mae chi sy'n berchen arnynt</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Arwyddo negeseuon gyda eich cyfeiriadau Patchcoin i brofi mae chi sy'n berchen arnynt</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Gwirio negeseuon i sicrhau eu bod wedi eu harwyddo gyda cyfeiriadau Peercoin penodol</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Gwirio negeseuon i sicrhau eu bod wedi eu harwyddo gyda cyfeiriadau Patchcoin penodol</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -383,8 +383,8 @@
         <translation type="unfinished">Bar offer tabiau</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Gofyn taliadau (creu côd QR a peercoin: URIs)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Gofyn taliadau (creu côd QR a patchcoin: URIs)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -526,8 +526,8 @@
         <translation type="unfinished">Mae'r waled &lt;b&gt;wedi'i amgryptio&lt;/b&gt; ac &lt;b&gt;ar glo&lt;/b&gt; ar hyn o bryd</translation>
     </message>
     <message>
-        <source>A fatal error occurred. Peercoin can no longer continue safely and will quit.</source>
-        <translation>Mae gwall angheuol wedi digwydd. Ni all Peercoin barhau'n ddiogel ac mae'n cau lawr.</translation>
+        <source>A fatal error occurred. Patchcoin can no longer continue safely and will quit.</source>
+        <translation>Mae gwall angheuol wedi digwydd. Ni all Patchcoin barhau'n ddiogel ac mae'n cau lawr.</translation>
     </message>
 </context>
 <context>
@@ -668,8 +668,8 @@
         <translation>Croeso</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error</source>

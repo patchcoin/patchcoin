@@ -14,14 +14,14 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "Peercoin"
-            VALUE "FileDescription",    "peercoin-cli (JSON-RPC client for " PACKAGE_NAME ")"
+            VALUE "CompanyName",        "Patchcoin"
+            VALUE "FileDescription",    "patchcoin-cli (JSON-RPC client for " PACKAGE_NAME ")"
             VALUE "FileVersion",        PACKAGE_VERSION
-            VALUE "InternalName",       "peercoin-cli"
+            VALUE "InternalName",       "patchcoin-cli"
             VALUE "LegalCopyright",     COPYRIGHT_STR
             VALUE "LegalTrademarks1",   "Distributed under the MIT software license, see the accompanying file COPYING or http://www.opensource.org/licenses/mit-license.php."
-            VALUE "OriginalFilename",   "peercoin-cli.exe"
-            VALUE "ProductName",        "peercoin-cli"
+            VALUE "OriginalFilename",   "patchcoin-cli.exe"
+            VALUE "ProductName",        "patchcoin-cli"
             VALUE "ProductVersion",     PACKAGE_VERSION
         END
     END

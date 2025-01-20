@@ -8,17 +8,17 @@ schnorr_example
 *.exe
 *.pdb
 src/*/*.exe
-src/peercoin
-src/peercoind
-src/peercoin-cli
-src/peercoin-gui
-src/peercoin-node
-src/peercoin-tx
-src/peercoin-util
-src/peercoin-wallet
+src/patchcoin
+src/patchcoind
+src/patchcoin-cli
+src/patchcoin-gui
+src/patchcoin-node
+src/patchcoin-tx
+src/patchcoin-util
+src/patchcoin-wallet
 src/test/fuzz/fuzz
-src/test/test_peercoin
-src/qt/test/test_peercoin-qt
+src/test/test_patchcoin
+src/qt/test/test_patchcoin-qt
 
 # autoreconf
 Makefile.in
@@ -86,7 +86,7 @@ src/qt/bitcoin-qt.includes
 *.o
 *.o-*
 .ppcoin
-.peercoin
+.patchcoin
 *.a
 *.pb.cc
 *.pb.h
@@ -112,9 +112,9 @@ src/qt/bitcoin-qt.includes
 *.qm
 Makefile
 !depends/Makefile
-src/qt/peercoin-qt
+src/qt/patchcoin-qt
 PPCoin-Qt.app
-Peercoin-Qt.app
+Patchcoin-Qt.app
 
 # Qt Creator
 Makefile.am.user
@@ -122,7 +122,7 @@ Makefile.am.user
 # Unit-tests
 Makefile.test
 ppcoin-qt_test
-peercoin-qt_test
+patchcoin-qt_test
 
 # Resources cpp
 qrc_*.cpp

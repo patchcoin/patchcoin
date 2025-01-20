@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Patchcoin (testnet)
+Comment=Desktop allet for Patchcoin Cryptocurrency (testnet)
+Comment[de]=Offizieller Client für die Kryptowährung Patchcoin (testnet)
+Exec=patchcoin-qt -testnet %u
+Terminal=false
+Type=Application
+Icon=/usr/share/pixmaps/patchcoin-testnet128.png
+MimeType=x-scheme-handler/patchcoin;
+Categories=Application;Network;

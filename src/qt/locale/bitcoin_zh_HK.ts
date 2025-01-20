@@ -66,8 +66,8 @@
         <translation type="unfinished">收款地址</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>這些是你要付款過去的 Peercoin 位址。在付款之前，務必要檢查金額和收款位址是否正確。</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>這些是你要付款過去的 Patchcoin 位址。在付款之前，務必要檢查金額和收款位址是否正確。</translation>
     </message>
     <message>
         <source>These are your Bitcoin addresses for receiving payments. Use the 'Create new receiving address' button in the receive tab to create new addresses.
@@ -164,7 +164,7 @@ Signing is only possible with addresses of the type 'legacy'.</source>
     </message>
     <message>
         <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR BITCOINS&lt;/b&gt;!</source>
-        <translation>警告: 如果你將錢包加密後又忘記密碼，你就會&lt;b&gt;失去所有 Peercoin 了&lt;/b&gt;！</translation>
+        <translation>警告: 如果你將錢包加密後又忘記密碼，你就會&lt;b&gt;失去所有 Patchcoin 了&lt;/b&gt;！</translation>
     </message>
     <message>
         <source>Are you sure you wish to encrypt your wallet?</source>
@@ -456,8 +456,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">錢包:</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>付款至一個 Peercoin 位址</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>付款至一個 Patchcoin 位址</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -544,8 +544,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">說明 &amp;H</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>要求付款 (產生QR碼 peercoin: URIs)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>要求付款 (產生QR碼 patchcoin: URIs)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -951,8 +951,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
 <context>
     <name>Intro</name>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error</source>
@@ -1753,8 +1753,8 @@ If you are receiving this error you should request the merchant provide a BIP21 
 <context>
     <name>QObject</name>
     <message>
-        <source>Enter a Peercoin address (e.g. %1)</source>
-        <translation>輸入一個 Peercoin 位址 (例如 %1)</translation>
+        <source>Enter a Patchcoin address (e.g. %1)</source>
+        <translation>輸入一個 Patchcoin 位址 (例如 %1)</translation>
     </message>
     <message>
         <source>Address</source>

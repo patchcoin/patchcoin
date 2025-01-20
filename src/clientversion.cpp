@@ -76,7 +76,7 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
         ss << ")";
     }
     ss << "/";
-    ss << "Peercoin:" << FormatVersion(PEERCOIN_VERSION);
+    ss << "Patchcoin:" << FormatVersion(PEERCOIN_VERSION);
     ss << "(" << FormatFullVersion() << ")/";
     return ss.str();
 }
@@ -86,11 +86,20 @@ std::string CopyrightHolders(const std::string& strPrefix)
     const auto copyright_devs = strprintf(_(COPYRIGHT_HOLDERS).translated, COPYRIGHT_HOLDERS_SUBSTITUTION);
     std::string strCopyrightHolders = strPrefix + copyright_devs;
 
+    if (copyright_devs.find("Peercoin") == std::string::npos) {
+        std::string strPrefixPeercoin = strPrefix;
+        size_t pos = strPrefixPeercoin.find("2024");
+        if (pos != std::string::npos) {
+            strPrefixPeercoin.replace(pos, 4, "2011");
+        }
+        strCopyrightHolders += "\n" + strPrefixPeercoin + "The Peercoin developers";
+    }
+
     // Make sure Bitcoin Core copyright is not removed by accident
     if (copyright_devs.find("Bitcoin Core") == std::string::npos) {
         // Set correct start year for Bitcoin
         std::string strPrefixBitcoin = strPrefix;
-        size_t pos = strPrefixBitcoin.find("2011");
+        size_t pos = strPrefixBitcoin.find("2024");
         if (pos != std::string::npos) {
             strPrefixBitcoin.replace(pos, 4, "2009");
         }
@@ -101,9 +110,9 @@ std::string CopyrightHolders(const std::string& strPrefix)
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "<https://github.com/peercoin/peercoin>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/patchcoin/patchcoin>";
 
-    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i").translated, 2011, COPYRIGHT_YEAR) + " ") + "\n" +
+    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i").translated, 2024, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
            strprintf(_("Please contribute if you find %s useful. "
                        "Visit %s for further information about the software.").translated, PACKAGE_NAME, "<" PACKAGE_URL ">") +

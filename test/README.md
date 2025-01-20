@@ -180,13 +180,13 @@ peercoind processes running on the system, so should not be used if any non-test
 peercoind processes are being run.**
 
 ```bash
-killall peercoind
+killall patchcoind
 ```
 
 or
 
 ```bash
-pkill -9 peercoind
+pkill -9 patchcoind
 ```
 
 
@@ -201,7 +201,7 @@ sure peercoind processes are stopped as above):
 
 ```bash
 rm -rf test/cache
-killall peercoind
+killall patchcoind
 ```
 
 ##### Test logging
@@ -283,7 +283,7 @@ test run:
 Use the path to find the pid file in the temp folder:
 
 ```bash
-cat /tmp/user/1000/testo9vsdjo3/node1/regtest/peercoind.pid
+cat /tmp/user/1000/testo9vsdjo3/node1/regtest/patchcoind.pid
 ```
 
 Then you can use the pid to start `gdb`:
@@ -294,7 +294,7 @@ Then you can use the pid to start `gdb`:
 Then you can use the pid to start `gdb`:
 
 ```bash
-gdb /home/example/peercoind <pid>
+gdb /home/example/patchcoind <pid>
 ```
 
 Note: gdb attach step may require ptrace_scope to be modified, or `sudo` preceding the `gdb`.

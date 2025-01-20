@@ -126,7 +126,7 @@ Intro::Intro(QWidget *parent, int64_t blockchain_size_gb) :
         .arg(PACKAGE_NAME)
         .arg(m_blockchain_size_gb)
         .arg(2012)
-        .arg(tr("Peercoin"))
+        .arg(tr("Patchcoin"))
     );
     ui->lblExplanation2->setText(ui->lblExplanation2->text().arg(PACKAGE_NAME));
 

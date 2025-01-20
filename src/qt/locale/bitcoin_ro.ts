@@ -66,8 +66,8 @@
         <translation type="unfinished">Adresa de primire</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Acestea sunt adresele tale Peercoin pentru efectuarea plăților. Întotdeauna verifică atent suma de plată și adresa beneficiarului înainte de a trimite monedele.</translation>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Acestea sunt adresele tale Patchcoin pentru efectuarea plăților. Întotdeauna verifică atent suma de plată și adresa beneficiarului înainte de a trimite monedele.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -174,7 +174,7 @@
     </message>
     <message>
         <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR BITCOINS&lt;/b&gt;!</source>
-        <translation>Atenție: Dacă criptezi portofelul și ulterior pierzi parola, &lt;b&gt;VEI PIERDE TOȚI PEERCOINII&lt;/b&gt;!</translation>
+        <translation>Atenție: Dacă criptezi portofelul și ulterior pierzi parola, &lt;b&gt;VEI PIERDE TOȚI PATCHCOINII&lt;/b&gt;!</translation>
     </message>
     <message>
         <source>Are you sure you wish to encrypt your wallet?</source>
@@ -368,8 +368,8 @@
         <translation>Proxy este&lt;b&gt;activat&lt;/b&gt;:%1</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Trimite monede către o adresă Peercoin</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Trimite monede către o adresă Patchcoin</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -404,12 +404,12 @@
         <translation>Criptează cheile private ale portofelului</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Semneză mesaje cu adresa ta Peercoin pentru a dovedi că îți aparțin</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Semneză mesaje cu adresa ta Patchcoin pentru a dovedi că îți aparțin</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Verifică mesajele pentru a te asigura că au fost semnate cu adresa Peercoin specificată</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Verifică mesajele pentru a te asigura că au fost semnate cu adresa Patchcoin specificată</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -428,8 +428,8 @@
         <translation>Bara de unelte</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Cere plăți (generează coduri QR și URI peercoin)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Cere plăți (generează coduri QR și URI patchcoin)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -445,7 +445,7 @@
     </message>
     <message numerus="yes">
         <source>%n active connection(s) to Bitcoin network</source>
-        <translation><numerusform>%n conexiune activă la rețeaua Peercoin</numerusform><numerusform>%n conexiuni active către reţeaua Peercoin</numerusform><numerusform>%n de conexiuni active către rețeaua Peercoin</numerusform></translation>
+        <translation><numerusform>%n conexiune activă la rețeaua Patchcoin</numerusform><numerusform>%n conexiuni active către reţeaua Patchcoin</numerusform><numerusform>%n de conexiuni active către rețeaua Patchcoin</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -521,7 +521,7 @@
     </message>
     <message>
         <source>Show the %1 help message to get a list with possible Bitcoin command-line options</source>
-        <translation>Arată mesajul de ajutor %1 pentru a obține o listă cu opțiunile posibile de linii de comandă Peercoin</translation>
+        <translation>Arată mesajul de ajutor %1 pentru a obține o listă cu opțiunile posibile de linii de comandă Patchcoin</translation>
     </message>
     <message>
         <source>default wallet</source>
@@ -637,7 +637,7 @@
     </message>
     <message>
         <source>A fatal error occurred. Bitcoin can no longer continue safely and will quit.</source>
-        <translation>A survenit o eroare fatală. Portmoneul Peercoin nu mai poate continua în siguranță și se va opri.</translation>
+        <translation>A survenit o eroare fatală. Portmoneul Patchcoin nu mai poate continua în siguranță și se va opri.</translation>
     </message>
 </context>
 <context>
@@ -776,7 +776,7 @@
     </message>
     <message>
         <source>Can vary +/- %1 satoshi(s) per input.</source>
-        <translation>Poate varia +/- %1 ppc pentru fiecare intrare.</translation>
+        <translation>Poate varia +/- %1 ptc pentru fiecare intrare.</translation>
     </message>
     <message>
         <source>(no label)</source>
@@ -957,8 +957,8 @@
         <translation>Folosește un dosar de date personalizat:</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>At least %1 GB of data will be stored in this directory, and it will grow over time.</source>
@@ -1000,12 +1000,12 @@
         <translation>Forma</translation>
     </message>
     <message>
-        <source>Recent transactions may not yet be visible, and therefore your wallet's balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the peercoin network, as detailed below.</source>
-        <translation>Tranzacțiile recente pot să nu fie încă vizibile, de aceea balanța portofelului poate fi incorectă. Această informație va fi corectă îndată ce portofelul va fi complet sincronizat cu rețeaua Peercoin, așa cum este detaliat mai jos.</translation>
+        <source>Recent transactions may not yet be visible, and therefore your wallet's balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the patchcoin network, as detailed below.</source>
+        <translation>Tranzacțiile recente pot să nu fie încă vizibile, de aceea balanța portofelului poate fi incorectă. Această informație va fi corectă îndată ce portofelul va fi complet sincronizat cu rețeaua Patchcoin, așa cum este detaliat mai jos.</translation>
     </message>
     <message>
         <source>Attempting to spend bitcoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
-        <translation>Încercarea de a cheltui peercoini care sunt afectați de tranzacții ce încă nu sunt afișate nu va fi acceptată de rețea.</translation>
+        <translation>Încercarea de a cheltui patchcoini care sunt afectați de tranzacții ce încă nu sunt afișate nu va fi acceptată de rețea.</translation>
     </message>
     <message>
         <source>Number of blocks left</source>
@@ -1170,7 +1170,7 @@
     </message>
     <message>
         <source>Automatically open the Bitcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Deschide automat în router portul aferent clientului Peercoin. Funcționează doar dacă routerul suportă UPnP și e activat.</translation>
+        <translation>Deschide automat în router portul aferent clientului Patchcoin. Funcționează doar dacă routerul suportă UPnP și e activat.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -1186,7 +1186,7 @@
     </message>
     <message>
         <source>Connect to the Bitcoin network through a SOCKS5 proxy.</source>
-        <translation>Conectare la rețeaua Peercoin printr-un proxy SOCKS5.</translation>
+        <translation>Conectare la rețeaua Patchcoin printr-un proxy SOCKS5.</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -1222,7 +1222,7 @@
     </message>
     <message>
         <source>Connect to the Bitcoin network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Conectare la reteaua Peercoin printr-un proxy SOCKS5 separat, pentru serviciile TOR ascunse.</translation>
+        <translation>Conectare la reteaua Patchcoin printr-un proxy SOCKS5 separat, pentru serviciile TOR ascunse.</translation>
     </message>
     <message>
         <source>&amp;Window</source>
@@ -1318,7 +1318,7 @@
     </message>
     <message>
         <source>The supplied proxy address is invalid.</source>
-        <translation>Adresa peercoin pe care ați specificat-o nu este validă.</translation>
+        <translation>Adresa patchcoin pe care ați specificat-o nu este validă.</translation>
     </message>
 </context>
 <context>
@@ -1329,7 +1329,7 @@
     </message>
     <message>
         <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Bitcoin network after a connection is established, but this process has not completed yet.</source>
-        <translation>Informațiile afișate pot fi neactualizate. Portofelul dvs. se sincronizează automat cu reţeaua Peercoin după ce o conexiune este stabilită, dar acest proces nu a fost finalizat încă.</translation>
+        <translation>Informațiile afișate pot fi neactualizate. Portofelul dvs. se sincronizează automat cu reţeaua Patchcoin după ce o conexiune este stabilită, dar acest proces nu a fost finalizat încă.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1415,7 +1415,7 @@
     </message>
     <message>
         <source>Cannot start bitcoin: click-to-pay handler</source>
-        <translation>Peercoin nu poate fi pornit: click-to-pay handler</translation>
+        <translation>Patchcoin nu poate fi pornit: click-to-pay handler</translation>
     </message>
     <message>
         <source>URI handling</source>
@@ -1423,7 +1423,7 @@
     </message>
     <message>
         <source>'bitcoin://' is not a valid URI. Use 'bitcoin:' instead.</source>
-        <translation>'peercoin://' nu este un URI valid. Folositi 'peercoin:' în loc.</translation>
+        <translation>'patchcoin://' nu este un URI valid. Folositi 'patchcoin:' în loc.</translation>
     </message>
     <message>
         <source>Invalid payment address %1</source>
@@ -1431,7 +1431,7 @@
     </message>
     <message>
         <source>URI cannot be parsed! This can be caused by an invalid Bitcoin address or malformed URI parameters.</source>
-        <translation>URI nu poate fi analizat! Acest lucru poate fi cauzat de o adresă Peercoin invalidă sau parametri URI greșiți.</translation>
+        <translation>URI nu poate fi analizat! Acest lucru poate fi cauzat de o adresă Patchcoin invalidă sau parametri URI greșiți.</translation>
     </message>
     <message>
         <source>Payment request file handling</source>
@@ -1824,7 +1824,7 @@
     </message>
     <message>
         <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Bitcoin network.</source>
-        <translation>Un mesaj opțional de atașat la cererea de plată, care va fi afișat când cererea este deschisă. Notă: Acest mesaj nu va fi trimis cu plata către rețeaua Peercoin.</translation>
+        <translation>Un mesaj opțional de atașat la cererea de plată, care va fi afișat când cererea este deschisă. Notă: Acest mesaj nu va fi trimis cu plata către rețeaua Patchcoin.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -2197,7 +2197,7 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>Warning: Invalid Bitcoin address</source>
-        <translation>Atenție: Adresă Peercoin nevalidă!</translation>
+        <translation>Atenție: Adresă Patchcoin nevalidă!</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>
@@ -2256,7 +2256,7 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>The fee will be deducted from the amount being sent. The recipient will receive less bitcoins than you enter in the amount field. If multiple recipients are selected, the fee is split equally.</source>
-        <translation>Taxa va fi scoasă din suma trimisă. Destinatarul va primi mai puțini peercoini decât ați specificat în câmpul sumei trimise. Dacă au fost selectați mai mulți destinatari, taxa se va împărți în mod egal.</translation>
+        <translation>Taxa va fi scoasă din suma trimisă. Destinatarul va primi mai puțini patchcoini decât ați specificat în câmpul sumei trimise. Dacă au fost selectați mai mulți destinatari, taxa se va împărți în mod egal.</translation>
     </message>
     <message>
         <source>S&amp;ubtract fee from amount</source>
@@ -2284,7 +2284,7 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>A message that was attached to the bitcoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Bitcoin network.</source>
-        <translation>un mesaj a fost atașat la peercoin: URI care va fi stocat cu tranzacția pentru referința dvs. Notă: Acest mesaj nu va fi trimis către rețeaua bitcoin.</translation>
+        <translation>un mesaj a fost atașat la patchcoin: URI care va fi stocat cu tranzacția pentru referința dvs. Notă: Acest mesaj nu va fi trimis către rețeaua bitcoin.</translation>
     </message>
     <message>
         <source>Pay To:</source>
@@ -2318,7 +2318,7 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>You can sign messages/agreements with your addresses to prove you can receive bitcoins sent to them. Be careful not to sign anything vague or random, as phishing attacks may try to trick you into signing your identity over to them. Only sign fully-detailed statements you agree to.</source>
-        <translation>Poți semna mesaje/contracte cu adresele ta pentru a demostra ca poți primi peercoini trimiși la ele. Ai grijă să nu semnezi nimic vag sau aleator, deoarece atacurile de tip phishing te pot păcăli să le transferi identitatea. Semnează numai declarațiile detaliate cu care ești de acord.</translation>
+        <translation>Poți semna mesaje/contracte cu adresele ta pentru a demostra ca poți primi patchcoini trimiși la ele. Ai grijă să nu semnezi nimic vag sau aleator, deoarece atacurile de tip phishing te pot păcăli să le transferi identitatea. Semnează numai declarațiile detaliate cu care ești de acord.</translation>
     </message>
     <message>
         <source>The Bitcoin address to sign the message with</source>
@@ -2354,7 +2354,7 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>Sign the message to prove you own this Bitcoin address</source>
-        <translation>Semnează mesajul pentru a dovedi ca deții acestă adresă Peercoin</translation>
+        <translation>Semnează mesajul pentru a dovedi ca deții acestă adresă Patchcoin</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -2378,11 +2378,11 @@ Nota: Cum taxa este calculată per byte, o taxă de "100 satoshi per kB" pentru 
     </message>
     <message>
         <source>The Bitcoin address the message was signed with</source>
-        <translation>Introdu o adresă Peercoin</translation>
+        <translation>Introdu o adresă Patchcoin</translation>
     </message>
     <message>
         <source>Verify the message to ensure it was signed with the specified Bitcoin address</source>
-        <translation>Verifică mesajul pentru a te asigura că a fost semnat cu adresa Peercoin specificată</translation>
+        <translation>Verifică mesajul pentru a te asigura că a fost semnat cu adresa Patchcoin specificată</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

@@ -75,7 +75,7 @@ class TestNode():
         self.index = i
         self.p2p_conn_index = 1
         self.datadir = datadir
-        self.bitcoinconf = os.path.join(self.datadir, "peercoin.conf")
+        self.bitcoinconf = os.path.join(self.datadir, "patchcoin.conf")
         self.stdout_dir = os.path.join(self.datadir, "stdout")
         self.stderr_dir = os.path.join(self.datadir, "stderr")
         self.chain = chain
@@ -217,7 +217,7 @@ class TestNode():
         self.process = subprocess.Popen(self.args + extra_args, env=subp_env, stdout=stdout, stderr=stderr, cwd=cwd, **kwargs)
 
         self.running = True
-        self.log.debug("peercoind started, waiting for RPC to come up")
+        self.log.debug("patchcoind started, waiting for RPC to come up")
 
         if self.start_perf:
             self._start_perf()
@@ -232,7 +232,7 @@ class TestNode():
         for _ in range(poll_per_s * self.rpc_timeout):
             if self.process.poll() is not None:
                 raise FailedToStartError(self._node_msg(
-                    'peercoind exited with status {} during initialization'.format(self.process.returncode)))
+                    'patchcoind exited with status {} during initialization'.format(self.process.returncode)))
             try:
                 rpc = get_rpc_proxy(
                     rpc_url(self.datadir, self.index, self.chain, self.rpchost),
@@ -716,7 +716,7 @@ class TestNodeCLI():
         self.binary = binary
         self.datadir = datadir
         self.input = None
-        self.log = logging.getLogger('TestFramework.peercoincli')
+        self.log = logging.getLogger('TestFramework.patchcoincli')
 
     def __call__(self, *options, input=None):
         # TestNodeCLI is callable with peercoin-cli command-line options
@@ -741,14 +741,14 @@ class TestNodeCLI():
         """Run peercoin-cli command. Deserializes returned string as python object."""
         pos_args = [arg_to_cli(arg) for arg in args]
         named_args = [str(key) + "=" + arg_to_cli(value) for (key, value) in kwargs.items()]
-        assert not (pos_args and named_args), "Cannot use positional arguments and named arguments in the same peercoin-cli call"
+        assert not (pos_args and named_args), "Cannot use positional arguments and named arguments in the same patchcoin-cli call"
         p_args = [self.binary, "-datadir=" + self.datadir] + self.options
         if named_args:
             p_args += ["-named"]
         if command is not None:
             p_args += [command]
         p_args += pos_args + named_args
-        self.log.debug("Running peercoin-cli {}".format(p_args[2:]))
+        self.log.debug("Running patchcoin-cli {}".format(p_args[2:]))
         process = subprocess.Popen(p_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         cli_stdout, cli_stderr = process.communicate(input=self.input)
         returncode = process.poll()

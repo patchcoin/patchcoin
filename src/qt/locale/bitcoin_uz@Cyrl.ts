@@ -422,8 +422,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Qt ҳақидаги маълумотларни кўрсатиш</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Тангаларни Peercoin манзилига жўнатиш</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Тангаларни Patchcoin манзилига жўнатиш</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -454,12 +454,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Ҳамёнингизга тегишли махфий калитларни кодлаш</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Peercoin манзилидан унинг эгаси эканлигингизни исботлаш учун хабарлар ёзинг</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Patchcoin манзилидан унинг эгаси эканлигингизни исботлаш учун хабарлар ёзинг</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Хабарларни махсус Peercoin манзилларингиз билан ёзилганлигига ишонч ҳосил қилиш учун уларни тасдиқланг</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Хабарларни махсус Patchcoin манзилларингиз билан ёзилганлигига ишонч ҳосил қилиш учун уларни тасдиқланг</translation>
     </message>
     <message>
         <source>&amp;Load PSBT from file…</source>
@@ -498,8 +498,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Ички ойналар асбоблар панели</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Тўловлар (QR кодлари ва peercoin ёрдамида яратишлар: URI’лар) сўраш</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Тўловлар (QR кодлари ва patchcoin ёрдамида яратишлар: URI’лар) сўраш</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -514,8 +514,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">&amp;Буйруқлар сатри мосламалари</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to Peercoin network</source>
-        <translation><numerusform>%n та Peercoin тармоғига фаол уланиш мавжуд</numerusform></translation>
+        <source>%n active connection(s) to Patchcoin network</source>
+        <translation><numerusform>%n та Patchcoin тармоғига фаол уланиш мавжуд</numerusform></translation>
     </message>
     <message>
         <source>%1 behind</source>
@@ -1270,8 +1270,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Бошқа маълумотлар директориясида фойдаланинг:</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error: Specified data directory "%1" cannot be created.</source>
@@ -1570,8 +1570,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Шакл</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
-        <translation>Кўрсатилган маълумот эскирган бўлиши мумкин. Ҳамёнингиз алоқа ўрнатилгандан сўнг Peercoin тармоқ билан автоматик тарзда синхронланади, аммо жараён ҳалигача тугалланмади.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
+        <translation>Кўрсатилган маълумот эскирган бўлиши мумкин. Ҳамёнингиз алоқа ўрнатилгандан сўнг Patchcoin тармоқ билан автоматик тарзда синхронланади, аммо жараён ҳалигача тугалланмади.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1660,8 +1660,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation type="unfinished">Фойдаланувчи вакил</translation>
     </message>
     <message>
-        <source>Enter a Peercoin address (e.g. %1)</source>
-        <translation>Peercoin манзилини киритинг (масалан.  %1)</translation>
+        <source>Enter a Patchcoin address (e.g. %1)</source>
+        <translation>Patchcoin манзилини киритинг (масалан.  %1)</translation>
     </message>
     <message>
         <source>Address</source>

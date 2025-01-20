@@ -66,7 +66,7 @@
         <translation type="unfinished">მიმღები მისამართები</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>ეს არის თქვენი ბიტკოინ-მისამართები, რომელთაგანაც შეგიძლიათ გადახდა. აუცილებლად შეამოწმეთ თანხა და მიმღები მისამართი გაგზავნამდე.</translation>
     </message>
     <message>
@@ -327,8 +327,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>დისკზე ბლოკების რეინდექსაცია...</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>მონეტების გაგზავნა Peercoin-მისამართზე</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>მონეტების გაგზავნა Patchcoin-მისამართზე</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -363,12 +363,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>თქვენი საფულის პირადი გასაღებების დაშიფრვა</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>მესიჯებზე ხელმოწერა თქვენი Peercoin-მისამართებით იმის დასტურად, რომ ის თქვენია</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>მესიჯებზე ხელმოწერა თქვენი Patchcoin-მისამართებით იმის დასტურად, რომ ის თქვენია</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>შეამოწმეთ, რომ მესიჯები ხელმოწერილია მითითებული Peercoin-მისამართით</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>შეამოწმეთ, რომ მესიჯები ხელმოწერილია მითითებული Patchcoin-მისამართით</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -387,8 +387,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>ბარათების პანელი</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>გადახდის მოთხოვნა (შეიქმნება QR-კოდები და peercoin: ბმულები)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>გადახდის მოთხოვნა (შეიქმნება QR-კოდები და patchcoin: ბმულები)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -898,7 +898,7 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>&amp;მესიჯი:</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Peercoin network.</source>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Patchcoin network.</source>
         <translation>არააუცილებელი მესიჯი, რომელიც ერთვის გადახდის მოთხოვნას და ნაჩვენები იქნება მოთხოვნის გახსნისას. შენიშვნა: მესიჯი არ გაყვება გადახდას ბითქოინის ქსელში.</translation>
     </message>
     <message>
@@ -1226,7 +1226,7 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>შეიყვანეთ ამ მისამართის ნიშნული გამოყენებული მისამართების სიაში დასამატებლად</translation>
     </message>
     <message>
-        <source>A message that was attached to the peercoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Peercoin network.</source>
+        <source>A message that was attached to the patchcoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Patchcoin network.</source>
         <translation>მესიჯი, რომელიც თან ერთვის მონეტებს:  URI, რომელიც შეინახება ტრანსაქციასთან ერთად თქვენთვის. შენიშვნა: მესიჯი არ გაყვება გადახდას ბითქოინის ქსელში.</translation>
     </message>
     <message>
@@ -1284,7 +1284,7 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>მიმდინარე ხელმოწერის კოპირება კლიპბორდში</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this Peercoin address</source>
+        <source>Sign the message to prove you own this Patchcoin address</source>
         <translation>მოაწერეთ ხელი იმის დასადასტურებლად, რომ ეს მისამართი თქვენია</translation>
     </message>
     <message>
@@ -1304,8 +1304,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>მესიჯის &amp;ვერიფიკაცია</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified Peercoin address</source>
-        <translation>შეამოწმეთ, რომ მესიჯი ხელმოწერილია მითითებული Peercoin-მისამართით</translation>
+        <source>Verify the message to ensure it was signed with the specified Patchcoin address</source>
+        <translation>შეამოწმეთ, რომ მესიჯი ხელმოწერილია მითითებული Patchcoin-მისამართით</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

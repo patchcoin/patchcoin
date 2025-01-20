@@ -66,7 +66,7 @@
         <translation type="unfinished">адрасы Прымання</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>Тут знаходзяцца Біткойн-адрасы для высылання плацяжоў. Заўсёды спраўджвайце колькасць і адрас прызначэння перад здзяйсненнем транзакцыі.</translation>
     </message>
     <message>
@@ -267,7 +267,7 @@
         <translation>Пераіндэксацыя блокаў на дыску...</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
+        <source>Send coins to a Patchcoin address</source>
         <translation>Даслаць манеты на Біткойн-адрас</translation>
     </message>
     <message>
@@ -303,11 +303,11 @@
         <translation>Зашыфраваць прыватныя ключы, якия належаць вашаму гаманцу</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
         <translation>Падпісаць паведамленне з дапамогай Біткойн-адраса каб даказаць, што яно належыць вам</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
         <translation>Спраўдзіць паведамленне з дапамогай Біткойн-адраса каб даказаць, што яно належыць вам</translation>
     </message>
     <message>
@@ -323,7 +323,7 @@
         <translation>Дапамога</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
         <translation>Запатрабаваць плацёж (генеруецца QR-код для біткойн URI)</translation>
     </message>
     <message>
@@ -606,7 +606,7 @@
         <translation>Вітаем</translation>
     </message>
     <message>
-        <source>Peercoin</source>
+        <source>Patchcoin</source>
         <translation>Біткойн</translation>
     </message>
     <message>

@@ -66,7 +66,7 @@
         <translation type="unfinished">받는 주소들</translation>
     </message>
     <message>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>피어코인을 보내는 계좌 주소입니다. 코인을 보내기 전에 금액과 받는 주소를 항상 확인하세요.</translation>
     </message>
     <message>
@@ -356,7 +356,7 @@
         <translation>프록시가 &lt;b&gt;활성화&lt;/b&gt; 되었습니다: %1</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
+        <source>Send coins to a Patchcoin address</source>
         <translation>피어코인 주소로 코인을 전송합니다</translation>
     </message>
     <message>
@@ -417,7 +417,7 @@
     </message>
     <message>
         <source>Request payments (generates QR codes and bitcoin: URIs)</source>
-        <translation>지불 요청하기 (QR코드와 peercoin: URI를 생성합니다)</translation>
+        <translation>지불 요청하기 (QR코드와 patchcoin: URI를 생성합니다)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -1423,7 +1423,7 @@
     </message>
     <message>
         <source>Cannot start bitcoin: click-to-pay handler</source>
-        <translation>peercoin: 핸들러를 시작할 수 없음</translation>
+        <translation>patchcoin: 핸들러를 시작할 수 없음</translation>
     </message>
     <message>
         <source>URI handling</source>
@@ -1431,7 +1431,7 @@
     </message>
     <message>
         <source>'bitcoin://' is not a valid URI. Use 'bitcoin:' instead.</source>
-        <translation>'peercoin://"은 잘못된 URI입니다. 'peercoin:'을 사용하십시오.</translation>
+        <translation>'patchcoin://"은 잘못된 URI입니다. 'patchcoin:'을 사용하십시오.</translation>
     </message>
     <message>
         <source>Cannot process payment request because BIP70 is not supported.</source>
@@ -2348,7 +2348,7 @@ Note:  Since the fee is calculated on a per-byte basis, a fee of "100 satoshis p
     </message>
     <message>
         <source>A message that was attached to the bitcoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Bitcoin network.</source>
-        <translation>peercoin: URI에 추가된 메시지는 참고를 위해 거래내역과 함께 저장될 것입니다. Note: 이 메시지는 피어코인 네트워크로 전송되지 않습니다.</translation>
+        <translation>patchcoin: URI에 추가된 메시지는 참고를 위해 거래내역과 함께 저장될 것입니다. Note: 이 메시지는 피어코인 네트워크로 전송되지 않습니다.</translation>
     </message>
     <message>
         <source>Pay To:</source>

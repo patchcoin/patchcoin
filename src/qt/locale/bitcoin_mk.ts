@@ -179,7 +179,7 @@
         <translation type="unfinished">Прикажи информации за Qt</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
+        <source>Send coins to a Patchcoin address</source>
         <translation>Испрати пиркойни на Пиркойн адреса</translation>
     </message>
     <message>
@@ -341,7 +341,7 @@
 <context>
     <name>Intro</name>
     <message>
-        <source>Peercoin</source>
+        <source>Patchcoin</source>
         <translation>Пиркойн</translation>
     </message>
     <message>

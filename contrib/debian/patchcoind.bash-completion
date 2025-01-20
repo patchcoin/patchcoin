@@ -1,0 +1,3 @@
+contrib/patchcoind.bash-completion	patchcoind
+contrib/patchcoin-cli.bash-completion	patchcoin-cli
+contrib/patchcoin-tx.bash-completion	patchcoin-tx

@@ -1,0 +1,2 @@
+usr/local/bin/patchcoind usr/bin
+usr/local/bin/patchcoin-cli usr/bin

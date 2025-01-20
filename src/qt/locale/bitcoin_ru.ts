@@ -83,12 +83,12 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>These are your Peercoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Patchcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>Это ваши Пиркойн-адреса для отправки платежей. Всегда проверяйте количество и адрес получателя перед отправкой перевода.</translation>
     </message>
     <message>
         <location line="+5"/>
-        <source>These are your Peercoin addresses for receiving payments. Use the &apos;Create new receiving address&apos; button in the receive tab to create new addresses.</source>
+        <source>These are your Patchcoin addresses for receiving payments. Use the &apos;Create new receiving address&apos; button in the receive tab to create new addresses.</source>
         <translation>Это ваши Пиркойн-адреса для приёма платежей. Используйте кнопку «Создать новый адрес для получения» на вкладке Получить, чтобы создать новые адреса.</translation>
     </message>
     <message>
@@ -219,12 +219,12 @@
     </message>
     <message>
         <location line="+0"/>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PEERCOINS&lt;/b&gt;!</source>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PATCHCOINS&lt;/b&gt;!</source>
         <translation>Предупреждение: Если вы зашифруете кошелёк и потеряете пароль, вы &lt;b&gt;ПОТЕРЯЕТЕ ВСЕ ВАШИ ПИРКОЙНЫ&lt;/b&gt;!</translation>
     </message>
     <message>
         <location line="+7"/>
-        <source>Remember that encrypting your wallet cannot fully protect your peercoins from being stolen by malware infecting your computer.</source>
+        <source>Remember that encrypting your wallet cannot fully protect your patchcoins from being stolen by malware infecting your computer.</source>
         <translation>Помните, что шифрование вашего кошелька не может полностью защитить ваши пиркойны от кражи вредоносными программами, заражающими ваш компьютер.</translation>
     </message>
     <message>
@@ -349,12 +349,12 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>Send coins to a Peercoin address</source>
+        <source>Send coins to a Patchcoin address</source>
         <translation>Послать средства на Пиркойн-адрес</translation>
     </message>
     <message>
         <location line="+11"/>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
         <translation>Запросить платеж</translation>
     </message>
     <message>
@@ -444,12 +444,12 @@
     </message>
     <message>
         <location line="+3"/>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
         <translation>Подписывайте сообщения Пиркойн-адресами чтобы подтвердить что это написали именно Вы</translation>
     </message>
     <message>
         <location line="+2"/>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
         <translation>Проверяйте сообщения чтобы убедиться что они подписаны конкретными Пиркойн-адресами</translation>
     </message>
     <message>
@@ -459,7 +459,7 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Open a peercoin: URI</source>
+        <source>Open a patchcoin: URI</source>
         <translation>Открыть пиркойн: URI</translation>
     </message>
     <message>
@@ -474,7 +474,7 @@
     </message>
     <message>
         <location line="+4"/>
-        <source>Show the %1 help message to get a list with possible Peercoin command-line options</source>
+        <source>Show the %1 help message to get a list with possible Patchcoin command-line options</source>
         <translation>Показать помощь по %1, чтобы получить список доступных параметров командной строки</translation>
     </message>
     <message>
@@ -484,7 +484,7 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Open the Peercoin Discord in a web browser.</source>
+        <source>Open the Patchcoin Discord in a web browser.</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -494,7 +494,7 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Open https://talk.peercoin.net in a web browser.</source>
+        <source>Open https://talk.patchcoin.net in a web browser.</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -509,8 +509,8 @@
     </message>
     <message numerus="yes">
         <location line="+0"/>
-        <source>%n active connection(s) to Peercoin network</source>
-        <translation><numerusform>%n активное подключение к сети Peercoin</numerusform><numerusform>%n активных подключения к сети Peercoin</numerusform><numerusform>%n активных подключений к сети Peercoin</numerusform><numerusform>%n активных подключений к сети Пиркойн</numerusform></translation>
+        <source>%n active connection(s) to Patchcoin network</source>
+        <translation><numerusform>%n активное подключение к сети Patchcoin</numerusform><numerusform>%n активных подключения к сети Patchcoin</numerusform><numerusform>%n активных подключений к сети Patchcoin</numerusform><numerusform>%n активных подключений к сети Пиркойн</numerusform></translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1161,7 +1161,7 @@
     </message>
     <message>
         <location line="-10"/>
-        <source>The entered address &quot;%1&quot; is not a valid Peercoin address.</source>
+        <source>The entered address &quot;%1&quot; is not a valid Patchcoin address.</source>
         <translation>Введенный адрес &quot;%1&quot; не является действительным Пиркойн-адресом.</translation>
     </message>
     <message>
@@ -1270,8 +1270,8 @@
     </message>
     <message>
         <location line="-79"/>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <location line="+108"/>
@@ -1489,12 +1489,12 @@
     </message>
     <message>
         <location line="+119"/>
-        <source>Recent transactions may not yet be visible, and therefore your wallet&apos;s balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the Peercoin network, as detailed below.</source>
+        <source>Recent transactions may not yet be visible, and therefore your wallet&apos;s balance might be incorrect. This information will be correct once your wallet has finished synchronizing with the Patchcoin network, as detailed below.</source>
         <translation>Последние транзакции пока могут быть не видны, поэтому вы можете видеть некорректный баланс ваших кошельков. Отображаемая информация будет верна после завершения синхронизации. Прогресс синхронизации вы можете видеть ниже.</translation>
     </message>
     <message>
         <location line="+19"/>
-        <source>Attempting to spend peercoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
+        <source>Attempting to spend patchcoins that are affected by not-yet-displayed transactions will not be accepted by the network.</source>
         <translation>Попытка потратить средства, использованные в транзакциях, которые ещё не синхронизированы, будет отклонена сетью.</translation>
     </message>
     <message>
@@ -1560,7 +1560,7 @@
     <name>OpenURIDialog</name>
     <message>
         <location filename="../forms/openuridialog.ui" line="+14"/>
-        <source>Open peercoin URI</source>
+        <source>Open patchcoin URI</source>
         <translation>Открыть URI пиркойна</translation>
     </message>
     <message>
@@ -1626,12 +1626,12 @@
     </message>
     <message>
         <location line="+104"/>
-        <source>Automatically open the Peercoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <source>Automatically open the Patchcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
         <translation>Автоматически открыть порт для Пиркойн-клиента на маршрутизаторе. Работает только если Ваш маршрутизатор поддерживает UPnP, и данная функция включена.</translation>
     </message>
     <message>
         <location line="+20"/>
-        <source>Connect to the Peercoin network through a SOCKS5 proxy.</source>
+        <source>Connect to the Patchcoin network through a SOCKS5 proxy.</source>
         <translation>Подключится к сети Пиркойн через прокси SOCKS5.</translation>
     </message>
     <message>
@@ -1649,7 +1649,7 @@
     </message>
     <message>
         <location line="+35"/>
-        <source>Connect to the Peercoin network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <source>Connect to the Patchcoin network through a separate SOCKS5 proxy for Tor hidden services.</source>
         <translation>Подключатся к Пиркойн-сети через отдельный прокси SOCKS5 для скрытых сервисов Tor.</translation>
     </message>
     <message>
@@ -1973,7 +1973,7 @@
     <message>
         <location line="+16"/>
         <location line="+443"/>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
         <translation>Отображаемая информация может быть устаревшей. Ваш кошелёк автоматически синхронизируется с сетью Пиркойн после подключения, но этот процесс пока не завершён.</translation>
     </message>
     <message>
@@ -2176,13 +2176,13 @@
     </message>
     <message>
         <location line="-76"/>
-        <source>Cannot start peercoin: click-to-pay handler</source>
+        <source>Cannot start patchcoin: click-to-pay handler</source>
         <translation>Не удаётся запустить пиркойн: обработчик click-to-pay</translation>
     </message>
     <message>
         <location line="+50"/>
-        <source>&apos;peercoin://&apos; is not a valid URI. Use &apos;peercoin:&apos; instead.</source>
-        <translation>&apos;peercoin://&apos; не верный URI. Используйте &apos;peercoin:&apos; вместо этого.</translation>
+        <source>&apos;patchcoin://&apos; is not a valid URI. Use &apos;patchcoin:&apos; instead.</source>
+        <translation>&apos;patchcoin://&apos; не верный URI. Используйте &apos;patchcoin:&apos; вместо этого.</translation>
     </message>
     <message>
         <location line="+14"/>
@@ -2209,7 +2209,7 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>URI cannot be parsed! This can be caused by an invalid Peercoin address or malformed URI parameters.</source>
+        <source>URI cannot be parsed! This can be caused by an invalid Patchcoin address or malformed URI parameters.</source>
         <translation>Не удалось обработать идентификатор! Это может быть связано с неверным Пиркойн-адресом или неправильными параметрами идентификатора.</translation>
     </message>
     <message>
@@ -2260,7 +2260,7 @@
     </message>
     <message>
         <location filename="../guiutil.cpp" line="+111"/>
-        <source>Enter a Peercoin address (e.g. %1)</source>
+        <source>Enter a Patchcoin address (e.g. %1)</source>
         <translation>Введите пиркойн-адрес (напр. %1)</translation>
     </message>
     <message>
@@ -2911,7 +2911,7 @@
     </message>
     <message>
         <location line="-137"/>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Peercoin network.</source>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Patchcoin network.</source>
         <translation>Необязательное сообщение для запроса платежа, которое будет показано при открытии запроса. Заметьте: сообщение не будет отправлено вместе с платежом через сеть Пиркойн.</translation>
     </message>
     <message>
@@ -3369,7 +3369,7 @@
     </message>
     <message>
         <location line="+213"/>
-        <source>Warning: Invalid Peercoin address</source>
+        <source>Warning: Invalid Patchcoin address</source>
         <translation>Предупреждение: Неверный Пиркойн-адрес</translation>
     </message>
     <message>
@@ -3409,7 +3409,7 @@
     </message>
     <message>
         <location line="+18"/>
-        <source>The Peercoin address to send the payment to</source>
+        <source>The Patchcoin address to send the payment to</source>
         <translation>Пиркойн-адрес, на который отправить платёж</translation>
     </message>
     <message>
@@ -3451,7 +3451,7 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>The fee will be deducted from the amount being sent. The recipient will receive less peercoins than you enter in the amount field. If multiple recipients are selected, the fee is split equally.</source>
+        <source>The fee will be deducted from the amount being sent. The recipient will receive less patchcoins than you enter in the amount field. If multiple recipients are selected, the fee is split equally.</source>
         <translation>С отправляемой суммы будет удержана комиссия. Получателю придёт меньше пиркойнов, чем вы вводите в поле количества. Если выбрано несколько получателей, комиссия распределяется поровну.</translation>
     </message>
     <message>
@@ -3471,7 +3471,7 @@
     </message>
     <message>
         <location line="+10"/>
-        <source>A message that was attached to the Peercoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Peercoin network.</source>
+        <source>A message that was attached to the Patchcoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Patchcoin network.</source>
         <translation>Сообщение прикрепленное к пиркойн идентификатору будет сохранено вместе с транзакцией для вашего сведения. Заметьте: Сообщение не будет отправлено через сеть Пиркойн.</translation>
     </message>
     <message>
@@ -3530,12 +3530,12 @@
     </message>
     <message>
         <location line="+6"/>
-        <source>You can sign messages/agreements with your addresses to prove you can receive peercoins sent to them. Be careful not to sign anything vague or random, as phishing attacks may try to trick you into signing your identity over to them. Only sign fully-detailed statements you agree to.</source>
+        <source>You can sign messages/agreements with your addresses to prove you can receive patchcoins sent to them. Be careful not to sign anything vague or random, as phishing attacks may try to trick you into signing your identity over to them. Only sign fully-detailed statements you agree to.</source>
         <translation>Вы можете подписывать сообщения/соглашения своими адресами, чтобы доказать свою возможность получать пиркойны на них. Будьте осторожны, не подписывайте что-то неопределённое или случайное, так как фишинговые атаки могут обманным путём заставить вас подписать нежелательные сообщения. Подписывайте только те сообщения, с которыми вы согласны вплоть до мелочей.</translation>
     </message>
     <message>
         <location line="+18"/>
-        <source>The Peercoin address to sign the message with</source>
+        <source>The Patchcoin address to sign the message with</source>
         <translation>Пиркойн-адрес, которым подписать сообщение</translation>
     </message>
     <message>
@@ -3578,17 +3578,17 @@
     </message>
     <message>
         <location line="+21"/>
-        <source>Sign the message to prove you own this Peercoin address</source>
+        <source>Sign the message to prove you own this Patchcoin address</source>
         <translation>Подписать сообщение, чтобы доказать владение Пиркойн-адресом</translation>
     </message>
     <message>
         <location line="+106"/>
-        <source>The Peercoin address the message was signed with</source>
+        <source>The Patchcoin address the message was signed with</source>
         <translation>Пиркойн-адрес, которым было подписано сообщение</translation>
     </message>
     <message>
         <location line="+51"/>
-        <source>Verify the message to ensure it was signed with the specified Peercoin address</source>
+        <source>Verify the message to ensure it was signed with the specified Patchcoin address</source>
         <translation>Проверить сообщение, чтобы убедиться, что оно было подписано указанным Пиркойн-адресом</translation>
     </message>
     <message>

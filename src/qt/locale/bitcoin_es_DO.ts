@@ -314,8 +314,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Reindexando bloques en el disco...</translation>
     </message>
     <message>
-        <source>Send coins to a Peercoin address</source>
-        <translation>Enviar monedas a una dirección Peercoin</translation>
+        <source>Send coins to a Patchcoin address</source>
+        <translation>Enviar monedas a una dirección Patchcoin</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -350,12 +350,12 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Encriptar las llaves privadas que pertenecen a tu billetera</translation>
     </message>
     <message>
-        <source>Sign messages with your Peercoin addresses to prove you own them</source>
-        <translation>Firma mensajes con tus direcciones Peercoin para probar que eres dueño de ellas</translation>
+        <source>Sign messages with your Patchcoin addresses to prove you own them</source>
+        <translation>Firma mensajes con tus direcciones Patchcoin para probar que eres dueño de ellas</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified Peercoin addresses</source>
-        <translation>Verificar mensajes para asegurar que estaban firmados con direcciones Peercoin especificas</translation>
+        <source>Verify messages to ensure they were signed with specified Patchcoin addresses</source>
+        <translation>Verificar mensajes para asegurar que estaban firmados con direcciones Patchcoin especificas</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -374,8 +374,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Barra de pestañas</translation>
     </message>
     <message>
-        <source>Request payments (generates QR codes and peercoin: URIs)</source>
-        <translation>Solicitar pagos (genera codigo QR y URL's de Peercoin)</translation>
+        <source>Request payments (generates QR codes and patchcoin: URIs)</source>
+        <translation>Solicitar pagos (genera codigo QR y URL's de Patchcoin)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -687,8 +687,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Usa un directorio de datos personalizado:</translation>
     </message>
     <message>
-        <source>Peercoin</source>
-        <translation>Peercoin</translation>
+        <source>Patchcoin</source>
+        <translation>Patchcoin</translation>
     </message>
     <message>
         <source>Error: Specified data directory "%1" cannot be created.</source>
@@ -755,8 +755,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Experto</translation>
     </message>
     <message>
-        <source>Automatically open the Peercoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Abrir automáticamente el puerto del cliente Peercoin en el router. Esta opción solo funciona si el router admite UPnP y está activado.</translation>
+        <source>Automatically open the Patchcoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Abrir automáticamente el puerto del cliente Patchcoin en el router. Esta opción solo funciona si el router admite UPnP y está activado.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -854,8 +854,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Desde</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Peercoin network after a connection is established, but this process has not completed yet.</source>
-        <translation>La información mostrada puede estar desactualizada. Su monedero se sincroniza automáticamente con la red Peercoin después de que se haya establecido una conexión, pero este proceso aún no se ha completado.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Patchcoin network after a connection is established, but this process has not completed yet.</source>
+        <translation>La información mostrada puede estar desactualizada. Su monedero se sincroniza automáticamente con la red Patchcoin después de que se haya establecido una conexión, pero este proceso aún no se ha completado.</translation>
     </message>
     <message>
         <source>Available:</source>
@@ -1511,8 +1511,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>Copiar la firma actual al portapapeles del sistema</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this Peercoin address</source>
-        <translation>Firmar el mensaje para demostrar que se posee esta dirección Peercoin</translation>
+        <source>Sign the message to prove you own this Patchcoin address</source>
+        <translation>Firmar el mensaje para demostrar que se posee esta dirección Patchcoin</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -1531,8 +1531,8 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <translation>&amp;Verificar mensaje</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified Peercoin address</source>
-        <translation>Verificar el mensaje para comprobar que fue firmado con la dirección Peercoin indicada</translation>
+        <source>Verify the message to ensure it was signed with the specified Patchcoin address</source>
+        <translation>Verificar el mensaje para comprobar que fue firmado con la dirección Patchcoin indicada</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

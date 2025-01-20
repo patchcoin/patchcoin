@@ -1,0 +1,11 @@
+usr/local/bin/patchcoin-qt usr/bin
+share/pixmaps/patchcoin16.png usr/share/pixmaps
+share/pixmaps/patchcoin32.png usr/share/pixmaps
+share/pixmaps/patchcoin128.png usr/share/pixmaps
+share/pixmaps/patchcoin256.png usr/share/pixmaps
+share/pixmaps/patchcoin-testnet32.png usr/share/pixmaps
+share/pixmaps/patchcoin-testnet128.png usr/share/pixmaps
+share/pixmaps/patchcoin-testnet256.png usr/share/pixmaps
+debian/patchcoin-qt.desktop usr/share/applications
+debian/patchcoin-testnet-qt.desktop usr/share/applications
+debian/patchcoin-qt.protocol usr/share/kde4/services/
