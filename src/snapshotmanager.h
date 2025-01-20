@@ -69,7 +69,7 @@ public:
         return m_incompatible_scripts;
     }
 
-    uint256 GetHashScripts() const
+    const uint256& GetHashScripts() const
     {
         return m_hash_scripts;
     }
