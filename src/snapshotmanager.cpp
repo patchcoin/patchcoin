@@ -28,10 +28,6 @@ void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, 
     LOCK(m_snapshot_mutex);
     m_valid_scripts = std::move(valid);
     m_incompatible_scripts = std::move(incompatible);
-
-    std::map<CScript, CAmount> merged{m_valid_scripts};
-    merged.insert(m_incompatible_scripts.begin(),
-                  m_incompatible_scripts.end());
     m_hash_scripts = GetHash();
 }
 
@@ -140,12 +136,11 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
               FormatMoney(compatible_amount_total + incompatible_amount_total));
 
     UpdateAllScriptPubKeys(valid_scripts, incompatible_scripts);
-    uint256 hashScripts = GetHash();
     LogPrintf("[snapshot] hash of peercoin scripts: want=%s, got=%s\n",
               Params().GetConsensus().hashPeercoinSnapshot.ToString(),
-              hashScripts.ToString());
+              m_hash_scripts.ToString());
 
-    assert(hashScripts == Params().GetConsensus().hashPeercoinSnapshot);
+    assert(m_hash_scripts == Params().GetConsensus().hashPeercoinSnapshot);
 
     return true;
 }
@@ -175,10 +170,6 @@ bool SnapshotManager::LoadPeercoinUTXOSFromDisk()
     }
     coins_file.fclose();
 
-    if (fs::exists(path)) {
-        return false;
-    }
-
     if (!StoreSnapshotToDisk())
         return false;
 
@@ -190,16 +181,19 @@ bool SnapshotManager::StoreSnapshotToDisk() const
 {
     LOCK(m_snapshot_mutex);
     const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), snapshotPath);
-    FILE* fp = fsbridge::fopen(snapshotPath, "wb");
-    if (!fp) {
+    FILE* file{fsbridge::fopen(path, "wb")};
+    AutoFile afile{file};
+    if (afile.IsNull()) {
         LogPrintf("StoreSnapshotToDisk: failed to open file %s\n", fs::PathToString(path));
         return false;
     }
-    AutoFile afile{fp};
 
     try {
         afile << *this;
-        afile.fclose();
+        if (afile.fclose() != 0) {
+            LogPrintf("StoreSnapshotToDisk: failed to close file %s\n", fs::PathToString(path));
+            return false;
+        }
         LogPrintf("StoreSnapshotToDisk: snapshot stored to %s\n", fs::PathToString(path));
         return true;
 
@@ -230,9 +224,9 @@ bool SnapshotManager::LoadSnapshotFromDisk()
         afile >> temp;
         afile.fclose();
 
-        uint256 hashAll = temp.GetHash();
-        if (hashAll != Params().GetConsensus().hashPeercoinSnapshot) {
-            LogPrintf("LoadSnapshotFromDisk: hash mismatch. got=%s\n", hashAll.ToString());
+        uint256 hash = temp.GetHash();
+        if (hash != Params().GetConsensus().hashPeercoinSnapshot) {
+            LogPrintf("LoadSnapshotFromDisk: hash mismatch. got=%s\n", hash.ToString());
             return false;
         }
 
