@@ -6,9 +6,10 @@
 #include <node/context.h>
 #include <node/utxo_snapshot.h>
 #include <streams.h>
+#include <sync.h>
 #include <map>
-#include <set>
 #include <string>
+#include <util/system.h>
 
 namespace wallet {
     class CWallet;
@@ -19,64 +20,63 @@ inline CAmount MAX_CLAIM_REWARD = 50000 * COIN;
 
 class SnapshotManager
 {
-    SnapshotManager() = default;
-    ~SnapshotManager() = default;
+    fs::path peercoinUTXOSPath = fs::u8path("peercoin_utxos.dat");
+    fs::path snapshotPath = fs::u8path("peercoin_snapshot.dat");
 
     bool PopulateAndValidateSnapshotForeign(AutoFile& coins_file, const node::SnapshotMetadata& metadata);
 
-    bool LoadSnapshotFromFile(const fs::path& path);
-
-    bool ReadPermittedScriptPubKeys();
-
-
     std::string FormatCustomMoney(CAmount amount);
 
-    std::map<CScript, CAmount> m_scripts;
-    node::SnapshotMetadata     m_metadata;
-    uint256                    m_hash_scripts;
+    std::map<CScript, CAmount> m_valid_scripts;
+    std::map<CScript, CAmount> m_incompatible_scripts;
 
-    std::set<std::string> m_invalid;
+    uint256 m_hash_scripts;
 
-    // RecursiveMutex m_snapshot_mutex;
 public:
-    static SnapshotManager& Peercoin();
+    SnapshotManager() = default;
+    ~SnapshotManager() = default;
 
-    SnapshotManager(const SnapshotManager&) = delete;
-    SnapshotManager& operator=(const SnapshotManager&) = delete;
-    SnapshotManager(SnapshotManager&&) = delete;
-    SnapshotManager& operator=(SnapshotManager&&) = delete;
+    static SnapshotManager& Peercoin() {
+        static SnapshotManager peercoinInstance;
+        return peercoinInstance;
+    }
 
-    bool LoadSnapshotOnStartup(const ArgsManager& args);
+    SnapshotManager(const SnapshotManager&) = default;
+    SnapshotManager& operator=(const SnapshotManager&) = default;
+    SnapshotManager(SnapshotManager&&) = default;
+    SnapshotManager& operator=(SnapshotManager&&) = default;
 
+    bool LoadSnapshotOnStartup();
     bool LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CAmount& balance, CAmount& eligible);
-
     void ExportSnapshotToCSV(const fs::path& path);
-
     bool CalculateEligible(const CAmount& balance, CAmount& eligible);
-
     bool CalculateReceived(const wallet::CWallet* pwallet, const CScript& target, CAmount& nTotalReceived);
 
-    void DumpPermittedScriptPubKeys();
+    bool LoadPeercoinUTXOSFromDisk();
 
-    bool StorePermanentSnapshot(const fs::path& path);
+    bool StoreSnapshotToDisk() const;
 
-    bool LoadPermanentSnapshot(const fs::path& path);
+    bool LoadSnapshotFromDisk();
 
-    uint256 GetHash(std::map<CScript, CAmount>& scripts);
+    uint256 GetHash() const;
 
-    void UpdateScriptPubKeys(const std::map<CScript, CAmount>& scripts)
-    {
-        LOCK(m_snapshot_mutex);
-        m_scripts = scripts;
-        m_hash_scripts = GetHash(m_scripts);
-    }
+    void UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible);
 
     std::map<CScript, CAmount>& GetScriptPubKeys() {
-        return m_scripts;
+        return m_valid_scripts;
+    }
+    std::map<CScript, CAmount>& GetIncompatibleScriptPubKeys() {
+        return m_incompatible_scripts;
     }
 
-    const uint256& Hash() const {
+    uint256 GetHashScripts() const
+    {
         return m_hash_scripts;
+    }
+
+    SERIALIZE_METHODS(SnapshotManager, obj)
+    {
+        READWRITE(obj.m_valid_scripts, obj.m_incompatible_scripts);
     }
 };
 

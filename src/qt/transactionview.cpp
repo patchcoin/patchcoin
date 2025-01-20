@@ -281,36 +281,62 @@ void TransactionView::PopulateSnapshotTable()
     if (!snapshotTable) return;
 
     SnapshotManager& sman = SnapshotManager::Peercoin();
-    if (sman.GetScriptPubKeys().empty())
+
+    const auto& validMap = sman.GetScriptPubKeys();
+    const auto& incompMap = sman.GetIncompatibleScriptPubKeys();
+
+    if (validMap.empty() && incompMap.empty()) {
         return;
+    }
+
     waitForSnapshot->stop();
 
     snapshotTable->clearContents();
-    snapshotTable->setRowCount((int)sman.GetScriptPubKeys().size());
+    snapshotTable->setRowCount(static_cast<int>(validMap.size() + incompMap.size()));
 
     int row = 0;
-    for (const auto& [scriptPubKey, balance] : sman.GetScriptPubKeys()) {
-        std::string address;
+
+    auto addRowToTable = [&](const auto& scriptPubKey, CAmount balance, bool isCompatible) {
         CTxDestination dest;
         ExtractDestination(scriptPubKey, dest);
-        address = EncodeDestination(dest);
+        std::string address = EncodeDestination(dest);
 
         QTableWidgetItem* addressItem = new QTableWidgetItem(QString::fromStdString(address));
-        snapshotTable->setItem(row, 0, addressItem);
-
         QString valStr = BitcoinUnits::format(BitcoinUnit::BTC, balance, false, BitcoinUnits::SeparatorStyle::ALWAYS);
         QTableWidgetItem* valItem = new QTableWidgetItem(valStr);
         valItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        snapshotTable->setItem(row, 1, valItem);
 
         CAmount eligible = 0;
         sman.CalculateEligible(balance, eligible);
         QString elStr = BitcoinUnits::format(BitcoinUnit::BTC, eligible, false, BitcoinUnits::SeparatorStyle::ALWAYS);
         QTableWidgetItem* elItem = new QTableWidgetItem(elStr);
         elItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+
+        if (!isCompatible) {
+            QBrush greyBrush(Qt::gray);
+            addressItem->setForeground(greyBrush);
+            valItem->setForeground(greyBrush);
+            elItem->setForeground(greyBrush);
+
+            addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
+            valItem->setFlags(valItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
+            elItem->setFlags(elItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
+        }
+
+        snapshotTable->setItem(row, 0, addressItem);
+        snapshotTable->setItem(row, 1, valItem);
         snapshotTable->setItem(row, 2, elItem);
 
         row++;
+    };
+
+    for (const auto& [scriptPubKey, balance] : validMap) {
+        addRowToTable(scriptPubKey, balance, true);
+    }
+
+    for (const auto& [scriptPubKey, balance] : incompMap) {
+        addRowToTable(scriptPubKey, balance, false);
     }
 }
 
@@ -348,7 +374,7 @@ void TransactionView::searchThisSnapshotAddress()
 void TransactionView::snapshotTableContextMenuRequested(const QPoint &pos)
 {
     QTableWidgetItem* item = snapshotTable->itemAt(pos);
-    if (!item) {
+    if (!item || item->foreground() == QBrush(Qt::gray)) {
         return;
     }
 
@@ -373,11 +399,16 @@ void TransactionView::claimSnapshotAddress()
         return;
     }
     int row = selectedItems.first()->row();
-    QString peercoinAddress = snapshotTable->item(row, 0)->text();
+    QTableWidgetItem* addressItem = snapshotTable->item(row, 0);
+
+    if (addressItem->foreground() == QBrush(Qt::gray)) {
+        return;
+    }
+
+    QString peercoinAddress = addressItem->text();
 
     m_walletView->gotoVerifyMessageTabWithClaim(peercoinAddress);
 }
-
 
 void TransactionView::setModel(WalletModel *_model)
 {

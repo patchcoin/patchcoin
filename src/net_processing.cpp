@@ -1441,7 +1441,7 @@ void PeerManagerImpl::PushNodeVersion(CNode& pnode, const Peer& peer)
     uint64_t your_services{addr.nServices};
 
     const bool tx_relay{!RejectIncomingTxs(pnode)};
-    const bool peercoin_snapshot_held{SnapshotManager::Peercoin().Hash() == Params().GetConsensus().hashPeercoinSnapshot}; // patchcoin todo potentially extend this check
+    const bool peercoin_snapshot_held{SnapshotManager::Peercoin().GetHashScripts() == Params().GetConsensus().hashPeercoinSnapshot}; // patchcoin todo potentially extend this check
     const bool claims_held{!g_claims.empty()}; // patchcoin todo depend on nTime of latest claim
     m_connman.PushMessage(&pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERSION, PROTOCOL_VERSION, my_services, nTime,
             your_services, addr_you, // Together the pre-version-31402 serialization of CAddress "addrYou" (without nTime)
@@ -2680,7 +2680,7 @@ bool PeerManagerImpl::MaybeSendGetHeaders(CNode& pfrom, const CBlockLocator& loc
 
     SnapshotManager& sman = SnapshotManager::Peercoin();
     // patchcoin todo claims not being empty doesn't guarantee anything, extend check to claimset
-    bool snapshotAndClaimsHeld = peer.m_scack_sent && sman.Hash() == Params().GetConsensus().hashPeercoinSnapshot && !g_claims.empty();
+    bool snapshotAndClaimsHeld = peer.m_scack_sent && sman.GetHashScripts() == Params().GetConsensus().hashPeercoinSnapshot && !g_claims.empty();
 
     // Only allow a new getheaders message to go out if we don't have a recent
     // one already in-flight
@@ -4077,11 +4077,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             SnapshotManager& sman = SnapshotManager::Peercoin();
-            if (sman.Hash() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
+            if (sman.GetHashScripts() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
                 peer->m_peercoin_snapshot_sent = 20;
                 return;
             }
-            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman.GetScriptPubKeys()));
+            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman));
             peer->m_peercoin_snapshot_sent += 1;
         }
         return;
@@ -4092,22 +4092,22 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             SnapshotManager& sman = SnapshotManager::Peercoin();
-            if (sman.Hash() == hashPeercoinSnapshot) {
+            if (sman.GetHashScripts() == hashPeercoinSnapshot) {
                 return;
             }
 
             try {
-                std::map<CScript, CAmount> scripts;
-                vRecv >> scripts;
-                uint256 hash{sman.GetHash(scripts)};
+                SnapshotManager temp;
+                vRecv >> temp;
 
-                if (hash == hashPeercoinSnapshot) {
-                    sman.UpdateScriptPubKeys(scripts);
-                    sman.DumpPermittedScriptPubKeys();
-                    if (!peer->m_scack_sent) {
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, g_claims.empty()));
-                        if (!g_claims.empty())
-                            peer->m_scack_sent = true;
+                if (temp.GetHash() == hashPeercoinSnapshot) {
+                    sman.UpdateAllScriptPubKeys(temp.GetScriptPubKeys(), temp.GetIncompatibleScriptPubKeys());
+                    if (sman.GetHash() == hashPeercoinSnapshot && sman.StoreSnapshotToDisk()) { // patchcoin todo is this too slow?
+                        if (!peer->m_scack_sent) {
+                            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, g_claims.empty()));
+                            if (!g_claims.empty())
+                                peer->m_scack_sent = true;
+                        }
                     }
                 } else {
                     Misbehaving(*peer, 100, "invalid snapshot");
@@ -5875,11 +5875,11 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
             LOCK(peer->m_send_peercoin_snapshot_mutex);
             if (peer->m_peercoin_snapshot_sent >= 1) return true;
             SnapshotManager& sman = SnapshotManager::Peercoin();
-            if (sman.Hash() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
+            if (sman.GetHashScripts() != m_chainparams.GetConsensus().hashPeercoinSnapshot) {
                 peer->m_peercoin_snapshot_sent = 20;
                 return true;
             }
-            m_connman.PushMessage(pto, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman.GetScriptPubKeys()));
+            m_connman.PushMessage(pto, msgMaker.Make(NetMsgType::SENDPEERCOINSNAPSHOT, sman));
             peer->m_peercoin_snapshot_sent += 1;
             return true;
         }

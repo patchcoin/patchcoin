@@ -17,32 +17,22 @@
 
 RecursiveMutex m_snapshot_mutex;
 
-SnapshotManager& SnapshotManager::Peercoin()
+uint256 SnapshotManager::GetHash() const
 {
-    static SnapshotManager peercoin;
-    return peercoin;
+    const SnapshotManager tmp(*this);
+    return SerializeHash(tmp);
 }
 
-/*
-static std::unique_ptr<const SnapshotManager> globalPeercoinSnapshotManager = SnapshotManager::Peercoin();
-
-const SnapshotManager& PeercoinSnapshot()
+void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible)
 {
-    assert(globalPeercoinSnapshotManager);
-    return *globalPeercoinSnapshotManager;
-}
-*/
+    LOCK(m_snapshot_mutex);
+    m_valid_scripts = std::move(valid);
+    m_incompatible_scripts = std::move(incompatible);
 
-uint256 SnapshotManager::GetHash(std::map<CScript, CAmount>& scripts)
-{
-    HashWriter ss{};
-    uint32_t position = 0;
-    for (const auto& [script, amount] : scripts) {
-        ss << position++;
-        ss << script;
-        ss << amount;
-    }
-    return ss.GetHash();
+    std::map<CScript, CAmount> merged{m_valid_scripts};
+    merged.insert(m_incompatible_scripts.begin(),
+                  m_incompatible_scripts.end());
+    m_hash_scripts = GetHash();
 }
 
 bool SnapshotManager::PopulateAndValidateSnapshotForeign(
@@ -57,7 +47,11 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
 
     LogPrintf("[snapshot] loading coins from snapshot %s\n", base_blockhash.ToString());
 
-    std::map<CScript, CAmount> scripts;
+    std::map<CScript, CAmount> valid_scripts;
+    std::map<CScript, CAmount> incompatible_scripts;
+
+    CAmount compatible_amount_total = 0;
+    CAmount incompatible_amount_total = 0;
 
     COutPoint outpoint;
     Coin coin;
@@ -97,8 +91,17 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
             }
 
             CScript script = GetScriptForDestination(normalized);
-            scripts[script] += coin.out.nValue;
-            assert(MoneyRange(scripts[script]));
+
+            const PKHash* pkhash = std::get_if<PKHash>(&dest);
+            if (pkhash) {
+                valid_scripts[script] += coin.out.nValue;
+                assert(MoneyRange(valid_scripts[script]));
+                compatible_amount_total += coin.out.nValue;
+            } else {
+                incompatible_scripts[script] += coin.out.nValue;
+                assert(MoneyRange(incompatible_scripts[script]));
+                incompatible_amount_total += coin.out.nValue;
+            }
         }
 
         --coins_left;
@@ -129,22 +132,30 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
         return false;
     }
 
-    LogPrintf("[snapshot] loaded %d coins from snapshot %s\n",
-              coins_processed, base_blockhash.ToString());
+    LogPrintf("[snapshot] loaded %d coins from snapshot %s\n", coins_processed, base_blockhash.ToString());
+    LogPrintf("[snapshot]   compatible peercoin addresses=%s amount=%s\n", valid_scripts.size(), FormatMoney(compatible_amount_total));
+    LogPrintf("[snapshot]   incompatible peercoin addresses=%s amount=%s\n", incompatible_scripts.size(), FormatMoney(incompatible_amount_total));
+    LogPrintf("[snapshot]   overall addresses=%s amount=%s\n",
+              valid_scripts.size() + incompatible_scripts.size(),
+              FormatMoney(compatible_amount_total + incompatible_amount_total));
 
-    uint256 hashScripts = GetHash(scripts);
+    UpdateAllScriptPubKeys(valid_scripts, incompatible_scripts);
+    uint256 hashScripts = GetHash();
     LogPrintf("[snapshot] hash of peercoin scripts: want=%s, got=%s\n",
-              Params().GetConsensus().hashPeercoinSnapshot.ToString(), hashScripts.ToString());
+              Params().GetConsensus().hashPeercoinSnapshot.ToString(),
+              hashScripts.ToString());
+
     assert(hashScripts == Params().GetConsensus().hashPeercoinSnapshot);
-    UpdateScriptPubKeys(scripts);
 
     return true;
 }
 
-bool SnapshotManager::LoadSnapshotFromFile(const fs::path& path)
+bool SnapshotManager::LoadPeercoinUTXOSFromDisk()
 {
+    LOCK(m_snapshot_mutex);
+    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), peercoinUTXOSPath);
     if (!fs::exists(path)) {
-        LogPrintf("LoadSnapshotFromFile: file not found: %s\n", fs::PathToString(path));
+        LogPrintf("LoadPeercoinUTXOSFromDisk: file not found: %s\n", fs::PathToString(path));
         return false;
     }
 
@@ -154,97 +165,91 @@ bool SnapshotManager::LoadSnapshotFromFile(const fs::path& path)
     try {
         coins_file >> metadata; // read snapshot metadata
     } catch (const std::ios_base::failure&) {
-        LogPrintf("LoadSnapshotFromFile: Unable to parse metadata: %s\n", fs::PathToString(path));
+        LogPrintf("LoadPeercoinUTXOSFromDisk: Unable to parse metadata: %s\n", fs::PathToString(path));
         return false;
     }
 
-    {
-        LOCK(m_snapshot_mutex);
-        m_metadata = metadata;
-    }
-
     if (!PopulateAndValidateSnapshotForeign(coins_file, metadata)) {
-        LogPrintf("LoadSnapshotFromFile: Validation failed for snapshot: %s\n", fs::PathToString(path));
+        LogPrintf("LoadPeercoinUTXOSFromDisk: Validation failed for snapshot: %s\n", fs::PathToString(path));
         return false;
     }
     coins_file.fclose();
 
-    DumpPermittedScriptPubKeys();
-
-    LogPrintf("LoadSnapshotFromFile: Successfully loaded snapshot from %s\n", fs::PathToString(path));
-    return true;
-}
-
-bool SnapshotManager::ReadPermittedScriptPubKeys()
-{
-    LOCK(m_snapshot_mutex);
-
-    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), fs::u8path("peercoin_snapshot.dat"));
-    if (!fs::exists(path)) {
-        return false;
-    }
-    FILE* file{fsbridge::fopen(path, "rb")};
-    AutoFile afile{file};
-    if (afile.IsNull()) {
+    if (fs::exists(path)) {
         return false;
     }
 
-    m_scripts.clear();
-    afile >> m_scripts;
+    if (!StoreSnapshotToDisk())
+        return false;
 
-    // Check for trailing data / I/O error
-    if (std::fgetc(afile.Get()) != EOF) {
-        LogPrintf("[snapshot] warning: unexpected trailing data\n");
-    } else if (std::ferror(afile.Get())) {
-        LogPrintf("[snapshot] warning: i/o error\n");
-    }
-    afile.fclose();
-
-    m_hash_scripts = GetHash(m_scripts);
-    LogPrintf("[snapshot] hash of peercoin scripts: want=%s, got=%s\n",
-              Params().GetConsensus().hashPeercoinSnapshot.ToString(),
-              m_hash_scripts.ToString());
-    assert(m_hash_scripts == Params().GetConsensus().hashPeercoinSnapshot);
-
+    LogPrintf("LoadPeercoinUTXOSFromDisk: Successfully loaded snapshot from %s\n", fs::PathToString(path));
     return true;
 }
 
-void SnapshotManager::DumpPermittedScriptPubKeys()
+bool SnapshotManager::StoreSnapshotToDisk() const
 {
     LOCK(m_snapshot_mutex);
-
-    uint256 hash{GetHash(m_scripts)};
-    assert(hash == Params().GetConsensus().hashPeercoinSnapshot);
-
-    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), fs::u8path("peercoin_snapshot.dat"));
-    if (fs::exists(path)) {
-        return;
+    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), snapshotPath);
+    FILE* fp = fsbridge::fopen(snapshotPath, "wb");
+    if (!fp) {
+        LogPrintf("StoreSnapshotToDisk: failed to open file %s\n", fs::PathToString(path));
+        return false;
     }
-    FILE* file{fsbridge::fopen(path, "wb")};
-    AutoFile afile{file};
-    if (afile.IsNull()) {
-        return;
-    }
+    AutoFile afile{fp};
 
-    WriteCompactSize(afile, m_scripts.size());
-    for (const auto& script : m_scripts) {
-        afile << script;
-    }
-}
-
-bool SnapshotManager::LoadSnapshotOnStartup(const ArgsManager& args)
-{
-    const fs::path path = args.GetDataDirNet() / "peercoin_utxos.dat";
-    if (fs::exists(path)) {
-        LogPrintf("LoadSnapshotOnStartup: found default snapshot at %s\n", fs::PathToString(path));
-    }
-
-    if (path.empty()) {
-        LogPrintf("LoadSnapshotOnStartup: no snapshot file provided and none found\n");
+    try {
+        afile << *this;
+        afile.fclose();
+        LogPrintf("StoreSnapshotToDisk: snapshot stored to %s\n", fs::PathToString(path));
         return true;
+
+    } catch (const std::exception& e) {
+        LogPrintf("StoreSnapshotToDisk: serialization error: %s\n", e.what());
+        return false;
+    }
+}
+
+bool SnapshotManager::LoadSnapshotFromDisk()
+{
+    LOCK(m_snapshot_mutex);
+    const fs::path path = fsbridge::AbsPathJoin(gArgs.GetDataDirNet(), snapshotPath);
+    if (!fs::exists(path)) {
+        LogPrintf("LoadSnapshotFromDisk: file not found: %s\n", fs::PathToString(path));
+        return false;
     }
 
-    return ReadPermittedScriptPubKeys() || LoadSnapshotFromFile(path);
+    FILE* fp = fsbridge::fopen(path, "rb");
+    if (!fp) {
+        LogPrintf("LoadSnapshotFromDisk: failed to open file %s\n", fs::PathToString(path));
+        return false;
+    }
+    AutoFile afile{fp};
+
+    try {
+        SnapshotManager temp;
+        afile >> temp;
+        afile.fclose();
+
+        uint256 hashAll = temp.GetHash();
+        if (hashAll != Params().GetConsensus().hashPeercoinSnapshot) {
+            LogPrintf("LoadSnapshotFromDisk: hash mismatch. got=%s\n", hashAll.ToString());
+            return false;
+        }
+
+        UpdateAllScriptPubKeys(temp.GetScriptPubKeys(), temp.GetIncompatibleScriptPubKeys());
+
+        LogPrintf("LoadSnapshotFromDisk: snapshot loaded from %s\n", fs::PathToString(path));
+        return true;
+
+    } catch (const std::exception& e) {
+        LogPrintf("LoadSnapshotFromDisk: deserialization error: %s\n", e.what());
+        return false;
+    }
+}
+
+bool SnapshotManager::LoadSnapshotOnStartup()
+{
+    return LoadSnapshotFromDisk() || LoadPeercoinUTXOSFromDisk();
 }
 
 bool SnapshotManager::CalculateEligible(const CAmount& balance, CAmount& eligible)
@@ -280,12 +285,22 @@ bool SnapshotManager::LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CA
 {
     LOCK(m_snapshot_mutex);
 
-    const auto it = m_scripts.find(scriptPubKey);
-    if (it == m_scripts.end()) {
-        return false;
+    const auto it_valid = m_valid_scripts.find(scriptPubKey);
+    if (it_valid != m_valid_scripts.end()) {
+        balance = it_valid->second;
+        return CalculateEligible(balance, eligible);
     }
-    balance = it->second;
-    return CalculateEligible(balance, eligible);
+
+    /*
+    const auto it_incompat = m_incompatible_scripts.find(scriptPubKey);
+    if (it_incompat != m_incompatible_scripts.end()) {
+        balance = it_incompat->second;
+        eligible = 0;
+        return true;
+    }
+    */
+
+    return false;
 }
 
 std::string SnapshotManager::FormatCustomMoney(CAmount amount)
@@ -309,7 +324,7 @@ void SnapshotManager::ExportSnapshotToCSV(const fs::path& path)
     {
         LOCK(m_snapshot_mutex);
 
-        for (const auto& [scriptPubKey, balance] : m_scripts) {
+        for (const auto& [scriptPubKey, balance] : m_valid_scripts) {
             CTxDestination dest;
             if (!ExtractDestination(scriptPubKey, dest)) {
                 continue;
@@ -337,69 +352,4 @@ void SnapshotManager::ExportSnapshotToCSV(const fs::path& path)
 
     csvFile.close();
     LogPrintf("ExportSnapshotToCSV: Snapshot exported to %s\n", fs::PathToString(path));
-}
-
-bool SnapshotManager::StorePermanentSnapshot(const fs::path& path)
-{
-    LOCK(m_snapshot_mutex);
-
-    FILE* file{fsbridge::fopen(path, "wb")};
-    if (!file) {
-        LogPrintf("StorePermanentSnapshot: failed to open file: %s\n", fs::PathToString(path));
-        return false;
-    }
-    AutoFile afile{file};
-
-    afile << m_metadata;
-    afile << m_scripts;
-    afile << m_hash_scripts;
-
-    afile.fclose();
-    LogPrintf("StorePermanentSnapshot: stored snapshot to %s\n", fs::PathToString(path));
-    return true;
-}
-
-bool SnapshotManager::LoadPermanentSnapshot(const fs::path& path)
-{
-    if (!fs::exists(path)) {
-        LogPrintf("LoadPermanentSnapshot: file not found: %s\n", fs::PathToString(path));
-        return false;
-    }
-
-    FILE* file{fsbridge::fopen(path, "rb")};
-    if (!file) {
-        LogPrintf("LoadPermanentSnapshot: failed to open file: %s\n", fs::PathToString(path));
-        return false;
-    }
-    AutoFile afile{file};
-
-    node::SnapshotMetadata metadata;
-    std::map<CScript, CAmount> tempMap;
-    uint256 tempHash;
-
-    try {
-        afile >> metadata;
-        afile >> tempMap;
-        afile >> tempHash;
-    } catch (const std::ios_base::failure&) {
-        LogPrintf("LoadPermanentSnapshot: parse error for file: %s\n", fs::PathToString(path));
-        return false;
-    }
-    afile.fclose();
-
-    uint256 testHash = GetHash(tempMap);
-    if (testHash != tempHash) {
-        LogPrintf("LoadPermanentSnapshot: snapshot hash mismatch. expected=%s, got=%s\n",
-                  tempHash.ToString(), testHash.ToString());
-        return false;
-    }
-
-    {
-        LOCK(m_snapshot_mutex);
-        m_metadata = metadata;
-        m_scripts = std::move(tempMap);
-        m_hash_scripts = std::move(tempHash);
-    }
-    LogPrintf("LoadPermanentSnapshot: loaded snapshot from %s\n", fs::PathToString(path));
-    return true;
 }
