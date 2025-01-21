@@ -44,7 +44,8 @@ public:
     std::vector<unsigned char> vchSig;
     // patchcoin todo move this to private
 
-    CClaimSet() {}; // setNull()?
+    CClaimSet() = default;
+    ~CClaimSet() = default;
 
     SERIALIZE_METHODS(CClaimSet, obj)
     {
@@ -59,7 +60,6 @@ public:
         CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
         claimSetClaim.nTime = claim.nTime;
         claimSetClaim.outs = claim.outs; // patchcoin todo
-        claimSetClaim.Init();
         if (!claimSetClaim.IsValid()) {
             return false;
         }

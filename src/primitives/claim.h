@@ -42,12 +42,35 @@ private:
     std::vector<unsigned char> signature;
     CScript target;
     std::shared_ptr<const CAmount> peercoinBalance;
+    CAmount eligible = 0;
+
+    void Init() {
+        const CScript source_script = GetScriptFromAddress(sourceAddress);
+
+        if (auto decoded_signature = DecodeBase64(signatureString)) {
+            signature = *decoded_signature;
+        }
+
+        target = GetScriptFromAddress(targetAddress);
+
+        if (SnapshotIsValid()) {
+            snapshotIt = snapshot.find(source_script);
+            if (snapshotIt != snapshot.end()) {
+                snapshotPos = std::distance(snapshot.begin(), snapshotIt);
+                source = std::make_shared<CScript>(snapshotIt->first);
+                peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
+                eligible = GetEligible();
+                GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue) / static_cast<double>(Params().GetConsensus().genesisOutputs);
+                MAX_POSSIBLE_OUTPUTS = std::min(16u, static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
+                MAX_OUTPUTS = GetMaxOutputs();
+            }
+        }
+    }
 
 public:
-    double GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue) / static_cast<double>(Params().GetConsensus().genesisOutputs);
-    // patchcoin todo not accurate and merely serves as a static fence-in
-    unsigned int MAX_POSSIBLE_OUTPUTS = std::min(16u, static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
-    unsigned int MAX_OUTPUTS;
+    double GENESIS_OUTPUTS_AMOUNT = 0;
+    unsigned int MAX_POSSIBLE_OUTPUTS = 0;
+    unsigned int MAX_OUTPUTS = 0;
     // patchcoin todo do we want these mutable?
     mutable int64_t nTime = GetTime();
     mutable bool seen = false;
@@ -58,6 +81,14 @@ public:
     {
         SetNull();
     }
+
+    CClaim(const std::string& source_address, const std::string& signature, const std::string& target_address)
+        : sourceAddress(source_address), signatureString(signature), targetAddress(target_address)
+    {
+        Init();
+    }
+
+    ~CClaim() = default;
 
     bool SnapshotIsValid() const {
         return hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot && !SnapshotManager::Peercoin().GetScriptPubKeys().empty();
@@ -97,37 +128,7 @@ public:
         return address;
     }
 
-    void Init()
-    {
-        CScript source_script = GetScriptFromAddress(sourceAddress);
-        std::optional<std::vector<unsigned char>> decoded_signature = DecodeBase64(signatureString);
-        if (decoded_signature.has_value()) {
-            signature = decoded_signature.value();
-        }
-        target = GetScriptFromAddress(targetAddress); // patchcoin todo maybe sign this
-        if (SnapshotIsValid()) {
-            // const auto& snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
-            snapshotIt = snapshot.find(source_script);
-            if (snapshotIt != snapshot.end()) {
-                snapshotPos = std::distance(snapshot.begin(), snapshotIt);
-                source = std::make_shared<CScript>(snapshotIt->first);
-                peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
-                MAX_OUTPUTS = GetMaxOutputs();
-            }
-        }
-    }
-
-    CClaim(const std::string& source_address, const std::string& signature, const std::string& target_address)
-    {
-        SetNull();
-        sourceAddress = source_address;
-        signatureString = signature;
-        targetAddress = target_address;
-        Init();
-    }
-
-    SERIALIZE_METHODS(CClaim, obj)
-    {
+    SERIALIZE_METHODS(CClaim, obj) {
         std::vector<unsigned char> signature;
         CScript target_script;
         SER_WRITE(obj, signature = obj.GetSignature());
@@ -138,6 +139,7 @@ public:
         SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
         SER_READ(obj, obj.signatureString = EncodeBase64(signature));
         SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
+        SER_READ(obj, obj.Init());
     }
 
     std::string GetSourceAddress() const { return sourceAddress; }
@@ -154,11 +156,12 @@ public:
 
     CAmount GetEligible() const
     {
-        CAmount eligible = 0;
-        if (!SnapshotManager::Peercoin().CalculateEligible(GetPeercoinBalance(), eligible) || !MoneyRange(eligible)) {
+        if (eligible > 0) return eligible;
+        CAmount eligibleAmount = 0;
+        if (!SnapshotManager::Peercoin().CalculateEligible(GetPeercoinBalance(), eligibleAmount) || !MoneyRange(eligibleAmount)) {
             return 0;
         }
-        return eligible;
+        return eligibleAmount;
     }
 
     CAmount GetMaxOutputs() const
@@ -176,7 +179,7 @@ public:
 
     bool GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const
     {
-        CAmount eligible = GetEligible();
+        if (GetEligible() == 0) return false;
         while (pindex && outputs < outs.size()) {
             const auto& it = outs.find(pindex->GetBlockHash());
             if (it != outs.end()) {
@@ -211,56 +214,61 @@ public:
     {
         return sourceAddress.empty() || signatureString.empty() || targetAddress.empty()
             || !source || signature.empty() || target.empty() || !peercoinBalance
-            || GetSource().empty() || GetSignature().empty()  || GetTarget().empty();
+            || GetSource().empty() || GetSignature().empty() || GetTarget().empty();
     }
 
     bool IsValid() const
     {
-        if (IsAnyNull()) {
-            LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
-               sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
+        try {
+            if (IsAnyNull()) {
+                LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
+                   sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
+                return false;
+            }
+            if (IsSourceTarget() || IsSourceTargetAddress()) {
+                LogPrintf("[claim] error: input matches output address\n");
+                return false;
+            }
+            if (!SnapshotIsValid()) {
+                LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
+                return false;
+            }
+            if (snapshotIt == snapshot.end()) {
+                LogPrintf("[claim] error: source script not found in snapshot\n");
+                return false;
+            }
+            if (sourceAddress.empty() || GetScriptFromAddress(sourceAddress).empty() || source == nullptr || GetAddressFromScript(*source).empty()) {
+                LogPrintf("[claim] error: failed to extract destination from source script\n");
+                return false;
+            }
+            if (targetAddress.empty() || GetScriptFromAddress(targetAddress).empty() || GetAddressFromScript(target).empty()) {
+                LogPrintf("[claim] error: failed to extract destination from target script\n");
+                return false;
+            }
+            if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
+                LogPrintf("[claim] error: peercoin balance out of range\n");
+                return false;
+            }
+            if (!MoneyRange(GetEligible())) {
+                LogPrintf("[claim] error: eligible balance out of range\n");
+                return false;
+            }
+            MessageVerificationResult res = MessageVerify(
+                sourceAddress,
+                signatureString,
+                targetAddress,
+                PEERCOIN_MESSAGE_MAGIC
+            );
+            if (res != MessageVerificationResult::OK) {
+                LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
+                return false;
+            }
+            // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
+            return true;
+        } catch (const std::exception& e) {
+            LogPrintf("[claim] error: unexpected exception in validation: %s\n", e.what());
             return false;
         }
-        if (IsSourceTarget() || IsSourceTargetAddress()) {
-            LogPrintf("[claim] error: input matches output address");
-            return false;
-        }
-        if (!SnapshotIsValid()) {
-            LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
-            return false;
-        }
-        if (snapshotIt == snapshot.end()) {
-            LogPrintf("[claim] error: source script not found in snapshot\n");
-            return false;
-        }
-        if (sourceAddress.empty() || GetScriptFromAddress(sourceAddress).empty() || source == nullptr || GetAddressFromScript(*source).empty()) {
-            LogPrintf("[claim] error: failed to extract destination from source script\n");
-            return false;
-        }
-        if (targetAddress.empty() || GetScriptFromAddress(targetAddress).empty() || GetAddressFromScript(target).empty()) {
-            LogPrintf("[claim] error: failed to extract destination from target script\n");
-            return false;
-        }
-        if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
-            LogPrintf("[claim] error: peercoin balance out of range\n");
-            return false;
-        }
-        if (!MoneyRange(GetEligible())) {
-            LogPrintf("[claim] error: eligible balance out of range\n");
-            return false;
-        }
-        MessageVerificationResult res = MessageVerify(
-            sourceAddress,
-            signatureString,
-            targetAddress,
-            PEERCOIN_MESSAGE_MAGIC
-        );
-        if (res != MessageVerificationResult::OK) {
-            LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
-            return false;
-        }
-        // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
-        return true;
     }
 
     bool IsSourceTarget() const

@@ -35,7 +35,6 @@ bool ClaimIndex::DB::WriteClaim(const CScript& source, const CClaim& claim)
 bool ClaimIndex::DB::ReadClaim(const CScript& source, CClaim& claim)
 {
     if (Read(std::make_pair(DB_CLAIMINDEX, source), claim)) {
-        claim.Init(); // patchcoin todo: check valid?
         return true;
     }
     return false;
@@ -52,7 +51,6 @@ bool ClaimIndex::DB::ReadAllClaims(std::vector<CClaim>& claims)
 
         if (it->GetKey(key) && key.first == DB_CLAIMINDEX) {
             if (it->GetValue(claim)) {
-                claim.Init(); // patchcoin todo: check valid?
                 claims.push_back(std::move(claim));
             } else {
                 LogPrintf("ClaimIndex::DB::ReadAllClaims: Failed to read claim value.\n");

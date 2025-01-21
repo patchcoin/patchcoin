@@ -16,7 +16,7 @@ namespace wallet {
 } // namespace wallet
 
 extern RecursiveMutex m_snapshot_mutex; // patchcoin todo
-inline CAmount MAX_CLAIM_REWARD = 50000 * COIN;
+static constexpr inline CAmount MAX_CLAIM_REWARD = 50000 * COIN;
 
 class SnapshotManager
 {

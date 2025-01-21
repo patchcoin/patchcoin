@@ -4347,7 +4347,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
-        claim.Init();
         if (!claim.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
@@ -4441,9 +4440,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             LogPrint(BCLog::NET, "Received new claim set: %s, claimTime: %s\n", claimSet.GetHash().ToString(), claimSet.claims[0].nTime);
-            for (auto& claim : claimSet.claims) {
-                claim.Init();
-            }
             if (!claimSet.IsValid()) {
                 Misbehaving(*peer, 100, "invalid claimset");
                 return;
