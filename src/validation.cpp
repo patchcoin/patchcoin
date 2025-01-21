@@ -2164,7 +2164,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                 nValueIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
             nValueOut += tx.GetValueOut();
             if (tx.IsCoinStake()) {
-                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == params.GenesisBlock().vtx[0]->vout[0].scriptPubKey) {
+                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == params.GenesisBlock().vtx[0]->vout[0].scriptPubKey && CheckBlockSignature(block)) {
                     // patchcoin todo: if we don't hold claims at this point, maybe we need to wait for them higher up the chain
                     // patchcoin todo: as it stands, claims are opt-in only
                     for (const CTxOut& txout : tx.vout) {
