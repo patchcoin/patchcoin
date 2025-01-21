@@ -1,6 +1,7 @@
 #ifndef PATCHCOIN_BUILDCLAIMSETWIDGET_H
 #define PATCHCOIN_BUILDCLAIMSETWIDGET_H
 
+#include <QProgressBar>
 #include <QWidget>
 #include <QTimer>
 #include <qt/platformstyle.h>
@@ -36,6 +37,7 @@ private:
     QTimer* m_refreshTimer;
     const PlatformStyle* m_platformStyle;
     QLabel* infoLabel;
+    QProgressBar* progressBar;
     QTableView* claimsTableView;
 };
 

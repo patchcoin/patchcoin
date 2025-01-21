@@ -30,7 +30,7 @@ int ClaimsTableModel::rowCount(const QModelIndex &parent) const
 int ClaimsTableModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return 6; // Queued, Source Address, Target Address, Time, Original, Eligible
+    return 6; // Queued, Source Address, Target Address, Time, Received, Eligible
 }
 
 QVariant ClaimsTableModel::data(const QModelIndex &index, int role) const
@@ -71,7 +71,7 @@ QVariant ClaimsTableModel::headerData(int section, Qt::Orientation orientation, 
             switch (section)
             {
                 case 0: return tr("  ");
-                case 1: return tr("PTC Address");
+                case 1: return tr("PPC Address");
                 case 2: return tr("PTC Address");
                 case 3: return tr("Date");
                 case 4: return tr("Received");
