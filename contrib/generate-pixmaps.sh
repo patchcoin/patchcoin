@@ -1,38 +1,25 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-required_commands=("git" "svgexport" "mogrify" "convert" "pngcrush")
-
-for cmd in "${required_commands[@]}"; do
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "Error: '$cmd' command not found, please install it."
-        exit 1
-    fi
-done
-
-GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+declare -r REQUIRED_COMMANDS=("git" "svgexport" "mogrify" "convert" "pngcrush")
+declare -r GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "Error: This script must be run within a Git repository."
     exit 1
 }
-
-PIXMAPS_DIR="$GIT_ROOT/share/pixmaps"
-RES_DIR="$GIT_ROOT/src/qt/res/icons"
-
-mkdir -p "$PIXMAPS_DIR" "$RES_DIR"
-
-ICO_OUTPUT="patchcoin.ico"
-NSIS_WIZARD_BMP="nsis-wizard.bmp"
-NSIS_HEADER_BMP="nsis-header.bmp"
-
-SVG_DIR="$GIT_ROOT/src/qt/res/src"
-PATCHCOIN_SVG="$SVG_DIR/patchcoin.svg"
-PATCHCOIN_FULL_SVG="$SVG_DIR/patchcoin_full.svg"
-PATCHCOIN_GRAYSCALE_SVG="$SVG_DIR/patchcoin_grayscale.svg"
-PATCHCOIN_PURPLE_SVG="$SVG_DIR/patchcoin_purple.svg"
-TOR_SVG="$SVG_DIR/tor.svg"
-
-TMP_DIR=$(mktemp -d -t patchcoin-images-XXXXXX)
+declare -r PIXMAPS_DIR="$GIT_ROOT/share/pixmaps"
+declare -r RES_DIR="$GIT_ROOT/src/qt/res/icons"
+declare -r SVG_DIR="$GIT_ROOT/src/qt/res/src"
+declare -r TMP_DIR=$(mktemp -d -t patchcoin-images-XXXXXX)
 trap "rm -rf $TMP_DIR" EXIT
+
+check_commands() {
+    for cmd in "${REQUIRED_COMMANDS[@]}"; do
+        if ! command -v "$cmd" &>/dev/null; then
+            echo "Error: '$cmd' command not found, please install it."
+            exit 1
+        fi
+    done
+}
 
 optimize_png() {
     local png_file="$1"
@@ -50,22 +37,6 @@ convert_svg_once() {
     optimize_png "$out_png"
 }
 
-BASE_PATCHCOIN="$TMP_DIR/patchcoin_1024.png"
-convert_svg_once "$PATCHCOIN_SVG" "$BASE_PATCHCOIN" 1024
-
-BASE_PATCHCOIN_FULL="$TMP_DIR/patchcoin_full_1024.png"
-convert_svg_once "$PATCHCOIN_FULL_SVG" "$BASE_PATCHCOIN_FULL" 1024
-
-BASE_PATCHCOIN_PURPLE="$TMP_DIR/patchcoin_purple_1024.png"
-convert_svg_once "$PATCHCOIN_PURPLE_SVG" "$BASE_PATCHCOIN_PURPLE" 1024
-
-TOR_LOGO="$TMP_DIR/tor_512.png"
-svgexport "$TOR_SVG" "$TOR_LOGO" :512
-mogrify -trim +repage "$TOR_LOGO"
-
-BASE_PATCHCOIN_GRAY="$TMP_DIR/patchcoin_gray_1024.png"
-convert_svg_once "$PATCHCOIN_GRAYSCALE_SVG" "$BASE_PATCHCOIN_GRAY" 1024
-
 generate_resized() {
     local base_image="$1"
     local out_dir="$2"
@@ -81,10 +52,6 @@ generate_resized() {
     done
 }
 
-generate_resized "$BASE_PATCHCOIN" "$PIXMAPS_DIR" "patchcoin"
-
-generate_resized "$BASE_PATCHCOIN_PURPLE" "$PIXMAPS_DIR" "patchcoin-testnet"
-
 generate_tor_images() {
     local base_image="$1"
     local out_dir="$2"
@@ -99,16 +66,14 @@ generate_tor_images() {
         optimize_png "$png_file"
     done
 }
-generate_tor_images "$BASE_PATCHCOIN_PURPLE" "$PIXMAPS_DIR" "patchcoin-testnet-tor"
-generate_tor_images "$BASE_PATCHCOIN" "$PIXMAPS_DIR" "patchcoin-tor"
 
 generate_nsis_wizard_bmp() {
     local base_image="$1"
     local output_file="$2"
-    local target_width=166
+    local target_width=164
     local target_height=314
-    local padding_top=30
-    local padding_bottom=34
+    local padding_top=0
+    local padding_bottom=0
     local total_height=$((target_height + padding_top + padding_bottom))
 
     convert "$base_image" \
@@ -127,6 +92,7 @@ generate_nsis_wizard_bmp() {
         "$output_file"
     echo "nsis-wizard.bmp generated: $output_file"
 }
+
 generate_nsis_header_bmp() {
     local base_image="$1"
     local output_file="$2"
@@ -156,9 +122,6 @@ generate_nsis_header_bmp() {
     echo "nsis-header.bmp generated: $output_file"
 }
 
-generate_nsis_wizard_bmp "$BASE_PATCHCOIN" "$PIXMAPS_DIR/$NSIS_WIZARD_BMP"
-generate_nsis_header_bmp "$BASE_PATCHCOIN_FULL" "$PIXMAPS_DIR/$NSIS_HEADER_BMP"
-
 generate_ico() {
     local input_image="$1"
     local output_icon="$2"
@@ -182,16 +145,85 @@ generate_ico() {
     echo "ICO file created: $output_icon"
     rm -rf "$tmp_ico_dir"
 }
-generate_ico "$BASE_PATCHCOIN" "$PIXMAPS_DIR/$ICO_OUTPUT"
 
-echo "All pixmaps images have been generated in '$PIXMAPS_DIR'."
+generate_logomask() {
+    local svg_file="$SVG_DIR/patchcoin_white.svg"
+    local out_png="$GIT_ROOT/src/qt/res/images/logomask.png"
+    local temp_png="$TMP_DIR/logomask_temp.png"
+
+    svgexport "$svg_file" "$temp_png" :465
+
+    convert "$temp_png" \
+        -gravity northeast \
+        -background none \
+        -extent 360x360 \
+        -alpha set \
+        -channel A \
+        -evaluate multiply 0.05 \
+        +channel \
+        "$out_png"
+
+    optimize_png "$out_png"
+    echo "Generated $out_png (360x360, bottom-left partially out of frame, with 50% transparency)"
+}
+
+check_commands
+
+declare -r LOGO_SVG="$SVG_DIR/patchcoin_full_white.svg"
+declare -r LOGO_PNG="$GIT_ROOT/src/qt/res/images/logo.png"
+
+mkdir -p "$(dirname "$LOGO_PNG")"
+
+convert_svg_once "$LOGO_SVG" "$LOGO_PNG" 224x48
+optimize_png "$LOGO_PNG"
+
+echo "Generated $LOGO_PNG (224x48)"
+
+mkdir -p "$PIXMAPS_DIR" "$RES_DIR"
+
+declare -r PATCHCOIN_SVG="$SVG_DIR/patchcoin.svg"
+declare -r PATCHCOIN_FULL_SVG="$SVG_DIR/patchcoin_full.svg"
+declare -r PATCHCOIN_GRAYSCALE_SVG="$SVG_DIR/patchcoin_grayscale.svg"
+declare -r PATCHCOIN_WHITE_SVG="$SVG_DIR/patchcoin_white.svg"
+declare -r PATCHCOIN_PURPLE_SVG="$SVG_DIR/patchcoin_purple.svg"
+declare -r TOR_SVG="$SVG_DIR/tor.svg"
+
+declare -r BASE_PATCHCOIN="$TMP_DIR/patchcoin_1024.png"
+convert_svg_once "$PATCHCOIN_SVG" "$BASE_PATCHCOIN" 1024
+
+declare -r BASE_PATCHCOIN_FULL="$TMP_DIR/patchcoin_full_1024.png"
+convert_svg_once "$PATCHCOIN_FULL_SVG" "$BASE_PATCHCOIN_FULL" 1024
+
+declare -r BASE_PATCHCOIN_PURPLE="$TMP_DIR/patchcoin_purple_1024.png"
+convert_svg_once "$PATCHCOIN_PURPLE_SVG" "$BASE_PATCHCOIN_PURPLE" 1024
+
+declare -r TOR_LOGO="$TMP_DIR/tor_512.png"
+svgexport "$TOR_SVG" "$TOR_LOGO" :512
+mogrify -trim +repage "$TOR_LOGO"
+
+declare -r BASE_PATCHCOIN_GRAY="$TMP_DIR/patchcoin_gray_1024.png"
+convert_svg_once "$PATCHCOIN_GRAYSCALE_SVG" "$BASE_PATCHCOIN_GRAY" 1024
+
+declare -r BASE_PATCHCOIN_WHITE="$TMP_DIR/patchcoin_white_1024.png"
+convert_svg_once "$PATCHCOIN_WHITE_SVG" "$BASE_PATCHCOIN_WHITE" 1024
+
+generate_resized "$BASE_PATCHCOIN" "$PIXMAPS_DIR" "patchcoin"
+generate_resized "$BASE_PATCHCOIN_PURPLE" "$PIXMAPS_DIR" "patchcoin-testnet"
+
+generate_tor_images "$BASE_PATCHCOIN_PURPLE" "$PIXMAPS_DIR" "patchcoin-testnet-tor"
+generate_tor_images "$BASE_PATCHCOIN" "$PIXMAPS_DIR" "patchcoin-tor"
+
+generate_nsis_wizard_bmp "$BASE_PATCHCOIN_WHITE" "$PIXMAPS_DIR/nsis-wizard.bmp"
+generate_nsis_header_bmp "$BASE_PATCHCOIN_FULL" "$PIXMAPS_DIR/nsis-header.bmp"
+
+generate_ico "$BASE_PATCHCOIN" "$PIXMAPS_DIR/patchcoin.ico"
 
 convert "$BASE_PATCHCOIN" -filter Lanczos -resize 841x841 "$RES_DIR/bitcoin.png"
 optimize_png "$RES_DIR/bitcoin.png"
 echo "Generated $RES_DIR/bitcoin.png (841x841)"
 
-cp "$PIXMAPS_DIR/$ICO_OUTPUT" "$RES_DIR/patchcoin.ico"
-echo "Copied $RES_DIR/patchcoin.ico from $PIXMAPS_DIR/$ICO_OUTPUT"
+cp "$PIXMAPS_DIR/patchcoin.ico" "$RES_DIR/patchcoin.ico"
+echo "Copied $RES_DIR/patchcoin.ico from $PIXMAPS_DIR/patchcoin.ico"
 
 convert "$BASE_PATCHCOIN" -filter Lanczos -resize 512x512 "$RES_DIR/patchcoin.png"
 optimize_png "$RES_DIR/patchcoin.png"
@@ -204,8 +236,11 @@ echo "Generated $RES_DIR/patchcoin_testnet.png (512x512)"
 generate_ico "$RES_DIR/patchcoin_testnet.png" "$RES_DIR/patchcoin_testnet.ico"
 echo "Generated $RES_DIR/patchcoin_testnet.ico"
 
+generate_logomask
+
 echo
 echo "All images have been generated:"
 echo "  Pixmaps images: $PIXMAPS_DIR"
 echo "  Res images: $RES_DIR"
+echo "  logomask: $GIT_ROOT/src/qt/res/images/logomask.png"
 echo "Temporary working directory: $TMP_DIR (will be removed upon script exit)"
