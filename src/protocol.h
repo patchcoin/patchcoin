@@ -271,7 +271,7 @@ extern const char* SENDPEERCOINSNAPSHOT;
 
 extern const char* CLAIM;
 
-extern const char* SENDCLAIMSET;
+extern const char* CLAIMSET;
 
 extern const char* SCACK;
 }; // namespace NetMsgType
@@ -309,6 +309,7 @@ enum ServiceFlags : uint64_t {
     // collisions and other cases where nodes may be advertising a service they
     // do not actually support. Other service bits should be allocated via the
     // BIP process.
+    NODE_CLAIMS = (1 << 24),
 };
 
 /**

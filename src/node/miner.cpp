@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <claimset.h>
 #include <netmessagemaker.h>
+#include <sendclaimset.h>
 #include <utility>
 
 #include <boost/thread.hpp>
@@ -517,6 +518,7 @@ bool PublishClaimset(const CWallet& pwallet, CConnman *connman)
     {
         LOCK2(pwallet.cs_wallet, cs_main);
         if (!BuildAndSignClaimSet(sendThis, pwallet)) {
+            // patchcoin todo check size before sending, or keep a set range
             LogPrintf("BuildAndSignClaimSet() failed: Invalid claim(s) found\n");
             return false;
         }
@@ -527,7 +529,7 @@ bool PublishClaimset(const CWallet& pwallet, CConnman *connman)
             AssertLockHeld(::cs_main);
             // if (pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
             const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-            connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::SENDCLAIMSET, sendThis));
+            connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIMSET, sendThis));
         });
     }
     return true;
@@ -705,7 +707,7 @@ void PoSMiner(NodeContext& m_node)
                 LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString());
                 try {
                     ProcessBlockFound(pblock, Params(), m_node);
-                    PublishClaimset(*pwallet, connman);
+                    // PublishClaimset(*pwallet, connman);
                 }
                 catch (const std::runtime_error &e)
                 {
@@ -770,25 +772,28 @@ void static ThreadCsPub(NodeContext& m_node)
         CClaimSet empty;
         if (!SignClaimSet(*pwallet, empty))
             return;
+        genesis_key_held = true;
     }
 
     std::size_t last_claim_count = 0;
     auto last_publish_time = std::chrono::steady_clock::now();
+    Mutex cs_sending;
 
     try {
         while (true) {
             if (!connman->interruptNet.sleep_for(std::chrono::milliseconds(100)))
                 break;
 
-            // LOCK(cs_claims);
-            auto now = std::chrono::steady_clock::now();
-            if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
-                last_claim_count = g_claims.size();
-                last_publish_time = now;
-                if (!PublishClaimset(*pwallet, connman))
-                    break;
+            {
+                LOCK(cs_sending);
+                auto now = std::chrono::steady_clock::now();
+                if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
+                    last_claim_count = g_claims.size();
+                    last_publish_time = now;
+                    if (!PublishClaimset(*pwallet, connman))
+                        break;
+                }
             }
-
         }
     }
     catch (::boost::thread_interrupted)

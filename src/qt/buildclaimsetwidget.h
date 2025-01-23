@@ -24,7 +24,6 @@ public:
     ~BuildClaimSetWidget();
 
     void filterClaims(const QString& searchString);
-    void setModel(WalletModel *model);
 
 private Q_SLOTS:
     void onClaimsIndexUpdated();
@@ -32,7 +31,6 @@ private Q_SLOTS:
     void populateClaimsTableFromModel();
 
 private:
-    WalletModel* m_walletModel;
     ClaimsTableModel* m_claimsModel;
     QTimer* m_refreshTimer;
     const PlatformStyle* m_platformStyle;

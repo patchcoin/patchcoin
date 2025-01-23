@@ -748,12 +748,6 @@ int V1TransportDeserializer::readHeader(Span<const uint8_t> msg_bytes)
         return -1;
     }
 
-    /*
-    bool permitBigSize = hdr.GetCommand() == NetMsgType::SENDPEERCOINSNAPSHOT &&
-                         hdr.nMessageSize == 8314420 &&
-                         hashScriptPubKeysOfPeercoinSnapshot != m_chain_params.GetConsensus().hashPeercoinSnapshot;
-    */
-
     // reject messages larger than MAX_SIZE or MAX_PROTOCOL_MESSAGE_LENGTH
     if (hdr.nMessageSize > MAX_SIZE || hdr.nMessageSize > MAX_PROTOCOL_MESSAGE_LENGTH) {
         LogPrint(BCLog::NET, "Header error: Size too large (%s, %u bytes), peer=%d\n", SanitizeString(hdr.GetCommand()), hdr.nMessageSize, m_node_id);

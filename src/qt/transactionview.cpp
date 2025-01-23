@@ -477,8 +477,7 @@ void TransactionView::setModel(WalletModel *_model)
         // Watch-only signal
         connect(_model, &WalletModel::notifyWatchonlyChanged, this, &TransactionView::updateWatchOnlyColumn);
 
-        waitForSnapshot->start(1000);
-        buildClaimSetWidget->setModel(_model);
+        waitForSnapshot->start(100);
     }
 }
 

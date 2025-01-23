@@ -781,7 +781,7 @@ namespace { // Variables internal to initialization process only
 int nMaxConnections;
 int nUserMaxConnections;
 int nFD;
-ServiceFlags nLocalServices = ServiceFlags(NODE_NETWORK | NODE_WITNESS);
+ServiceFlags nLocalServices = ServiceFlags(NODE_NETWORK | NODE_WITNESS | NODE_CLAIMS);
 int64_t peer_connect_timeout;
 std::set<BlockFilterType> g_enabled_filter_types;
 
@@ -1628,7 +1628,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     // Note that setting NODE_WITNESS is never required: the only downside from not
     // doing so is that after activation, no upgraded nodes will fetch from you.
-    nLocalServices = ServiceFlags(nLocalServices | NODE_WITNESS);
+    nLocalServices = ServiceFlags(nLocalServices | NODE_WITNESS | NODE_CLAIMS);
 
     // ********************************************************* Step 11: import blocks
 

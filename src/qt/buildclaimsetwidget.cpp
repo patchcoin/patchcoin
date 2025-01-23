@@ -24,7 +24,7 @@ BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWi
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    progressBar->setRange(0, 100);
+    progressBar->setRange(0, 1000);
     progressBar->setValue(0);
     progressBar->setTextVisible(true);
     progressBar->setFormat("Progress: %p%");
@@ -51,23 +51,14 @@ BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWi
 
     setLayout(mainLayout);
 
-    m_refreshTimer->setInterval(10000);
+    populateClaimsTableFromModel();
+    m_refreshTimer->setInterval(1000);
     connect(m_refreshTimer, &QTimer::timeout, this, &BuildClaimSetWidget::refreshClaimsTable);
     m_refreshTimer->start();
 }
 
 BuildClaimSetWidget::~BuildClaimSetWidget()
 {
-}
-
-void BuildClaimSetWidget::setModel(WalletModel* model)
-{
-    m_walletModel = model;
-
-    if (m_walletModel) {
-        connect(m_walletModel, &WalletModel::claimsIndexUpdated, this, &BuildClaimSetWidget::onClaimsIndexUpdated);
-        onClaimsIndexUpdated();
-    }
 }
 
 void BuildClaimSetWidget::onClaimsIndexUpdated()
@@ -82,52 +73,57 @@ void BuildClaimSetWidget::refreshClaimsTable()
 
 void BuildClaimSetWidget::populateClaimsTableFromModel()
 {
-    if (!m_walletModel) {
-        // infoLabel->setText(tr("No wallet model. Cannot build claimset."));
-        progressBar->setValue(0);
-        progressBar->setFormat("No data available");
-        return;
-    }
-
     const CAmount totalClaimableCoins = Params().GetConsensus().genesisValue;
     const QString totalClaimableCoinsStr = BitcoinUnits::format(BitcoinUnit::BTC, totalClaimableCoins, false, BitcoinUnits::SeparatorStyle::ALWAYS);
 
     if (g_claims.empty()) {
-        // infoLabel->setText(tr("No claims found in index."));
         progressBar->setValue(0);
-        progressBar->setFormat(tr("0 / %1 (0%)")
-            .arg(totalClaimableCoinsStr)
-    );
+        progressBar->setFormat(tr("0 / %1 (0%)").arg(totalClaimableCoinsStr));
         return;
     }
 
-    std::vector<CClaim> allClaims;
-    allClaims.reserve(g_claims.size());
-    CAmount totalCoinsSent = 0;
+    QItemSelectionModel* selectionModel = claimsTableView->selectionModel();
+    QModelIndexList selectedIndexes = selectionModel->selectedRows();
+    QSet<QString> selectedClaims;
 
+    for (const QModelIndex& index : selectedIndexes) {
+        QString claimId = m_claimsModel->data(m_claimsModel->index(index.row(), 1)).toString();
+        selectedClaims.insert(claimId);
+    }
+
+    std::vector<CClaim> allClaims;
+    CAmount totalCoinsSent = 0;
     for (const auto& [_, claim] : g_claims) {
         allClaims.emplace_back(claim);
         totalCoinsSent += claim.nTotalReceived;
     }
     std::sort(allClaims.begin(), allClaims.end(),
-              [](const CClaim& a, const CClaim& b) {
-                  return a.nTime > b.nTime;
-              });
+              [](const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; });
 
     m_claimsModel->updateData(allClaims);
+    selectionModel->clearSelection();
+    QItemSelection newSelection;
 
-    // infoLabel->setText(
-    //     tr("Built a ClaimSet with %1 claims.").arg(allClaims.size())
-    // );
+    for (int row = 0; row < m_claimsModel->rowCount(); ++row) {
+        QString currentId = m_claimsModel->data(m_claimsModel->index(row, 1)).toString();
+        if (selectedClaims.contains(currentId)) {
+            newSelection.select(m_claimsModel->index(row, 0),
+                              m_claimsModel->index(row, m_claimsModel->columnCount() - 1));
+        }
+    }
 
-    int progress = std::min(100, static_cast<int>(100.0 * totalCoinsSent / totalClaimableCoins));
+    selectionModel->select(newSelection,
+                         QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    claimsTableView->viewport()->update();
 
-    progressBar->setValue(progress);
+    // Update progress bar
+    double progress = 1000.0 * totalCoinsSent / totalClaimableCoins;
+    progressBar->setValue(static_cast<int>(std::min(progress, 1000.0)));
     progressBar->setFormat(
         tr("%1 / %2 (%3%)")
             .arg(BitcoinUnits::format(BitcoinUnit::BTC, totalCoinsSent, false, BitcoinUnits::SeparatorStyle::ALWAYS))
             .arg(totalClaimableCoinsStr)
-            .arg(progress)
+            .arg(QString::number(progress, 'f', 2))
     );
 }
 
