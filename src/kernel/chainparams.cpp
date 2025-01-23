@@ -184,7 +184,7 @@ public:
         genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         // MineGenesisBlock(genesis);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
-        assert(consensus.genesisOutputs == genesis.vtx[0]->vout.size());
+        assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
@@ -284,7 +284,7 @@ public:
         consensus.genesisOutputs = 5000;
         genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
-        assert(consensus.genesisOutputs == genesis.vtx[0]->vout.size());
+        assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
@@ -427,7 +427,7 @@ public:
         consensus.genesisOutputs = 5000;
         genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
-        assert(consensus.genesisOutputs == genesis.vtx[0]->vout.size());
+        assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
@@ -540,7 +540,7 @@ public:
         consensus.genesisOutputs = 5000;
         genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
-        assert(consensus.genesisOutputs == genesis.vtx[0]->vout.size());
+        assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));

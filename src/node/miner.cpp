@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <claimset.h>
+#include <netmessagemaker.h>
 #include <utility>
 
 #include <boost/thread.hpp>
@@ -49,6 +50,7 @@ using wallet::ReserveDestination;
 
 int64_t nLastCoinStakeSearchInterval = 0;
 std::thread m_minter_thread;
+std::thread m_cspub_thread;
 
 namespace node {
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
@@ -509,6 +511,28 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 }
 
+bool PublishClaimset(const CWallet& pwallet, CConnman *connman)
+{
+    CClaimSet sendThis;
+    {
+        LOCK2(pwallet.cs_wallet, cs_main);
+        if (!BuildAndSignClaimSet(sendThis, pwallet)) {
+            LogPrintf("BuildAndSignClaimSet() failed: Invalid claim(s) found\n");
+            return false;
+        }
+    }
+    {
+        LOCK(cs_main);
+        connman->ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+            AssertLockHeld(::cs_main);
+            // if (pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+            const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+            connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::SENDCLAIMSET, sendThis));
+        });
+    }
+    return true;
+}
+
 
 static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainparams, NodeContext& m_node)
 {
@@ -606,7 +630,6 @@ void PoSMiner(NodeContext& m_node)
                         return;
                     }
             }
-            MaybeDealWithClaimSet(*pwallet); // patchcoin maybe re-locate this?
             CBlockIndex* pindexPrev;
             {
                 LOCK(cs_main);
@@ -678,12 +701,12 @@ void PoSMiner(NodeContext& m_node)
                         LogPrintf("PoSMiner(): failed to sign PoS block\n");
                         continue;
                     }
-                    MaybeDealWithClaimSet(*pwallet, true); // patchcoin todo this doesn't ensure the message is sent before the ProcessBlock is triggered, so move this somewhere else. it needs to be broadcast before any block is actually sent
                 }
                 LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString());
                 try {
                     ProcessBlockFound(pblock, Params(), m_node);
-                    }
+                    PublishClaimset(*pwallet, connman);
+                }
                 catch (const std::runtime_error &e)
                 {
                     LogPrintf("PeercoinMiner runtime error: %s\n", e.what());
@@ -730,9 +753,66 @@ void static ThreadStakeMinter(NodeContext& m_node)
     LogPrintf("ThreadStakeMinter exiting\n");
 }
 
+void static ThreadCsPub(NodeContext& m_node)
+{
+    // patchcoin todo possibly timestamp sends
+    LogPrintf("ThreadCsPub started\n");
+
+    CConnman* connman = m_node.connman.get();
+    CWallet* pwallet;
+    if (m_node.wallet_loader->getWallets().size() && gArgs.GetBoolArg("-minting", true))
+        pwallet = m_node.wallet_loader->getWallets()[0]->wallet();
+    else
+        return;
+
+    {
+        LOCK2(pwallet->cs_wallet, cs_main);
+        CClaimSet empty;
+        if (!SignClaimSet(*pwallet, empty))
+            return;
+    }
+
+    std::size_t last_claim_count = 0;
+    auto last_publish_time = std::chrono::steady_clock::now();
+
+    try {
+        while (true) {
+            if (!connman->interruptNet.sleep_for(std::chrono::milliseconds(100)))
+                break;
+
+            // LOCK(cs_claims);
+            auto now = std::chrono::steady_clock::now();
+            if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
+                last_claim_count = g_claims.size();
+                last_publish_time = now;
+                if (!PublishClaimset(*pwallet, connman))
+                    break;
+            }
+
+        }
+    }
+    catch (::boost::thread_interrupted)
+    {
+        LogPrintf("ThreadCsPub terminated\n");
+        return;
+    }
+    catch (const std::runtime_error &e)
+    {
+        LogPrintf("ThreadCsPub runtime error: %s\n", e.what());
+        return;
+    }
+
+    LogPrintf("ThreadCsPub exiting\n");
+}
+
 // peercoin: stake minter
 void MintStake(NodeContext& m_node)
 {
     m_minter_thread = std::thread([&] { util::TraceThread("minter", [&] { ThreadStakeMinter(m_node); }); });
+}
+
+void PublishClaimset(NodeContext& m_node)
+{
+    m_cspub_thread = std::thread([&] { util::TraceThread("cspub", [&] { ThreadCsPub(m_node); }); });
 }
 } // namespace node

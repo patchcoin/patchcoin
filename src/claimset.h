@@ -75,18 +75,21 @@ public:
     bool AddClaims()
     {
         if (g_claims.empty()) return false;
-        std::vector<CClaim> sortedClaims;
-        sortedClaims.reserve(g_claims.size());
-        for (const auto& [_, claim] : g_claims) {
-            sortedClaims.push_back(claim);
-        }
-        std::sort(sortedClaims.begin(), sortedClaims.end(),
-                  [](const CClaim& a, const CClaim& b) {
-                      return a.nTime > b.nTime;
-                  });
-        for (const auto& claim : sortedClaims) {
-            if (!AddClaim(claim))
-                return false;
+        {
+            LOCK(cs_main);
+            std::vector<CClaim> sortedClaims;
+            sortedClaims.reserve(g_claims.size());
+            for (const auto& [_, claim] : g_claims) {
+                sortedClaims.push_back(claim);
+            }
+            std::sort(sortedClaims.begin(), sortedClaims.end(),
+                      [](const CClaim& a, const CClaim& b) {
+                          return a.nTime > b.nTime;
+                      });
+            for (const auto& claim : sortedClaims) {
+                if (!AddClaim(claim))
+                    return false;
+            }
         }
         return true;
     }
@@ -116,7 +119,12 @@ public:
             return false;
         }
 
-        for (const auto& claim : claims) {
+        std::set<CScript> seenScripts;
+
+        for (const CClaimSetClaim& claim : claims) {
+            if (!seenScripts.insert(claim.GetSource()).second) {
+                return false;
+            }
             if (!claim.IsValid()) {
                 return false;
             }
@@ -133,6 +141,8 @@ public:
     friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() < b.claims.size(); }
     friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() > b.claims.size(); }
 };
+
+bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet);
 
 bool BuildClaimSet(CClaimSet& claimSet);
 

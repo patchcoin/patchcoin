@@ -210,6 +210,8 @@ namespace boost {
 
 void MintStake(NodeContext& m_node);
 
+void PublishClaimset(NodeContext& m_node);
+
 /** Update an old GenerateCoinbaseCommitment from CreateNewBlock after the block txs have changed */
 void RegenerateCommitments(CBlock& block, ChainstateManager& chainman);
 

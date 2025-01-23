@@ -54,25 +54,15 @@ bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet)
     if (!claimSet.IsValid())
         return false;
 
-    return true;
-}
-
-
-void MaybeDealWithClaimSet(const CWallet& wallet, const bool force)
-{
-    if (!genesis_key_held || g_claims.empty()) return;
-    // patchcoin dont check for size in case we ever decide to switch to range
-
-    /*
-    if (force || send_claimset_to_send.claims.size() < g_claims.size() || GetTime() - send_claimset_to_send.nTime > 60) {
-        // send_claimset_to_send = BuildAndSignClaimSet(wallet);
+    for (const CClaim& claim : claimSet.claims) {
+        CAmount nTotalReceived = 0;
+        if (!claim.GetReceived(&wallet, nTotalReceived) || !MoneyRange(nTotalReceived) || nTotalReceived < claim.nTotalReceived || nTotalReceived > claim.GetEligible()) {
+            LogPrintf("claimset: cached and wallet amounts mismatch. this should not happen\n");
+            return false;
+        }
     }
-    */
-    CClaimSet cset;
-    if (BuildAndSignClaimSet(cset, wallet) && !cset.claims.empty()) {
-        send_claimset_to_send = cset;
-        send_claimset = true;
-    };
+
+    return true;
 }
 
 void ApplyClaimSet(const CClaimSet& claimset)
@@ -80,7 +70,7 @@ void ApplyClaimSet(const CClaimSet& claimset)
     LOCK(cs_main);
     if (!g_claimindex) return;
 
-    for (const auto& cClaim : claimset.claims) {
+    for (const CClaimSetClaim& cClaim : claimset.claims) {
         if (!cClaim.IsValid()) return;
         const CClaim claim(cClaim.GetSourceAddress(), cClaim.GetSignatureString(), cClaim.GetTargetAddress());
         claim.nTime = cClaim.nTime;

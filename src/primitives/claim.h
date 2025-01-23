@@ -245,14 +245,6 @@ public:
                 LogPrintf("[claim] error: failed to extract destination from target script\n");
                 return false;
             }
-            if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
-                LogPrintf("[claim] error: peercoin balance out of range\n");
-                return false;
-            }
-            if (!MoneyRange(GetEligible())) {
-                LogPrintf("[claim] error: eligible balance out of range\n");
-                return false;
-            }
             MessageVerificationResult res = MessageVerify(
                 sourceAddress,
                 signatureString,
@@ -261,6 +253,19 @@ public:
             );
             if (res != MessageVerificationResult::OK) {
                 LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
+                return false;
+            }
+            if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
+                LogPrintf("[claim] error: peercoin balance out of range\n");
+                return false;
+            }
+            const CAmount eligible = GetEligible();
+            if (!MoneyRange(eligible)) {
+                LogPrintf("[claim] error: eligible balance out of range\n");
+                return false;
+            }
+            if (eligible < nTotalReceived) {
+                LogPrintf("[claim] error: total received above eligible\n");
                 return false;
             }
             // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
