@@ -23,6 +23,14 @@ uint256 SnapshotManager::GetHash() const
     return SerializeHash(tmp);
 }
 
+void SnapshotManager::SetNull()
+{
+    LOCK(m_snapshot_mutex);
+    m_valid_scripts.clear();
+    m_incompatible_scripts.clear();
+    m_hash_scripts = uint256();
+}
+
 void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible)
 {
     LOCK(m_snapshot_mutex);

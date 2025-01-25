@@ -145,8 +145,8 @@ public:
 */
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256{};
-        consensus.powLimit =            uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.bnInitialHashTarget = uint256S("00000007ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit =            uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~arith_uint256(0) >> 32;
+        consensus.bnInitialHashTarget = uint256S("0000000001b4e81b4e81b4e81b4e81b4e81b4e81b4e81b4e81b4e81b4e81b4e8");
 
         consensus.nTargetTimespan = 7 * 24 * 60 * 60;  // one week
         consensus.nStakeTargetSpacing = 10 * 60; // 10-minute block spacing
@@ -180,16 +180,16 @@ public:
         m_assumed_blockchain_size = 1;
 
         consensus.genesisValue = 21000000 * COIN;
-        consensus.genesisOutputs = 5000;
-        genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        consensus.genesisOutputs = 8750; // patchcoin todo
+        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs); // patchcoin todo
         // MineGenesisBlock(genesis);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
-        consensus.hashPeercoinSnapshot = uint256S("0x50fe42ae3aff68988d4980885a24a54139fdcae57efd24bf341f95cb682c4dbb");
+        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
+        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
@@ -281,15 +281,15 @@ public:
         m_assumed_blockchain_size = 1;
 
         consensus.genesisValue = 21000000 * COIN;
-        consensus.genesisOutputs = 5000;
-        genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        consensus.genesisOutputs = 8750;
+        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
-        consensus.hashPeercoinSnapshot = uint256S("0x50fe42ae3aff68988d4980885a24a54139fdcae57efd24bf341f95cb682c4dbb");
+        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
+        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -319,7 +319,7 @@ public:
 
         checkpointData = {
             {
-                {     0, uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74")},
+                {     0, uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c")},
             }
         };
 
@@ -424,15 +424,15 @@ public:
         nDefaultPort = 38333;
 
         consensus.genesisValue = 21000000 * COIN;
-        consensus.genesisOutputs = 5000;
-        genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        consensus.genesisOutputs = 8750;
+        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
-        consensus.hashPeercoinSnapshot = uint256S("0x50fe42ae3aff68988d4980885a24a54139fdcae57efd24bf341f95cb682c4dbb");
+        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
+        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
 
         vFixedSeeds.clear();
 
@@ -537,15 +537,15 @@ public:
         }
 
         consensus.genesisValue = 21000000 * COIN;
-        consensus.genesisOutputs = 5000;
-        genesis = CreateGenesisBlock(1734734789, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        consensus.genesisOutputs = 8750;
+        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x68eb29a216df54666171f9dd90cb80a104cd26e1b654d36d9a886958cbf6cd74"));
-        assert(genesis.hashMerkleRoot == uint256S("0x2f0ac1da043a8674808905f8cc294641c88583266775c8d29e0997e626ed494e"));
-        consensus.hashPeercoinSnapshot = uint256S("0x50fe42ae3aff68988d4980885a24a54139fdcae57efd24bf341f95cb682c4dbb");
+        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
+        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

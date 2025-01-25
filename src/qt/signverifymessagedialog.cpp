@@ -280,7 +280,8 @@ bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     }
 }
 
-std::map<const CScript, int64_t> debounce;
+std::map<const std::string, uint64_t> debounce_input;
+std::map<const CScript, uint64_t> debounce;
 
 void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 {
@@ -292,6 +293,8 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
         return;
     }
     const std::string& source_address = TrimString(ui->addressIn_VM->text().toStdString());
+    if (GetTimeMillis() - debounce_input[source_address] < 2000)
+        return;
     const std::string& signature = TrimString(ui->signatureIn_VM->text().toStdString());
     const std::string& target_address = TrimString(ui->messageIn_VM->document()->toPlainText().toStdString());
     ui->addressIn_VM->setText(source_address.data());
@@ -301,6 +304,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     if (!on_verifyMessageButton_VM_clicked())
         return;
 
+    debounce_input[source_address] = GetTimeMillis();
     try {
         CClaim claim(source_address, signature, target_address);
         // bool a = claim.IsSourceTargetAddress();

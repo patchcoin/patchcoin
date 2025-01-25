@@ -138,9 +138,9 @@ bool CMessageHeader::IsCommandValid() const
 
 ServiceFlags GetDesirableServiceFlags(ServiceFlags services) {
     if ((services & NODE_NETWORK_LIMITED) && g_initial_block_download_completed) {
-        return ServiceFlags(NODE_NETWORK_LIMITED | NODE_WITNESS | NODE_CLAIMS); // patchcoin todo
+        return ServiceFlags(NODE_NETWORK_LIMITED | NODE_WITNESS);
     }
-    return ServiceFlags(NODE_NETWORK | NODE_WITNESS | NODE_CLAIMS);
+    return ServiceFlags(NODE_NETWORK | NODE_WITNESS);
 }
 
 void SetServiceFlagsIBDCache(bool state) {
@@ -207,7 +207,6 @@ static std::string serviceFlagToStr(size_t bit)
     case NODE_NETWORK:         return "NETWORK";
     case NODE_BLOOM:           return "BLOOM";
     case NODE_WITNESS:         return "WITNESS";
-    case NODE_CLAIMS:          return "CLAIMS";
     case NODE_COMPACT_FILTERS: return "COMPACT_FILTERS";
     case NODE_NETWORK_LIMITED: return "NETWORK_LIMITED";
     // Not using default, so we get warned when a case is missing

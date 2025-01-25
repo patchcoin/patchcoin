@@ -552,6 +552,9 @@ public:
     // peercoin: used to detect branch switches
     uint256 lastAcceptedHeader;
 
+    Mutex m_maybe_send_claimset_mutex;
+    bool fMaybeSendClaimset{false} GUARDED_BY(m_maybe_send_claimset_mutex);
+
     CNode(NodeId id,
           std::shared_ptr<Sock> sock,
           const CAddress& addrIn,

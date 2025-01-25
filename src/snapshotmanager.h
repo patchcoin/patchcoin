@@ -58,6 +58,8 @@ public:
 
     bool LoadSnapshotFromDisk();
 
+    void SetNull();
+
     uint256 GetHash() const;
 
     void UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible);

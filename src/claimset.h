@@ -21,6 +21,7 @@ typedef std::vector<unsigned char> valtype;
 class CClaimSetClaim : public CClaim
 {
 public:
+    static constexpr unsigned int CLAIMSET_CLAIM_SIZE = CLAIM_SIZE + 8;
     SERIALIZE_METHODS(CClaimSetClaim, obj)
     {
         READWRITEAS(CClaim, obj);
@@ -35,10 +36,8 @@ public:
 class CClaimSet
 {
 public:
-    // patchcoin todo re-check here -> scripts claims dont currently link to the script set, so fix that
-    // also, again, not being re-layed on connection currently
-    // maybe also store claimset in a special key or something and then load that on startup. that way we dont need to load individual claims(might be cool or bad not sure yet)
-    // patchcoin todo move this to private
+    static constexpr unsigned int MAX_CLAIMS_COUNT{1000};
+    static constexpr unsigned int MAX_CLAIMSET_SIZE{CClaimSetClaim::CLAIMSET_CLAIM_SIZE * MAX_CLAIMS_COUNT + 8 /* nTime */ + CPubKey::SIGNATURE_SIZE /* 72 */};
     std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
@@ -53,7 +52,6 @@ public:
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(obj.vchSig);
     }
-
 
     bool AddClaim(const CClaim& claim)
     {
@@ -83,16 +81,20 @@ public:
             }
             std::sort(sortedClaims.begin(), sortedClaims.end(),
                       [](const CClaim& a, const CClaim& b) {
-                          return a.nTime > b.nTime;
+                          return a.nTime < b.nTime;
                       });
             for (const auto& claim : sortedClaims) {
                 if (claim.nTotalReceived >= claim.GetEligible())
                     continue;
-                if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + claim.GetBaseSize() + 8 >= 200000) // patchcoin todo
+                if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + CClaimSetClaim::CLAIMSET_CLAIM_SIZE > MAX_CLAIMSET_SIZE)
                     break;
                 if (!AddClaim(claim))
                     return false;
             }
+            std::sort(claims.begin(), claims.end(),
+                      [](const CClaimSetClaim& a, const CClaimSetClaim& b) {
+                          return a.nTime > b.nTime;
+                      });
         }
         return true;
     }
@@ -104,7 +106,8 @@ public:
 
     bool IsValid() const
     {
-        if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) >= 200000) {
+        LogPrintf("%s %s\n", ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION), MAX_CLAIMSET_SIZE);
+        if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_CLAIMSET_SIZE) {
             return false;
         }
 
@@ -145,8 +148,8 @@ public:
     friend bool operator==(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() == b.GetHash(); }
     friend bool operator!=(const CClaimSet& a, const CClaimSet& b) { return a.GetHash() != b.GetHash(); }
     // patchcoin todo:
-    friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() < b.claims.size(); }
-    friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.claims.size() > b.claims.size(); }
+    friend bool operator<(const CClaimSet& a, const CClaimSet& b) { return a.claims.front().nTime < b.claims.front().nTime; }
+    friend bool operator>(const CClaimSet& a, const CClaimSet& b) { return a.claims.front().nTime > b.claims.front().nTime; }
 };
 
 bool SignClaimSet(const CWallet& wallet, CClaimSet& claimSet);

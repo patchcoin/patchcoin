@@ -512,26 +512,24 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 }
 
-bool PublishClaimset(const CWallet& pwallet, CConnman *connman)
+bool PublishClaimset(const CWallet& pwallet, const CConnman *connman, CClaimSet& sendThis)
 {
     if (g_claims.size() == 0)
         return true;
-    CClaimSet sendThis;
     {
         LOCK2(pwallet.cs_wallet, cs_main);
-        if (!BuildAndSignClaimSet(sendThis, pwallet)) {
-            // patchcoin todo check size before sending, or keep a set range
+        if (!SignClaimSet(pwallet, sendThis)) {
             LogPrintf("BuildAndSignClaimSet() failed: Invalid claim(s) found\n");
             return false;
         }
-    }
-    {
-        LOCK(cs_main);
-        connman->ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
-            AssertLockHeld(::cs_main);
-            // if (pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
-            const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-            connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIMSET, sendThis));
+        send_claimset_to_send = sendThis;
+        connman->ForEachNode([&](CNode* pnode) {
+            if (pnode->fDisconnect) return;
+            LOCK(pnode->m_maybe_send_claimset_mutex);
+            pnode->fMaybeSendClaimset = true;
+            // patchcoin todo can this node even handle claims?
+            // const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+            // connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIMSET, sendThis));
         });
     }
     return true;
@@ -783,27 +781,69 @@ void static ThreadCsPub(NodeContext& m_node)
         genesis_key_held = true;
     }
 
-    std::size_t last_claim_count = 0;
-    auto last_publish_time = std::chrono::steady_clock::now();
-    Mutex cs_sending;
-
     try {
+        int64_t last_publish_time = 0;
+        Mutex cs_sending;
+
         while (true) {
+            while (g_claims.empty()) {
+                if (!connman->interruptNet.sleep_for(std::chrono::seconds(5)))
+                    return;
+            }
             {
-                auto now = std::chrono::steady_clock::now();
-                if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
-                    last_claim_count = g_claims.size();
-                    last_publish_time = now;
-                    LOCK(cs_sending);
-                    if (!PublishClaimset(*pwallet, connman))
+                LOCK(cs_sending);
+
+                const int64_t now = GetTime();
+                const bool timeout_occurred = now - last_publish_time >= 60;
+
+                bool has_new_claims = false;
+                std::vector<CClaim> new_claims;
+
+                for (const auto& [script, claim] : g_claims) {
+                    if (claim.nTime > last_publish_time) {
+                        new_claims.push_back(claim);
+                        has_new_claims = true;
+                    }
+                }
+
+                if (has_new_claims || timeout_occurred) {
+                    CClaimSet sendThis;
+                    bool success = true;
+
+                    if (has_new_claims) {
+                        std::sort(new_claims.begin(), new_claims.end(),
+                            [](const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; });
+
+                        for (const auto& claim : new_claims) {
+                            if (!sendThis.AddClaim(claim)) {
+                                LogPrintf("BuildClaimSet failed\n");
+                                success = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        if (!BuildClaimSet(sendThis)) {
+                            LogPrintf("BuildClaimSet failed\n");
+                            success = false;
+                        }
+                    }
+
+                    if (success && !PublishClaimset(*pwallet, connman, sendThis)) {
+                        success = false;
+                    }
+
+                    if (success) {
+                        last_publish_time = now;
+                    } else {
                         break;
+                    }
                 }
             }
-            if (!connman->interruptNet.sleep_for(std::chrono::milliseconds(100)))
+            if (!connman->interruptNet.sleep_for(std::chrono::seconds(1))) {
                 break;
+            }
         }
-    }
-    catch (::boost::thread_interrupted)
+    } catch (::boost::thread_interrupted)
     {
         LogPrintf("ThreadCsPub terminated\n");
         return;

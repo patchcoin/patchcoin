@@ -61,7 +61,7 @@ private:
                 peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
                 eligible = GetEligible();
                 GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue) / static_cast<double>(Params().GetConsensus().genesisOutputs);
-                MAX_POSSIBLE_OUTPUTS = std::min(16u, static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
+                MAX_POSSIBLE_OUTPUTS = std::min(20u, static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
                 MAX_OUTPUTS = GetMaxOutputs();
             }
         }
@@ -221,7 +221,7 @@ public:
     bool IsValid() const
     {
         try {
-            if (GetBaseSize() != CLAIM_SIZE) {
+            if (GetBaseSize() != CLAIM_SIZE) { // patchcoin todo
                 LogPrintf("[claim] error: size mismatch: current=%s target=%s\n", GetBaseSize(), CLAIM_SIZE);
                 return false;
             }
@@ -299,14 +299,26 @@ public:
 
     bool IsUniqueSource() const
     {
-        // patchcoin ensure consistency with claimset
-        return source && !source->empty() && g_claims.count(*source) == 0;
+        if (!source || source->empty()) {
+            return false;
+        }
+        if (g_claims.count(*source) != 0) {
+            return false;
+        }
+        return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
+            const CClaim& claim = entry.second;
+            return claim.GetTarget() == *source;
+        });
     }
 
     bool IsUniqueTarget() const
     {
-        if (target.empty()) return false;
-        // patchcoin todo ensure consistency with claimset
+        if (target.empty()) {
+            return false;
+        }
+        if (g_claims.count(target) != 0) {
+            return false;
+        }
         return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
             const CClaim& claim = entry.second;
             return claim.GetTarget() == target;
