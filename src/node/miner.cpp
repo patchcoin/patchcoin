@@ -635,8 +635,10 @@ void PoSMiner(NodeContext& m_node)
                     }
             }
             if (genesis_key_held && g_claims.size() < 5) { // patchcoin todo count coins being output
-                while (g_claims.size() < 5)
-                    UninterruptibleSleep(10s);
+                while (g_claims.size() < 5) {
+                    if (!connman->interruptNet.sleep_for(std::chrono::seconds(10)))
+                        return;
+                }
             }
             CBlockIndex* pindexPrev;
             {
@@ -787,7 +789,6 @@ void static ThreadCsPub(NodeContext& m_node)
 
     try {
         while (true) {
-            UninterruptibleSleep(100ms);
             {
                 auto now = std::chrono::steady_clock::now();
                 if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
@@ -798,6 +799,8 @@ void static ThreadCsPub(NodeContext& m_node)
                         break;
                 }
             }
+            if (!connman->interruptNet.sleep_for(std::chrono::milliseconds(100)))
+                break;
         }
     }
     catch (::boost::thread_interrupted)

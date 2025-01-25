@@ -13,6 +13,11 @@ uint256 CClaim::GetHash() const
     return SerializeHash(*this);
 }
 
+unsigned int CClaim::GetBaseSize() const
+{
+    return ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
+}
+
 /*
 std::string CClaim::ToString() const
 {

@@ -237,10 +237,22 @@ bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
             tr("Please check the address and try again.")
         );
         return false;
+    case MessageVerificationResult::ERR_INVALID_TARGET_ADDRESS:
+        ui->statusLabel_VM->setText(
+            tr("The entered target address is invalid.") + QString(" ") +
+            tr("Please check the address and try again.")
+        );
+        return false;
     case MessageVerificationResult::ERR_ADDRESS_NO_KEY:
         ui->addressIn_VM->setValid(false);
         ui->statusLabel_VM->setText(
             tr("The entered address does not refer to a key.") + QString(" ") +
+            tr("Please check the address and try again.")
+        );
+        return false;
+    case MessageVerificationResult::ERR_TARGET_ADDRESS_NO_KEY:
+        ui->statusLabel_VM->setText(
+            tr("The entered target address does not refer to a key.") + QString(" ") +
             tr("Please check the address and try again.")
         );
         return false;

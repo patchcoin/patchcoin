@@ -68,6 +68,7 @@ private:
     }
 
 public:
+    static constexpr unsigned int CLAIM_SIZE{6 /* snapshotPos */  + CPubKey::COMPACT_SIGNATURE_SIZE /* 65 */ + 25 /* target script */};
     double GENESIS_OUTPUTS_AMOUNT = 0;
     unsigned int MAX_POSSIBLE_OUTPUTS = 0;
     unsigned int MAX_OUTPUTS = 0;
@@ -220,8 +221,12 @@ public:
     bool IsValid() const
     {
         try {
+            if (GetBaseSize() != CLAIM_SIZE) {
+                LogPrintf("[claim] error: size mismatch: current=%s target=%s\n", GetBaseSize(), CLAIM_SIZE);
+                return false;
+            }
             if (IsAnyNull()) {
-                LogPrintf("[claim] error: called on an empty string source=%s, signature=%s, target=%s\n",
+                LogPrintf("[claim] error: called on an empty string source=%s signature=%s target=%s\n",
                    sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
                 return false;
             }
@@ -233,7 +238,7 @@ public:
                 LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
                 return false;
             }
-            if (snapshotIt == snapshot.end()) {
+            if (snapshotIt == snapshot.end() || snapshotPos >= snapshot.size()) {
                 LogPrintf("[claim] error: source script not found in snapshot\n");
                 return false;
             }
@@ -317,6 +322,8 @@ public:
     }
 
     uint256 GetHash() const;
+
+    unsigned int GetBaseSize() const;
 
     friend bool operator==(const CClaim& a, const CClaim& b) { return a.GetSource() == b.GetSource(); }
     friend bool operator!=(const CClaim& a, const CClaim& b) { return a.GetSource() != b.GetSource(); }

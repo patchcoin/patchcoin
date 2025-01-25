@@ -78,7 +78,6 @@ public:
         {
             LOCK(cs_main);
             std::vector<CClaim> sortedClaims;
-            sortedClaims.reserve(g_claims.size());
             for (const auto& [_, claim] : g_claims) {
                 sortedClaims.push_back(claim);
             }
@@ -87,6 +86,10 @@ public:
                           return a.nTime > b.nTime;
                       });
             for (const auto& claim : sortedClaims) {
+                if (claim.nTotalReceived >= claim.GetEligible())
+                    continue;
+                if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + claim.GetBaseSize() + 8 >= 200000) // patchcoin todo
+                    break;
                 if (!AddClaim(claim))
                     return false;
             }
@@ -101,6 +104,10 @@ public:
 
     bool IsValid() const
     {
+        if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) >= 200000) {
+            return false;
+        }
+
         if (vchSig.empty()) {
             return false;
         }
