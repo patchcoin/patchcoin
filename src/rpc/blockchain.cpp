@@ -59,6 +59,7 @@
 #include <key_io.h>
 #include <memory>
 #include <mutex>
+#include <pow.h>
 #include <snapshotmanager.h>
 
 using kernel::CCoinsStats;
@@ -98,6 +99,26 @@ CBlockPolicyEstimator& EnsureFeeEstimator(const std::any& context)
     return *node.fee_estimator;
 }
 */
+
+double CalculateDifficulty(uint32_t nBits)
+{
+    int nShift = (nBits >> 24) & 0xff;
+
+    double dDiff =
+        (double)0x0000ffff / (double)(nBits & 0x00ffffff);
+
+    while (nShift < 29) {
+        dDiff *= 256.0;
+        nShift++;
+    }
+    while (nShift > 29) {
+        dDiff /= 256.0;
+        nShift--;
+    }
+
+    return dDiff;
+}
+
 /* Calculate the difficulty for a given block index.
  */
 double GetDifficulty(const CBlockIndex* blockindex, const CBlockIndex* tip)
@@ -112,21 +133,7 @@ double GetDifficulty(const CBlockIndex* blockindex, const CBlockIndex* tip)
             blockindex = GetLastBlockIndex(tip, false);
     }
 
-    int nShift = (blockindex->nBits >> 24) & 0xff;
-
-    double dDiff =
-        (double)0x0000ffff / (double)(blockindex->nBits & 0x00ffffff);
-
-    while (nShift < 29) {
-        dDiff *= 256.0;
-        nShift++;
-    }
-    while (nShift > 29) {
-        dDiff /= 256.0;
-        nShift--;
-    }
-
-    return dDiff;
+    return CalculateDifficulty(blockindex->nBits);
 }
 
 static int ComputeNextBlockAndDepth(const CBlockIndex* tip, const CBlockIndex* blockindex, const CBlockIndex*& next)
@@ -471,14 +478,17 @@ static RPCHelpMan syncwithvalidationinterfacequeue()
 static RPCHelpMan getdifficulty()
 {
     return RPCHelpMan{"getdifficulty",
-                "\nReturns the difficulty as a multiple of the minimum difficulty.\n",
+                "\nReturns the difficulty as a multiple of the minimum difficulty.\n" +
+                strprintf("%.15e represents infinity.\n", std::numeric_limits<double>::max()),
                 {},
                 RPCResult{
                     RPCResult::Type::OBJ, "", "",
                         {
-                            {RPCResult::Type::NUM, "proof-of-work", "the difficulty as a multiple of the minimum difficulty of proof of work blocks"},
-                            {RPCResult::Type::NUM, "proof-of-stake", "the difficulty as a multiple of the minimum difficulty of proof of stake blocks"},
                             {RPCResult::Type::NUM, "search-interval", "the last coinstake search interval"},
+                            {RPCResult::Type::NUM, "proof-of-stake", "the difficulty as a multiple of the minimum difficulty of proof of stake blocks"},
+                            {RPCResult::Type::NUM, "proof-of-stake-next", "the difficulty as a multiple of the minimum difficulty of the next proof of stake block"},
+                            {RPCResult::Type::NUM, "proof-of-work", "the difficulty as a multiple of the minimum difficulty of proof of work blocks"},
+                            {RPCResult::Type::NUM, "proof-of-work-next", "the difficulty as a multiple of the minimum difficulty of the next proof of work block"},
                         }},
                 RPCExamples{
                     HelpExampleCli("getdifficulty", "")
@@ -488,14 +498,55 @@ static RPCHelpMan getdifficulty()
 {
     ChainstateManager& chainman = EnsureAnyChainman(request.context);
     LOCK(cs_main);
+    const CBlockIndex* pindex = chainman.ActiveChain().Tip();
+    auto formatDifficulty = [](double difficulty) -> UniValue {
+        return std::isinf(difficulty) ? UniValue(std::numeric_limits<double>::max()) : UniValue(difficulty);
+    };
+    const double proofOfStake     = GetDifficulty(GetLastBlockIndex(pindex, true), pindex);
+    const double proofOfStakeNext = CalculateDifficulty(GetNextTargetRequired(pindex, true, chainman.GetConsensus()));
+    const double proofOfWork      = GetDifficulty(nullptr, pindex);
+    const double proofOfWorkNext  = CalculateDifficulty(GetNextTargetRequired(pindex, false, chainman.GetConsensus()));
+
     UniValue obj(UniValue::VOBJ);
-    obj.pushKV("proof-of-work",        GetDifficulty(NULL, chainman.ActiveChain().Tip()));
-    obj.pushKV("proof-of-stake",       GetDifficulty(GetLastBlockIndex(chainman.ActiveChain().Tip(), true), chainman.ActiveChain().Tip()));
     obj.pushKV("search-interval",      (int)nLastCoinStakeSearchInterval);
+    obj.pushKV("proof-of-stake",       formatDifficulty(proofOfStake));
+    obj.pushKV("proof-of-stake-next",  formatDifficulty(proofOfStakeNext));
+    obj.pushKV("proof-of-work",        formatDifficulty(proofOfWork));
+    obj.pushKV("proof-of-work-next",   formatDifficulty(proofOfWorkNext));
     return obj;
 },
     };
 }
+
+static RPCHelpMan converttodifficulty()
+{
+    return RPCHelpMan{
+        "converttodifficulty",
+        "\nConverts a numeric input into a difficulty string.\n",
+        {
+                {"number", RPCArg::Type::STR, RPCArg::Optional::NO, "The numeric input to convert"},
+            },
+            RPCResult{
+                RPCResult::Type::STR, "", "The difficulty string representation of the input number"
+            },
+            RPCExamples{
+                HelpExampleCli("converttodifficulty", "256")
+                + HelpExampleRpc("converttodifficulty", "256")
+            },
+            [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    double input = 256;
+    if (!request.params[0].isNull()) {
+        std::string strInput = request.params[0].get_str();
+        input = std::stoi(strInput);
+    }
+    const arith_uint256 difficulty_target = UintToArith256(Params().GetConsensus().powLimit);
+    const arith_uint256 target = difficulty_target / input;
+    return UniValue(target.GetHex());
+}
+    };
+}
+
 
 static RPCHelpMan getblockfrompeer()
 {
@@ -2888,6 +2939,7 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"hidden", &dumptxoutset},
         {"hidden", &lookupaddress},
         {"hidden", &exportsnapshot},
+        {"hidden", &converttodifficulty},
     };
     for (const auto& c : commands) {
         t.appendCommand(c.name, &c);
