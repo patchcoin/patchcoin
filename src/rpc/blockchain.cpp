@@ -238,6 +238,30 @@ UniValue blockToJSON(BlockManager& blockman, const CBlock& block, const CBlockIn
 
     result.pushKV("tx", txs);
 
+    std::vector<CClaim> claims;
+    for (const auto& [script, claim] : g_claims) {
+        for (const auto& [hashBlock, amount] : claim.outs) {
+            if (hashBlock == block.GetHash()) {
+                claims.push_back(claim);
+                break;
+            }
+        }
+    }
+    // patchcoin todo add claimsToJSON()
+    UniValue claims_arr(UniValue::VARR);
+    for (const CClaim& claim : claims) {
+        UniValue claim_obj(UniValue::VOBJ);
+        claim_obj.pushKV("peercoin_address", claim.GetSourceAddress());
+        claim_obj.pushKV("patchcoin_address", claim.GetTargetAddress());
+        claim_obj.pushKV("signature", claim.GetSignatureString());
+        claim_obj.pushKV("peercoin_balance", ValueFromAmount(claim.GetPeercoinBalance()));
+        claim_obj.pushKV("patchcoin_eligible", ValueFromAmount(claim.GetEligible()));
+        claim_obj.pushKV("total_received", ValueFromAmount(claim.nTotalReceived));
+        claim_obj.pushKV("nTime", static_cast<uint64_t>(claim.nTime));
+        claims_arr.push_back(claim_obj);
+    }
+    result.pushKV("claims", claims_arr);
+
     return result;
 }
 

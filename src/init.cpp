@@ -1905,8 +1905,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 #endif
 #ifdef ENABLE_WALLET
 {
-    MintStake(node);
     PublishClaimset(node);
+    MintStake(node);
 }
 #endif
 

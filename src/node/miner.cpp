@@ -514,6 +514,8 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 
 bool PublishClaimset(const CWallet& pwallet, CConnman *connman)
 {
+    if (g_claims.size() == 0)
+        return true;
     CClaimSet sendThis;
     {
         LOCK2(pwallet.cs_wallet, cs_main);
@@ -631,6 +633,10 @@ void PoSMiner(NodeContext& m_node)
                     if (!connman->interruptNet.sleep_for(std::chrono::seconds(10)))
                         return;
                     }
+            }
+            if (genesis_key_held && g_claims.size() < 5) { // patchcoin todo count coins being output
+                while (g_claims.size() < 5)
+                    UninterruptibleSleep(10s);
             }
             CBlockIndex* pindexPrev;
             {
@@ -781,15 +787,13 @@ void static ThreadCsPub(NodeContext& m_node)
 
     try {
         while (true) {
-            if (!connman->interruptNet.sleep_for(std::chrono::milliseconds(100)))
-                break;
-
+            UninterruptibleSleep(100ms);
             {
-                LOCK(cs_sending);
                 auto now = std::chrono::steady_clock::now();
                 if (g_claims.size() > last_claim_count || std::chrono::duration_cast<std::chrono::minutes>(now - last_publish_time).count() >= 1) {
                     last_claim_count = g_claims.size();
                     last_publish_time = now;
+                    LOCK(cs_sending);
                     if (!PublishClaimset(*pwallet, connman))
                         break;
                 }

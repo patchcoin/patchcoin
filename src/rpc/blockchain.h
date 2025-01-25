@@ -15,6 +15,7 @@
 #include <any>
 #include <stdint.h>
 #include <vector>
+#include <primitives/claim.h>
 
 class CBlock;
 class CBlockIndex;
