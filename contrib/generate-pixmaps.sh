@@ -37,6 +37,22 @@ convert_svg_once() {
     optimize_png "$out_png"
 }
 
+add_image_border() {
+    local input_image="$1"
+    local output_image="$2"
+    local resize_percent="$3"
+    local border_size="$4"
+
+    convert "$input_image" \
+        -resize "$resize_percent" \
+        -gravity center \
+        -background none \
+        -extent 1024x1024 \
+        \( +clone -alpha extract -morphology dilate disk:"$border_size" -background black -alpha shape \) \
+        +swap -compose over -composite \
+        "$output_image"
+}
+
 generate_resized() {
     local base_image="$1"
     local out_dir="$2"
@@ -46,7 +62,15 @@ generate_resized() {
     for target_size in 128 256 32 64 16; do
         local png_file="$out_dir/${prefix}${target_size}.png"
         local xpm_file="$out_dir/${prefix}${target_size}.xpm"
-        convert "$base_image" -filter Lanczos -resize "${target_size}x${target_size}" "$png_file"
+
+        if [[ $target_size -eq 16 || $target_size -eq 32 ]]; then
+            local bordered_image="$TMP_DIR/bordered_${target_size}.png"
+            add_image_border "$base_image" "$bordered_image" 93% 30
+            convert "$bordered_image" -filter Lanczos -resize "${target_size}x${target_size}" "$png_file"
+        else
+            convert "$base_image" -filter Lanczos -resize "${target_size}x${target_size}" "$png_file"
+        fi
+
         optimize_png "$png_file"
         convert "$png_file" "$xpm_file"
     done
@@ -191,6 +215,9 @@ declare -r TOR_SVG="$SVG_DIR/tor.svg"
 declare -r BASE_PATCHCOIN="$TMP_DIR/patchcoin_1024.png"
 convert_svg_once "$PATCHCOIN_SVG" "$BASE_PATCHCOIN" 1024
 
+declare -r BASE_PATCHCOIN_WITH_BORDER="$TMP_DIR/patchcoin_1024_bordered.png"
+add_image_border "$BASE_PATCHCOIN" "$BASE_PATCHCOIN_WITH_BORDER" 95% 30
+
 declare -r BASE_PATCHCOIN_FULL="$TMP_DIR/patchcoin_full_1024.png"
 convert_svg_once "$PATCHCOIN_FULL_SVG" "$BASE_PATCHCOIN_FULL" 1024
 
@@ -204,6 +231,9 @@ mogrify -trim +repage "$TOR_LOGO"
 declare -r BASE_PATCHCOIN_GRAY="$TMP_DIR/patchcoin_gray_1024.png"
 convert_svg_once "$PATCHCOIN_GRAYSCALE_SVG" "$BASE_PATCHCOIN_GRAY" 1024
 
+declare -r BASE_PATCHCOIN_GRAY_WITH_BORDER="$TMP_DIR/patchcoin_gray_1024_bordered.png"
+add_image_border "$BASE_PATCHCOIN_GRAY" "$BASE_PATCHCOIN_GRAY_WITH_BORDER" 95% 30
+
 declare -r BASE_PATCHCOIN_WHITE="$TMP_DIR/patchcoin_white_1024.png"
 convert_svg_once "$PATCHCOIN_WHITE_SVG" "$BASE_PATCHCOIN_WHITE" 1024
 
@@ -216,7 +246,7 @@ generate_tor_images "$BASE_PATCHCOIN" "$PIXMAPS_DIR" "patchcoin-tor"
 generate_nsis_wizard_bmp "$BASE_PATCHCOIN_WHITE" "$PIXMAPS_DIR/nsis-wizard.bmp"
 generate_nsis_header_bmp "$BASE_PATCHCOIN_FULL" "$PIXMAPS_DIR/nsis-header.bmp"
 
-generate_ico "$BASE_PATCHCOIN" "$PIXMAPS_DIR/patchcoin.ico"
+generate_ico "$BASE_PATCHCOIN_WITH_BORDER" "$PIXMAPS_DIR/patchcoin.ico"
 
 convert "$BASE_PATCHCOIN" -filter Lanczos -resize 841x841 "$RES_DIR/bitcoin.png"
 optimize_png "$RES_DIR/bitcoin.png"
@@ -233,7 +263,7 @@ convert "$BASE_PATCHCOIN_GRAY" -filter Lanczos -resize 512x512 "$RES_DIR/patchco
 optimize_png "$RES_DIR/patchcoin_testnet.png"
 echo "Generated $RES_DIR/patchcoin_testnet.png (512x512)"
 
-generate_ico "$RES_DIR/patchcoin_testnet.png" "$RES_DIR/patchcoin_testnet.ico"
+generate_ico "$BASE_PATCHCOIN_GRAY_WITH_BORDER" "$RES_DIR/patchcoin_testnet.ico"
 echo "Generated $RES_DIR/patchcoin_testnet.ico"
 
 generate_logomask
