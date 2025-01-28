@@ -96,77 +96,6 @@ static RPCHelpMan ping()
     };
 }
 
-static RPCHelpMan sendclaim()
-{
-    return RPCHelpMan{"sendclaim",
-        "Send a signed peercoin claim.",
-        {
-            {"address", RPCArg::Type::STR, RPCArg::Optional::NO, "The peercoin address to use for the signature."},
-            {"signature", RPCArg::Type::STR, RPCArg::Optional::NO, "The signature provided by the signer in base 64 encoding (see signmessage)."},
-            {"targetAddress", RPCArg::Type::STR, RPCArg::Optional::NO, "The target patchcoin address."},
-        },
-        RPCResult{
-            RPCResult::Type::BOOL, "", "If the signature is verified or not."
-        },
-        RPCExamples{
-            "\nUnlock the wallet for 30 seconds\n"
-            + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
-            "\nVerify the signature and send claim\n"
-            + HelpExampleCli("sendclaim", "\"PUfHgF5CV3vc7h8rfAAXmAtxgxKcqxJT6t\" \"signature\" \"PN3QD9gVDaa5cFwisMkjpHDoSj6aKiT7Eo\"")
-        },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
-        {
-            std::string strAddress = request.params[0].get_str();
-            std::string strSign = request.params[1].get_str();
-            std::string strTargetAddress = request.params[2].get_str();
-
-            CTxDestination dest = DecodeDestination(strAddress);
-            auto it = SnapshotManager::Peercoin().GetScriptPubKeys().find(GetScriptForDestination(dest));
-
-            if (it != SnapshotManager::Peercoin().GetScriptPubKeys().end()) {
-                // Found the target script
-                // LogPrintf("sendclaim Target script found!\n");
-            } else {
-                // Target script not found
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            }
-
-
-            switch (MessageVerify(strAddress, strSign, strTargetAddress, PEERCOIN_MESSAGE_MAGIC)) {
-            case MessageVerificationResult::ERR_INVALID_ADDRESS:
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            case MessageVerificationResult::ERR_ADDRESS_NO_KEY:
-                throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-            case MessageVerificationResult::ERR_INVALID_TARGET_ADDRESS:
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid target address");
-            case MessageVerificationResult::ERR_TARGET_ADDRESS_NO_KEY:
-                throw JSONRPCError(RPC_TYPE_ERROR, "Target address does not refer to key");
-            case MessageVerificationResult::ERR_MALFORMED_SIGNATURE:
-                throw JSONRPCError(RPC_TYPE_ERROR, "Malformed base64 encoding");
-            case MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED:
-            case MessageVerificationResult::ERR_NOT_SIGNED:
-                return false;
-            case MessageVerificationResult::OK:
-                /*
-                NodeContext& node = EnsureAnyNodeContext(request.context);
-                std::string err_string;
-                CTxDestination destination = DecodeDestination(strAddress);
-                CScript huur{GetScriptForDestination(destination)};
-                auto signature_bytes = DecodeBase64(strSign);
-                CTxDestination target = DecodeDestination(strTargetAddress);
-                CScript duur{GetScriptForDestination(target)};
-                const CClaim claim(strAddress, strSign, strTargetAddress);
-                */
-
-                // BroadcastClaim(node, claim, err_string, true, false); // patchcoin maybe dont use broadcast? also fill error string
-                return true;
-            }
-
-            return false;
-        },
-    };
-}
-
 static RPCHelpMan getpeerinfo()
 {
     return RPCHelpMan{
@@ -1043,7 +972,6 @@ void RegisterNetRPCCommands(CRPCTable &t)
     static const CRPCCommand commands[]{
         {"network", &getconnectioncount},
         {"network", &ping},
-        {"network", &sendclaim},
         {"network", &getpeerinfo},
         {"network", &addnode},
         {"network", &disconnectnode},

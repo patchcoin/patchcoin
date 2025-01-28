@@ -45,13 +45,26 @@ private:
     CAmount eligible = 0;
 
     void Init() {
-        const CScript source_script = GetScriptFromAddress(sourceAddress);
+        if (GetBaseSize() != 6)
+            return;
+        const CScript& source_script = GetScriptFromAddress(sourceAddress);
+        if (source_script.empty())
+            return;
 
-        if (auto decoded_signature = DecodeBase64(signatureString)) {
+        if (const auto decoded_signature = DecodeBase64(signatureString)) {
             signature = *decoded_signature;
+        } else {
+            return;
         }
+        if (GetBaseSize() != (6 + CPubKey::COMPACT_SIGNATURE_SIZE))
+            return;
 
         target = GetScriptFromAddress(targetAddress);
+        if (target.empty())
+            return;
+
+        if (GetBaseSize() != CLAIM_SIZE)
+            return;
 
         if (SnapshotIsValid()) {
             snapshotIt = snapshot.find(source_script);
@@ -115,12 +128,13 @@ public:
         return address;
     }
 
-    static std::string LocateAddress(const uint32_t pos)
+    static std::string LocateAddress(const uint32_t& pos)
     {
         std::string address;
-        // const auto& snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();
-        const CClaim dummy;
-        if (dummy.SnapshotIsValid() && pos < static_cast<uint32_t>(snapshot.size())) {
+        if (Params().GetConsensus().hashPeercoinSnapshot == hashSnapshot
+            && SnapshotManager::Peercoin().GetHashScripts() == hashSnapshot
+            && pos < static_cast<uint32_t>(snapshot.size()))
+        {
             const auto& it = std::next(snapshot.begin(), pos);
             if (it != snapshot.end()) {
                 address = GetAddressFromScript(it->first);
