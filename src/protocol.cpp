@@ -49,6 +49,8 @@ const char *GETPEERCOINSNAPSHOT="getppcsns";
 const char *SENDPEERCOINSNAPSHOT="sendppcsns";
 const char *CLAIM="claim";
 const char *CLAIMSET="claimset";
+const char *CLAIMSETPING="csping";
+const char *GETCLAIMSET="getcs";
 const char *SCACK="scack";
 } // namespace NetMsgType
 
@@ -95,6 +97,8 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::SENDPEERCOINSNAPSHOT,
     NetMsgType::CLAIM,
     NetMsgType::CLAIMSET,
+    NetMsgType::CLAIMSETPING,
+    NetMsgType::GETCLAIMSET,
     NetMsgType::SCACK,
 };
 const static std::vector<std::string> allNetMessageTypesVec(std::begin(allNetMessageTypes), std::end(allNetMessageTypes));

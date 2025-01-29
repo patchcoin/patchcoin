@@ -70,6 +70,7 @@ static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 1ms;
 /** How long to wait for a peer to respond to a getheaders request */
 static constexpr auto HEADERS_RESPONSE_TIME{2min};
 
+static constexpr auto CLAIMSET_PING_INTERVAL{1min};
 static constexpr auto SNAPSHOT_RATE_LIMIT_INTERVAL{1min};
 static constexpr int MAX_SNAPSHOT_SENDS{10};
 /** Protect at least this many outbound peers from disconnection due to slow/
@@ -211,7 +212,9 @@ struct QueuedBlock {
  * TODO: move most members from CNodeState to this structure.
  * TODO: move remaining application-layer data members from CNode to this structure.
  */
-struct Peer {
+// std::chrono::microseconds m_last_claimset_hash_sent_timestamp GUARDED_BY(m_claimset_send_times_mutex){0};
+struct Peer
+{
     /** Same id as the CNode object for this peer */
     const NodeId m_id{0};
 
@@ -265,6 +268,26 @@ struct Peer {
     /** Whether a ping has been requested by the user */
     std::atomic<bool> m_ping_queued{false};
 
+    mutable Mutex m_claimset_send_times_mutex;
+
+    /** Next time we should (re)announce our claimset to this peer. */
+    std::chrono::microseconds m_next_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
+    std::chrono::microseconds m_last_claimset_sent_timestamp GUARDED_BY(m_claimset_send_times_mutex){0};
+
+    /** Next time we might do some "local" claimset logic, if needed. */
+    std::chrono::microseconds m_next_local_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
+
+    /** The last claimset hash we announced to this peer. */
+    uint256 m_next_claimset_hash_send GUARDED_BY(m_claimset_send_times_mutex){};
+    uint256 m_last_claimset_hash_sent GUARDED_BY(m_claimset_send_times_mutex){};
+
+    uint256 m_last_claimset_received_hash GUARDED_BY(m_claimset_send_times_mutex){};
+    int64_t m_last_claimset_received_timestamp GUARDED_BY(m_claimset_send_times_mutex){};
+    uint256 m_last_claimset_requested_hash GUARDED_BY(m_claimset_send_times_mutex){};
+
+    /** Whether this peer wants claimset announcements. */
+    // bool m_wants_claimset_announcements GUARDED_BY(m_claimset_send_times_mutex){true};
+
     std::atomic<bool> m_scack_sent{false};
     std::atomic<bool> m_peercoin_snapshot_held{false};
     NodeClock::time_point m_peercoin_snapshot_requested_timestamp{};
@@ -273,9 +296,9 @@ struct Peer {
 
     // bool m_claimset_sent GUARDED_BY(NetEventsInterface::g_msgproc_mutex){false};
 
-    Mutex m_claimset_send_times_mutex;
-    std::chrono::microseconds m_next_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
-    std::chrono::microseconds m_next_local_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
+    // Mutex m_claimset_send_times_mutex;
+    // std::chrono::microseconds m_next_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
+    // std::chrono::microseconds m_next_local_claimset_send GUARDED_BY(m_claimset_send_times_mutex){0};
 
     /** Whether this peer relays txs via wtxid */
     std::atomic<bool> m_wtxid_relay{false};
@@ -287,7 +310,8 @@ struct Peer {
       * to the peer. */
     std::chrono::microseconds m_next_send_feefilter GUARDED_BY(NetEventsInterface::g_msgproc_mutex){0};
 
-    struct TxRelay {
+    struct TxRelay
+    {
         mutable RecursiveMutex m_bloom_filter_mutex;
         /** Whether we relay transactions to this peer. */
         bool m_relay_txs GUARDED_BY(m_bloom_filter_mutex){false};
@@ -415,8 +439,9 @@ struct Peer {
 
     explicit Peer(NodeId id, ServiceFlags our_services)
         : m_id{id}
-        , m_our_services{our_services}
-    {}
+          , m_our_services{our_services}
+    {
+    }
 
 private:
     mutable Mutex m_tx_relay_mutex;
@@ -704,7 +729,9 @@ private:
      *  to time out. */
     void MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::microseconds now);
 
-    void MaybeSendClaimset(CNode& node_to, Peer& peer, std::chrono::microseconds current_time) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
+    void MaybeSendClaimsetPing(CNode& node_to, Peer& peer, std::chrono::microseconds current_time);
+
+    // void MaybeSendClaimset(CNode& node_to, Peer& peer, std::chrono::microseconds current_time) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
 
     /** Send `addr` messages on a regular schedule. */
     void MaybeSendAddr(CNode& node, Peer& peer, std::chrono::microseconds current_time) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
@@ -3427,6 +3454,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         m_connman.PushMessage(&pfrom, msg_maker.Make(NetMsgType::VERACK));
 
+        // patchcoin todo possibly move this elsewhere
         if (SnapshotManager::Peercoin().GetHashScripts() == Params().GetConsensus().hashPeercoinSnapshot) {
             m_connman.PushMessage(&pfrom, msg_maker.Make(NetMsgType::SCACK));
             peer->m_scack_sent = true;
@@ -4374,94 +4402,84 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         CClaim dummy;
         if (!dummy.SnapshotIsValid()) return;
         vRecv >> dummy;
-        const std::string source_address = dummy.GetSourceAddress();
-        /*
-        const auto it = scriptPubKeysOfPeercoinSnapshot.find(dummy.GetScriptFromAddress(source_address));
-        if (it == scriptPubKeysOfPeercoinSnapshot.end()) {
+        if (!dummy.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
-        }
-        */
+        };
 
-        CClaim claim(source_address, dummy.GetSignatureString(), dummy.GetTargetAddress());
-        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
-            Misbehaving(*peer, 100, "invalid claim");
+        LOCK2(cs_main, cs_claims_seen);
+        if (GetTime() - claims_seen[dummy.GetSource()] < 1.5 * 60)
             return;
-        }
+        claims_seen[dummy.GetSource()] = GetTime();
+
+        CClaim claim(dummy.GetSourceAddress(), dummy.GetSignatureString(), dummy.GetTargetAddress());
         if (!claim.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
 
-        const CScript& source = claim.GetSource();
-        /*
-        const auto it2 = last_claimset_received.claims.find(source);
-        const auto it3 = send_claimset_to_send.claims.find(source);
-        if (it2 != last_claimset_received.claims.end() || it3 != send_claimset_to_send.claims.end()) {
-            if (!peer->m_scack_sent) {
-                m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
-                peer->m_scack_sent = true;
-            }
-            return;
-        }
-        */
-
-        {
-            LOCK2(cs_main, cs_claims_seen);
-            if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
-                return;
-            claims_seen[claim.GetSource()] = GetTime();
-
-            if (claim.IsUniqueSource()) { // first time we register this thing
-                if (claim.Insert() && g_claimindex->AddClaim(claim)) {
-                    if (!peer->m_scack_sent) {
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
-                        peer->m_scack_sent = true;
-                    } else
-                        return; // db error?
-                }
-            } else {
-                const auto& it4 = g_claims.find(claim.GetSource());
-                if (it4 != g_claims.end() && it4->second.seen) {
-                    return;
-                }
-            }
-
-            // patchcoin todo check last claimset as well
-            // patchcoin todo potentially start maintaining list of seen claims in memory. while this operation shouldn't be particularly demanding, I'm unsure how well it scales
-            /* CClaim dbClaim;
-            if (g_claimindex->FindClaim(claim.GetHash(), dbClaim) && dbClaim.seen) {
-               return;
-            }
-            */
-
-            /*
-            if (g_claimindex->AddClaim(claim)) {
-                LogPrint(BCLog::NET, "Processed new claim: %s\n", claim.GetHash().ToString());
+        if (claim.IsUniqueSource()) { // first time we register this thing
+            if (claim.Insert() && g_claimindex->AddClaim(claim)) {
                 if (!peer->m_scack_sent) {
-                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK, true));
+                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
                     peer->m_scack_sent = true;
                 }
+            } else {
+                return; // db error?
             }
-            */
-
-            /* patchcoin todo if claim is good, broadcast claimset
-            if (genesis_key_held) {
-                std::vector<CClaim> claims;
-                if (g_claimindex->GetAllClaims(claims) && !claims.empty()) {
-                    send_claimset_to_send = BuildAndSignClaimSet(claims, keystore);
-                }
-                send_claimset = true;
-            }
-            */
-
-            m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
-                AssertLockHeld(::cs_main);
-                if (!peer->m_peercoin_snapshot_held || pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
-                const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-                m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIM, claim));
-            });
         }
+
+        m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
+            AssertLockHeld(cs_main);
+            if (!peer->m_peercoin_snapshot_held || pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+            const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+            m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIM, claim));
+        });
+
+        return;
+    }
+
+    if (msg_type == NetMsgType::CLAIMSETPING) {
+        uint256 hash;
+        // int64_t claimsetTime, newestClaimTime;
+        vRecv >> hash/* >> claimsetTime >> newestClaimTime*/;
+
+        LOCK(cs_main);
+        bool weHaveIt = (send_claimset.GetHash() == hash);
+
+        if (!weHaveIt/* && ShouldRequestClaimset(announcedHash, announcedTime)*/) {
+            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::GETCLAIMSET, hash));
+            peer->m_last_claimset_requested_hash = hash;
+        }
+        return;
+    }
+
+    if (msg_type == NetMsgType::GETCLAIMSET) {
+        uint256 wantedHash;
+        vRecv >> wantedHash;
+        if (send_claimset.GetHash() != wantedHash) {
+            return;
+        }
+        // LOCK2(cs_main, peer->m_claimset_send_times_mutex);
+        if (!send_claimset.IsValid()) {
+            return;
+        }
+
+        if (peer->m_next_claimset_hash_send != send_claimset.GetHash()) {
+            return;
+        }
+        if (peer->m_last_claimset_hash_sent == send_claimset.GetHash()) {
+            return;
+        }
+
+        // peer->m last timestamp sent of set
+
+        if (peer->m_next_claimset_send <= CLAIMSET_PING_INTERVAL)
+            return;
+        const auto now{GetTime<std::chrono::microseconds>()};
+        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CLAIMSET, send_claimset));
+        peer->m_last_claimset_hash_sent = send_claimset.GetHash();
+        peer->m_last_claimset_sent_timestamp = now;
 
         return;
     }
@@ -4472,21 +4490,30 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         CClaimSet claimSet;
         vRecv >> claimSet;
-
-        LOCK(cs_main);
         if (!claimSet.IsValid()) {
             Misbehaving(*peer, 100, "invalid claimset");
             return;
         }
-        // m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
-        //     AssertLockHeld(::cs_main);
-        //     if (!peer->m_peercoin_snapshot_held || pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
-        //     const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-        //     m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIMSET, claimSet));
-        // });
-        if (last_claimset_received.IsEmpty() || claimSet > last_claimset_received) {
-            LogPrint(BCLog::NET, "Received new claim set: %s\n", claimSet.GetHash().ToString());
-            last_claimset_received = claimSet;
+
+        // LOCK2(peer->m_claimset_send_times_mutex, cs_main);
+        const uint256 hash = claimSet.GetHash();
+        if (peer->m_last_claimset_requested_hash != hash) {
+            Misbehaving(*peer, 20, "claimset not requested");
+            return;
+        }
+        if (peer->m_last_claimset_received_hash == hash) {
+            Misbehaving(*peer, 20, "duplicate claimset");
+            return;
+        }
+        peer->m_last_claimset_received_hash = hash;
+        if (peer->m_last_claimset_received_timestamp >= claimSet.nTime) {
+            Misbehaving(*peer, 20, "duplicate or old claimset");
+            return;
+        }
+        peer->m_last_claimset_received_timestamp = claimSet.nTime;
+        if (send_claimset.IsEmpty() || claimSet > send_claimset) {
+            LogPrint(BCLog::NET, "Received new claimset: %s\n", claimSet.GetHash().ToString());
+            send_claimset = claimSet;
             ApplyClaimSet(claimSet);
         }
         if (!peer->m_scack_sent) {
@@ -5773,19 +5800,43 @@ void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::mic
     }
 }
 
-void PeerManagerImpl::MaybeSendClaimset(CNode& node_to, Peer& peer, std::chrono::microseconds current_time)
+const std::chrono::seconds RECENT_CLAIM_THRESHOLD(10);
+
+void PeerManagerImpl::MaybeSendClaimsetPing(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
-    if (!(genesis_key_held && peer.m_peercoin_snapshot_held && node_to.fMaybeSendClaimset)) return;
-    if (!send_claimset_to_send.IsValid()) return; // patchcoin todo yes we do want to share it if we have it in memory
-    const CNetMsgMaker msgMaker(node_to.GetCommonVersion());
-    LogPrint(BCLog::NET, "send new claim set: %s, claimTime: %s\n", send_claimset_to_send.GetHash().ToString(), send_claimset_to_send.claims[0].nTime);
-    m_connman.PushMessage(&node_to, msgMaker.Make(NetMsgType::CLAIMSET, send_claimset_to_send));
-    {
-        LOCK(node_to.m_maybe_send_claimset_mutex);
-        node_to.fMaybeSendClaimset = false;
+    // if (!peer.m_wants_claimset_announcements) return;
+    if (!peer.m_peercoin_snapshot_held) return;
+
+    // LOCK(peer.m_claimset_send_times_mutex);
+
+    if (!send_claimset.IsValid()) {
+        return;
     }
-    // patchcoin todo track ntime
-    // send_claimset = false; // patchcoin todo this wont work
+
+    const uint256& hash = send_claimset.GetHash();
+    if (hash == peer.m_next_claimset_hash_send) return;
+    unsigned int recent_claims = 0;
+    {
+        if (send_claimset.claims.size() < 10) {
+            // LOCK(g_claims_mutex);
+            const int64_t current_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
+
+            for (const CClaimSetClaim& claim : send_claimset.claims)
+            {
+                if (current_time - claim.nTime <= RECENT_CLAIM_THRESHOLD.count()) {
+                    ++recent_claims;
+                }
+            }
+        }
+    }
+
+    if (recent_claims == 0 && now < peer.m_next_claimset_send) return;
+
+    const CNetMsgMaker msgMaker(node_to.GetCommonVersion());
+    m_connman.PushMessage(&node_to, msgMaker.Make(NetMsgType::CLAIMSETPING, hash/*, send_claimset.nTime, send_claimset.claims[0].nTime*/));
+
+    peer.m_next_claimset_hash_send = hash;
+    peer.m_next_claimset_send = now + CLAIMSET_PING_INTERVAL;
 }
 
 void PeerManagerImpl::MaybeSendAddr(CNode& node, Peer& peer, std::chrono::microseconds current_time)
@@ -6003,7 +6054,9 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
 
     MaybeSendAddr(*pto, *peer, current_time);
 
-    MaybeSendClaimset(*pto, *peer, current_time);
+    MaybeSendClaimsetPing(*pto, *peer, current_time);
+
+    // MaybeSendClaimset(*pto, *peer, current_time);
 
     MaybeSendSendHeaders(*pto, *peer);
 

@@ -522,15 +522,7 @@ bool PublishClaimset(const CWallet& pwallet, const CConnman *connman, CClaimSet&
             LogPrintf("BuildAndSignClaimSet() failed: Invalid claim(s) found\n");
             return false;
         }
-        send_claimset_to_send = sendThis;
-        connman->ForEachNode([&](CNode* pnode) {
-            if (pnode->fDisconnect) return;
-            LOCK(pnode->m_maybe_send_claimset_mutex);
-            pnode->fMaybeSendClaimset = true;
-            // patchcoin todo can this node even handle claims?
-            // const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-            // connman->PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIMSET, sendThis));
-        });
+        send_claimset = sendThis;
     }
     return true;
 }

@@ -36,7 +36,7 @@ public:
 class CClaimSet
 {
 public:
-    static constexpr unsigned int MAX_CLAIMS_COUNT{1000};
+    static constexpr unsigned int MAX_CLAIMS_COUNT{2500};
     static constexpr unsigned int MAX_CLAIMSET_SIZE{CClaimSetClaim::CLAIMSET_CLAIM_SIZE * MAX_CLAIMS_COUNT + 8 /* nTime */ + CPubKey::SIGNATURE_SIZE /* 72 */};
     std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
@@ -106,7 +106,6 @@ public:
 
     bool IsValid() const
     {
-        LogPrintf("%s %s\n", ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION), MAX_CLAIMSET_SIZE);
         if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_CLAIMSET_SIZE) {
             return false;
         }

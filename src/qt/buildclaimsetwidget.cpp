@@ -74,7 +74,7 @@ void BuildClaimSetWidget::refreshClaimsTable()
 void BuildClaimSetWidget::populateClaimsTableFromModel()
 {
     const CAmount totalClaimableCoins = Params().GetConsensus().genesisValue;
-    const QString totalClaimableCoinsStr = BitcoinUnits::format(BitcoinUnit::BTC, totalClaimableCoins, false, BitcoinUnits::SeparatorStyle::ALWAYS);
+    const QString totalClaimableCoinsStr = BitcoinUnits::format(BitcoinUnit::BTC, totalClaimableCoins, false, BitcoinUnits::SeparatorStyle::ALWAYS).split(".").first();
 
     if (g_claims.empty()) {
         progressBar->setValue(0);
@@ -116,12 +116,12 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
                          QItemSelectionModel::Select | QItemSelectionModel::Rows);
     claimsTableView->viewport()->update();
 
-    // Update progress bar
-    double progress = 1000.0 * totalCoinsSent / totalClaimableCoins;
-    progressBar->setValue(static_cast<int>(std::min(progress, 1000.0)));
+    double progress = 100.00 * (static_cast<double>(totalCoinsSent) / COIN) / (static_cast<double>(totalClaimableCoins) / COIN);
+    int scaled_progress = static_cast<int>(std::round(progress * 10));
+    progressBar->setValue(std::min(scaled_progress, 1000));
     progressBar->setFormat(
         tr("%1 / %2 (%3%)")
-            .arg(BitcoinUnits::format(BitcoinUnit::BTC, totalCoinsSent, false, BitcoinUnits::SeparatorStyle::ALWAYS))
+            .arg(BitcoinUnits::format(BitcoinUnit::BTC, totalCoinsSent, false, BitcoinUnits::SeparatorStyle::ALWAYS).split(".").first())
             .arg(totalClaimableCoinsStr)
             .arg(QString::number(progress, 'f', 2))
     );

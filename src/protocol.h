@@ -273,6 +273,10 @@ extern const char* CLAIM;
 
 extern const char* CLAIMSET;
 
+extern const char* CLAIMSETPING;
+
+extern const char* GETCLAIMSET;
+
 extern const char* SCACK;
 }; // namespace NetMsgType
 

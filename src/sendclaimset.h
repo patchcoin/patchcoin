@@ -6,11 +6,9 @@
 // patchcoin todo this entire section doesnt need to be global. move it.
 
 inline RecursiveMutex cs_claims_seen;
-inline std::map<const CScript, int64_t> claims_seen;
+inline std::map<const CScript, int64_t> claims_seen GUARDED_BY(cs_claims_seen);
 
-inline bool send_claimset{false};
-inline CClaimSet send_claimset_to_send{};
-inline CClaimSet last_claimset_received{};
+inline CClaimSet send_claimset{};
 inline bool genesis_key_held{false};
 
 #endif //SENDCLAIMSET_H
