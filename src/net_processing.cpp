@@ -285,6 +285,8 @@ struct Peer
     int64_t m_last_claimset_received_timestamp GUARDED_BY(m_claimset_send_times_mutex){};
     uint256 m_last_claimset_requested_hash GUARDED_BY(m_claimset_send_times_mutex){};
 
+    std::vector<CScript> m_claims_requested;
+
     /** Whether this peer wants claimset announcements. */
     // bool m_wants_claimset_announcements GUARDED_BY(m_claimset_send_times_mutex){true};
 
@@ -990,7 +992,8 @@ private:
     /** peercoin: blocks that are waiting to be processed, the key points to previous CBlockIndex entry */
     struct WaitElement {
         std::shared_ptr<CBlock> pblock;
-            int64_t time;
+        int64_t time;
+        std::set<CScript> neededClaims;
     };
     std::map<CBlockIndex*, WaitElement> mapBlocksWait;
 
@@ -4433,11 +4436,63 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
             AssertLockHeld(cs_main);
-            if (!peer->m_peercoin_snapshot_held || pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+            if (/*!peer->m_peercoin_snapshot_held || */pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
             const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
             m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIM, claim));
         });
 
+        return;
+    }
+
+    if (msg_type == NetMsgType::GETCLAIMS) { // patchcoin todo network size check
+        std::vector<CScript> request_claims;
+        vRecv >> request_claims;
+
+        std::vector<CClaim> found_claims;
+        // {
+            // LOCK(g_claims_mutex);
+            for (const auto& script : request_claims) {
+                for (const auto& [_, claim] : g_claims) {
+                    if (script == claim.GetTarget())
+                        found_claims.push_back(claim);
+                }
+            }
+        // }
+
+        if (!found_claims.empty()) {
+            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDCLAIMS, found_claims));
+            LogPrint(BCLog::NET, "Responding with %u claims to peer=%d\n", found_claims.size(), pfrom.GetId());
+        }
+        return;
+    }
+
+
+    if (msg_type == NetMsgType::SENDCLAIMS) {
+        std::vector<CClaim> incoming_claims;
+        vRecv >> incoming_claims;
+
+        for (const auto& c : incoming_claims) {
+            if (!c.IsValid()) {
+                Misbehaving(*peer, 10, "invalid-claim");
+                return;
+            }
+            bool inserted_ok{false};
+            {
+                LOCK2(cs_main, g_claims_mutex);
+                if (c.IsUniqueSource()) { // first time we register this thing
+                    // patchcoin todo add to claims seen?
+                    // LOCK2(cs_main, g_claims_mutex);
+                    if (c.Insert() && g_claimindex->AddClaim(c)) {
+                        inserted_ok = true;
+                    }
+                }
+            }
+            if (inserted_ok) {
+                LogPrint(BCLog::NET, "Accepted claim: %s\n", c.GetSourceAddress());
+            } else {
+                LogPrint(BCLog::NET, "THIS CLAIM SUCKS: %s\n", c.GetSourceAddress());
+            }
+        }
         return;
     }
 
@@ -5116,7 +5171,33 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 }
             }
             // peercoin: store in memory until we can connect it to some chain
-            WaitElement we; we.pblock = pblock2; we.time = nTimeNow;
+            WaitElement we;
+            we.pblock = pblock2;
+            we.time = nTimeNow;
+
+            std::set<CScript> neededClaims;
+            const CCoinsViewCache& view = m_chainman.ActiveChainstate().CoinsTip();
+            for (const auto& tx : pblock2->vtx) {
+                if (tx->IsCoinStake()) {
+                    bool usesGenesis = false;
+                    for (const auto& txin : tx->vin) {
+                        const Coin& coinIn = view.AccessCoin(txin.prevout);
+                        if (coinIn.out.scriptPubKey == m_chainparams.GetConsensus().genesisPubKey) {
+                            usesGenesis = true;
+                            break;
+                        }
+                    }
+                    if (usesGenesis) {
+                        for (const auto& txout : tx->vout) {
+                            if (!txout.scriptPubKey.empty() && txout.scriptPubKey != m_chainparams.GetConsensus().genesisPubKey) {
+                                neededClaims.insert(txout.scriptPubKey);
+                            }
+                        }
+                    }
+                }
+            }
+            we.neededClaims = neededClaims;
+
             mapBlocksWait[prev_block] = we;
             tip = m_chainman.ActiveChain().Tip();
         }
@@ -5146,28 +5227,66 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     fSelected = true;
                 } else
                 // otherwise: try to scan for it
-                for (auto& pair : mapBlocksWait) {
-                    pindexPrev = pair.first;
-                    pblock = pair.second.pblock;
+                for (auto it2 = mapBlocksWait.begin(); it2 != mapBlocksWait.end(); ) {
+                    pindexPrev = it2->first;
+                    pblock = it2->second.pblock;
                     const uint256 hash(pblock->GetHash());
                     // remove blocks that were not connected in 60 seconds
-                    if (nTimeNow > pair.second.time + 60) {
-                        mapBlocksWait.erase(pindexPrev);
+                    if (nTimeNow > it2->second.time + 60) {
+                        mapBlocksWait.erase(it2++);
                         fContinue = true;
                         RemoveBlockRequest(hash, std::nullopt);
-                        break;
+                        continue;
                     }
                     if (!pindexPrev->IsValid(BLOCK_VALID_TRANSACTIONS)) {
                         if (pindexPrev->nStatus & BLOCK_FAILED_MASK) {
-                            mapBlocksWait.erase(pindexPrev);  // prev block was rejected
+                            mapBlocksWait.erase(it2++);  // prev block was rejected
                             fContinue = true;
                             RemoveBlockRequest(hash, pfrom.GetId());
-                            break;
+                        } else {
+                            ++it2; // prev block was not (yet) accepted on disk, skip to next one
                         }
-                        continue;   // prev block was not (yet) accepted on disk, skip to next one
+                        continue;
                     }
 
-                    mapBlocksWait.erase(pindexPrev);
+                    std::vector<CScript> missingClaims;
+
+                    // LOCK(g_claims_mutex);
+                    for (const CScript& needed : it2->second.neededClaims) {
+                        bool foundClaim = false;
+                        for (const auto& [_, claim] : g_claims) {
+                            if (claim.GetTarget() == needed) {
+                                foundClaim = true;
+                                break;
+                            }
+                        }
+                        if (!foundClaim) {
+                            missingClaims.push_back(needed);
+                        }
+                    }
+
+                    if (!missingClaims.empty()) {
+                        // patchcoin todo :^)
+                        std::vector<CScript> meh;
+                        for (auto& mc : missingClaims) {
+                            if (std::find(peer->m_claims_requested.begin(), peer->m_claims_requested.end(), mc) == peer->m_claims_requested.end()) {
+                                meh.push_back(mc);
+                            }
+                        }
+                        if (meh.size() > 0) {
+                            m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
+                                AssertLockHeld(cs_main);
+                                if (/*!peer->m_peercoin_snapshot_held || */pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+                                const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
+                                m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::GETCLAIMS, meh));
+                            });
+
+                        }
+                        ++it2;
+                        continue;
+                    }
+
+                    mapBlocksWait.erase(it2);
                     fContinue = true;
                     fSelected = true;
                     break;

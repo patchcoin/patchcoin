@@ -48,6 +48,8 @@ const char *SENDTXRCNCL="sendtxrcncl";
 const char *GETPEERCOINSNAPSHOT="getppcsns";
 const char *SENDPEERCOINSNAPSHOT="sendppcsns";
 const char *CLAIM="claim";
+const char *GETCLAIMS="getclaims";
+const char *SENDCLAIMS="sendclaims";
 const char *CLAIMSET="claimset";
 const char *CLAIMSETPING="csping";
 const char *GETCLAIMSET="getcs";
@@ -96,6 +98,8 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::GETPEERCOINSNAPSHOT,
     NetMsgType::SENDPEERCOINSNAPSHOT,
     NetMsgType::CLAIM,
+    NetMsgType::GETCLAIMS,
+    NetMsgType::SENDCLAIMS,
     NetMsgType::CLAIMSET,
     NetMsgType::CLAIMSETPING,
     NetMsgType::GETCLAIMSET,

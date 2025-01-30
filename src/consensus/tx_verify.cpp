@@ -334,22 +334,22 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
                 return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-multi",
                     strprintf("Second output must be zero value for multi-output claims"));
             }
-        } else if (claim != nullptr) {
+        } else {
             if (!isLastOutput) {
                 if (txout.scriptPubKey == params.genesisPubKey) {
                     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-genesis",
                         strprintf("Additional (non-last) outputs cannot use genesisPubKey"));
                 }
-                // if (claim == nullptr) {
-                //     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-claim",
-                //         strprintf("Additional (non-last) output must match a claim script"));
-                // }
+                if (claim == nullptr) {
+                    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-claim",
+                        strprintf("Additional (non-last) output must match a claim script"));
+                }
             } else {
-                // if (claim != nullptr && txout.scriptPubKey != params.genesisPubKey) {
-                //     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
-                //         strprintf("Last output must be either genesisPubKey or a valid claim script (dest=%s)",
-                //                   HexStr(txout.scriptPubKey)));
-                // }
+                if (txout.scriptPubKey != params.genesisPubKey && claim == nullptr) {
+                    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
+                        strprintf("Last output must be either genesisPubKey or a valid claim script (dest=%s)",
+                                  HexStr(txout.scriptPubKey)));
+                }
             }
         }
 
