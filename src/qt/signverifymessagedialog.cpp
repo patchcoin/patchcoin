@@ -323,22 +323,24 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
                 QString("<nobr>") + tr("Claim invalid.") + QString("</nobr>"));
             return;
         }
-        LOCK(cs_main);
-        if (claim.IsUniqueSource()) {
-            // g_claims should be imperative over claimindex, as such overwrite it whenever
-            if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
-                ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
-                ui->statusLabel_VM->setText(
-                    QString("<nobr>") + tr("Database error.") + QString("</nobr>"));
-                return;
-            }
-        } else {
-            const auto& it = g_claims.find(claim.GetSource());
-            if (it != g_claims.end() && it->second.seen) {
-                ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-                ui->statusLabel_VM->setText(
-                    QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
-                return;
+        {
+            LOCK2(cs_main, g_claims_mutex);
+            if (claim.IsUniqueSource()) {
+                // g_claims should be imperative over claimindex, as such overwrite it whenever
+                if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
+                    ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+                    ui->statusLabel_VM->setText(
+                        QString("<nobr>") + tr("Database error.") + QString("</nobr>"));
+                    return;
+                }
+            } else {
+                const auto& it = g_claims.find(claim.GetSource());
+                if (it != g_claims.end() && it->second.seen) {
+                    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+                    ui->statusLabel_VM->setText(
+                        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+                    return;
+                }
             }
         }
         if (GetTime() - debounce[claim.GetSource()] < 2 * 60) {

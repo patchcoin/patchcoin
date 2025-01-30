@@ -2,7 +2,8 @@
 
 #include <hash.h>
 
-std::map<const CScript, CClaim> g_claims;
+Mutex g_claims_mutex;
+std::map<const CScript, CClaim> g_claims GUARDED_BY(g_claims_mutex);
 
 // const CClaim::sman = SnapshotManager::Peercoin();
 const std::map<CScript, CAmount>& CClaim::snapshot = SnapshotManager::Peercoin().GetScriptPubKeys();

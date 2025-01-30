@@ -22,7 +22,8 @@ namespace wallet {
 class CWallet;
 } // namespace wallet
 
-extern std::map<const CScript, CClaim> g_claims;
+extern Mutex g_claims_mutex;
+extern std::map<const CScript, CClaim> g_claims GUARDED_BY(g_claims_mutex);
 
 class CClaim
 {
@@ -339,7 +340,7 @@ public:
         });
     }
 
-    bool Insert() const
+    bool Insert() const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex)
     {
         if (!(IsValid() && IsUnique()))
             return false;

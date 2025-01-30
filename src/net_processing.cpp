@@ -4417,15 +4417,17 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
-
-        if (claim.IsUniqueSource()) { // first time we register this thing
-            if (claim.Insert() && g_claimindex->AddClaim(claim)) {
-                if (!peer->m_scack_sent) {
-                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
-                    peer->m_scack_sent = true;
+        {
+            LOCK(g_claims_mutex);
+            if (claim.IsUniqueSource()) { // first time we register this thing
+                if (claim.Insert() && g_claimindex->AddClaim(claim)) {
+                    if (!peer->m_scack_sent) {
+                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
+                        peer->m_scack_sent = true;
+                    }
+                } else {
+                    return; // db error?
                 }
-            } else {
-                return; // db error?
             }
         }
 
@@ -4557,7 +4559,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     }
 
                     {
-                        LOCK(cs_main);
+                        LOCK2(cs_main, g_claims_mutex);
                         // patchcoin todo dupe check here?
                         // if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
                         //     throw std::runtime_error("debounced");
@@ -4569,9 +4571,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                                 if (!peer->m_scack_sent) {
                                     m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
                                     peer->m_scack_sent = true;
-                                } else
-                                    throw std::runtime_error("db error");
-                            }
+                                }
+                            } else
+                                throw std::runtime_error("db error");
                         } /*else { could store nTime if signed
                             const auto& it4 = g_claims.find(source);
                             if (it4 != g_claims.end() && it4->second.seen) {
@@ -5039,7 +5041,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     }
 
                     {
-                        LOCK(cs_main);
+                        LOCK2(cs_main, g_claims_mutex);
                         // patchcoin todo dupe check here?
                         // if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
                         //     throw std::runtime_error("debounced");
@@ -5051,9 +5053,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                                 if (!peer->m_scack_sent) {
                                     m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
                                     peer->m_scack_sent = true;
-                                } else
-                                    throw std::runtime_error("db error");
-                            }
+                                }
+                            } else
+                                throw std::runtime_error("db error");
                         } /*else { could store nTime if signed
                             const auto& it4 = g_claims.find(source);
                             if (it4 != g_claims.end() && it4->second.seen) {

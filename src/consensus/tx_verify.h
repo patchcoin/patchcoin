@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 #include <vector>
+#include <primitives/claim.h>
+#include <script/script.h>
 
 class CBlockIndex;
 class CCoinsViewCache;
@@ -75,6 +77,8 @@ bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> loc
  * Consensus critical. Takes as input a list of heights at which tx's inputs (in order) confirmed.
  */
 bool SequenceLocks(const CTransaction &tx, int flags, std::vector<int>& prevHeights, const CBlockIndex& block);
+
+bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params, const CTransaction& tx, const unsigned int nTimeTx, std::map<const CScript, std::pair<CClaim*, CAmount>>& claims);
 
 // peercoin: minimum fee for transaction to be accepted in a blockchain.
 CAmount GetMinFee(const CTransaction& tx, unsigned int nTimeTx);

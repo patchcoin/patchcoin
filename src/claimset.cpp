@@ -67,7 +67,7 @@ bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet)
 
 void ApplyClaimSet(const CClaimSet& claimset)
 {
-    LOCK(cs_main);
+    LOCK2(cs_main, g_claims_mutex);
     if (!g_claimindex) return;
 
     for (const CClaimSetClaim& cClaim : claimset.claims) {

@@ -12,6 +12,7 @@
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
 #include <kernel.h>
+#include <sendclaimset.h>
 #include <validation.h>   // GetCoinAge()
 
 #include <util/moneystr.h>
@@ -167,12 +168,33 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
     return nSigOps;
 }
 
+bool CheckGenesisKeyInput(TxValidationState& state, const CScript& scriptPubKey, const Consensus::Params& params, const CTransaction& tx, const unsigned int nTimeTx, bool& matchesGenesisKey)
+{
+    if (scriptPubKey != params.genesisPubKey)
+        return true;
+
+    matchesGenesisKey = true;
+
+    if (tx.IsCoinStake())
+        return true;
+
+    if (nTimeTx - params.genesisNTime < params.nStakeGenesisLockTime) {
+        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-genesis-input-not-coinstake",
+            strprintf("genesis key tried to spend outside stake transaction at day %i, within %i days of genesis tx", __func__,
+                static_cast<int>(nTimeTx - params.genesisNTime) / (24 * 60 * 60),
+                static_cast<int>(params.nStakeGenesisLockTime / (24 * 60 * 60)))
+        );
+    }
+
+    return true;
+}
+
 bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee, const Consensus::Params& params, unsigned int nTimeTx, uint64_t nMoneySupply)
 {
     // are the actual inputs available?
     if (!inputs.HaveInputs(tx)) {
         return state.Invalid(TxValidationResult::TX_MISSING_INPUTS, "bad-txns-inputs-missingorspent",
-                         strprintf("%s: inputs missing/spent", __func__));
+                         strprintf("inputs missing/spent", __func__));
     }
 
     CAmount nValueIn = 0;
@@ -181,15 +203,32 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, 
         const Coin& coin = inputs.AccessCoin(prevout);
         assert(!coin.IsSpent());
 
-        // If prev is coinbase, check that it's matured
-        if ((coin.IsCoinBase() || coin.IsCoinStake()) && nSpendHeight - coin.nHeight < (prevout.hash == params.hashGenesisTx ? 0 : params.nCoinbaseMaturity)) {
+        const bool is_genesis_coin = prevout.hash == params.hashGenesisTx;
+
+        if (is_genesis_coin && coin.out.nValue != params.genesisValue / params.genesisOutputs) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-genesis-coin-value-too-large");
+        }
+
+        if (coin.IsCoinBase() && !is_genesis_coin) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-coinbase-as-input",
+                strprintf("tried to use coinbase other than genesis tx as input", __func__));
+        }
+
+        // If prev is coinstake, check that it's matured
+        const int requiredMaturity = is_genesis_coin ? 0 : params.nCoinbaseMaturity;
+
+        if (coin.IsCoinStake() && nSpendHeight - coin.nHeight < requiredMaturity) {
             return state.Invalid(TxValidationResult::TX_PREMATURE_SPEND, "bad-txns-premature-spend-of-coinbase/coinstake",
-                strprintf("tried to spend coinbase at depth %d", nSpendHeight - coin.nHeight));
+                strprintf("tried to spend coinstake at depth %d", __func__, nSpendHeight - coin.nHeight));
         }
 
         // peercoin: check transaction timestamp
         if (coin.nTime > nTimeTx)
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-spent-too-early", strprintf("%s : transaction timestamp earlier than input transaction", __func__));
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-spent-too-early", strprintf("transaction timestamp earlier than input transaction", __func__));
+
+        bool matchesGenesisKey;
+        if (!CheckGenesisKeyInput(state, coin.out.scriptPubKey, params, tx, nTimeTx, matchesGenesisKey))
+            return false;
 
         // Check for negative or overflow input values
         nValueIn += coin.out.nValue;
@@ -222,6 +261,142 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, 
             return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-fee-not-enough");
         txfee = txfee_aux;
     }
+    return true;
+}
+
+bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params,
+    const CTransaction& tx, const unsigned int nTimeTx, std::map<const CScript, std::pair<CClaim*, CAmount>>& claims)
+{
+    bool isAnyFromGenesis = false;
+    for (const auto& input : tx.vin) {
+        const COutPoint& prevout = input.prevout;
+        const Coin& coin = view.AccessCoin(prevout);
+        bool isFromGenesis = false;
+        if (!CheckGenesisKeyInput(state, coin.out.scriptPubKey, params, tx, nTimeTx, isFromGenesis)) {
+            return false;
+        }
+        isAnyFromGenesis |= isFromGenesis;
+    }
+
+    if (!isAnyFromGenesis)
+        return true;
+
+    // patchcoin todo: if we don't hold claims at this point, maybe we need to wait for them higher up the chain
+    // patchcoin todo: as it stands, claims are opt-in and partial only
+
+    // Two allowed output formats:
+    //
+    // Format A (2 outputs):
+    //   [0]: CTxOut(nValue=0, scriptPubKey=)
+    //   [1]: CTxOut(nValue=AllInputs, scriptPubKey=genesis)
+    //
+    // Format B (≥3 outputs):
+    //   [0]: CTxOut(nValue=0, scriptPubKey=)
+    //   [1]: CTxOut(nValue=0, scriptPubKey=genesis)
+    //   [>=2 and < last]: claims (non-genesis)
+    //   [last]: can be genesis or a claim
+
+    LOCK(g_claims_mutex);
+
+    for (unsigned int pos = 0; pos < tx.vout.size(); pos++) {
+        const CTxOut& txout = tx.vout[pos];
+        CClaim* claim = nullptr;
+        for (auto& [_, fClaim] : g_claims) {
+            if (txout.scriptPubKey == fClaim.GetTarget()) {
+                claim = &fClaim;
+                break;
+            }
+        }
+
+        const bool isLastOutput = (pos == tx.vout.size() - 1);
+
+        if (pos == 0) {
+            if (txout.nValue != 0 || !txout.scriptPubKey.empty()) {
+                return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-first-out",
+                    strprintf("First output must be zero value and empty scriptPubKey"));
+            }
+        } else if (pos == 1) {
+            if (txout.scriptPubKey != params.genesisPubKey) {
+                return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-genesis",
+                    strprintf("Second output must have genesisPubKey"));
+            }
+            if (tx.vout.size() == 2) {
+                CAmount inputValue = 0;
+                for (const auto& in : tx.vin) {
+                    const Coin& coinIn = view.AccessCoin(in.prevout);
+                    inputValue += coinIn.out.nValue;
+                }
+                if (txout.nValue != inputValue) {
+                    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-value",
+                        strprintf("Second output must carry entire input (%s != %s)", FormatMoney(txout.nValue), FormatMoney(inputValue)));
+                }
+            } else if (txout.nValue != 0) {
+                return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-multi",
+                    strprintf("Second output must be zero value for multi-output claims"));
+            }
+        } else if (claim != nullptr) {
+            if (!isLastOutput) {
+                if (txout.scriptPubKey == params.genesisPubKey) {
+                    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-genesis",
+                        strprintf("Additional (non-last) outputs cannot use genesisPubKey"));
+                }
+                // if (claim == nullptr) {
+                //     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-claim",
+                //         strprintf("Additional (non-last) output must match a claim script"));
+                // }
+            } else {
+                // if (claim != nullptr && txout.scriptPubKey != params.genesisPubKey) {
+                //     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
+                //         strprintf("Last output must be either genesisPubKey or a valid claim script (dest=%s)",
+                //                   HexStr(txout.scriptPubKey)));
+                // }
+            }
+        }
+
+        if (claim == nullptr) {
+            continue;
+        }
+        if (claims.count(claim->GetSource()) > 0) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-dup-block",
+                                 strprintf("Multiple outputs per claim in a single block are not allowed"));
+        }
+        if (!claim->IsValid()) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-invalid",
+                                 strprintf("Invalid claim found"));
+        }
+        CAmount nTotalReceived = 0;
+        unsigned int nOutputs = 0;
+        if (!claim->GetTotalReceived(pindex, nTotalReceived, nOutputs)) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-total-check",
+                                 strprintf("Failed to get claim total received amount"));
+        }
+        nOutputs++;
+        // patchcoin todo maxOutputs currently has no look-ahead, and could lead to breakage
+        if (nOutputs > claim->MAX_POSSIBLE_OUTPUTS || (genesis_key_held && (nOutputs > claim->MAX_OUTPUTS || nOutputs > claim->GetMaxOutputs()))) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-out-limit",
+                                 strprintf("Claim outputs would exceed allowed outputs"));
+        }
+        nTotalReceived += txout.nValue;
+        if (!MoneyRange(nTotalReceived)) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-out-of-range",
+                                 strprintf("Claim total received out of range"));
+        }
+        if (nTotalReceived > claim->GetEligible()) { // this is the real check
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-exceed-eligible",
+                                 strprintf("Claim would exceed eligible"));
+        }
+        claims[claim->GetSource()] = std::make_pair(claim, txout.nValue);
+
+        LogPrintf("%s: Claim processed: source=%s target=%s amount=%s total=%s/%s outputs=%u%s\n", __func__,
+                  claim->GetSourceAddress(),
+                  claim->GetTargetAddress(),
+                  FormatMoney(txout.nValue),
+                  FormatMoney(nTotalReceived),
+                  FormatMoney(claim->GetEligible()),
+                  nOutputs,
+                  genesis_key_held ? strprintf("/%u", claim->GetMaxOutputs()) : "");
+    }
+
     return true;
 }
 

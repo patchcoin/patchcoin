@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <consensus/amount.h>
+#include <script/script.h>
 
 namespace Consensus {
 
@@ -158,6 +159,9 @@ struct Params {
     int64_t nModifierInterval;
     int nCoinbaseMaturity;  // Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
 
+    int64_t nStakeGenesisLockTime;
+    int64_t genesisNTime;
+    CScript genesisPubKey;
     CAmount genesisValue;
     int genesisOutputs;
 };

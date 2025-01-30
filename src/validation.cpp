@@ -58,7 +58,6 @@
 #include <util/translation.h>
 #include <validationinterface.h>
 #include <warnings.h>
-#include <sendclaimset.h>
 
 #include <algorithm>
 #include <cassert>
@@ -666,13 +665,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
 
     if (!CheckTransaction(tx, state)) {
         return false; // state filled in by CheckTransaction
-    }
-
-    if (GetTime() - m_active_chainstate.m_chain[m_active_chainstate.m_chain.Height() == 0 ? 0 : 1]->GetBlockTime() < 180 * 24 * 60 * 60) {
-        for (const CTxIn& txin : tx.vin) {
-            if (txin.prevout.hash == Params().GetConsensus().hashGenesisTx)
-                return state.Invalid(TxValidationResult::TX_CONSENSUS, "genesis-input");
-        }
     }
     // Time (prevent mempool memory exhaustion attack)
     // moved from CheckTransaction() to here, because it makes no sense to make GetAdjustedTime() a part of the consensus rules - user can set his clock to whatever he wishes.
@@ -2160,58 +2152,16 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
+            if (!CheckClaims(tx_state, pindex, view, Params().GetConsensus(), tx, tx.nTime ? tx.nTime : block.nTime, claims)) {
+                state.Invalid(BlockValidationResult::BLOCK_CONSENSUS,
+                            tx_state.GetRejectReason(), tx_state.GetDebugMessage());
+                return error("%s: CheckClaims: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
+            }
             for (unsigned int i = 0; i < tx.vin.size(); i++)
                 nValueIn += view.AccessCoin(tx.vin[i].prevout).out.nValue;
             nValueOut += tx.GetValueOut();
-            if (tx.IsCoinStake()) {
-                if (view.AccessCoin(tx.vin[0].prevout).out.scriptPubKey == params.GenesisBlock().vtx[0]->vout[0].scriptPubKey && CheckBlockSignature(block)) {
-                    // patchcoin todo: if we don't hold claims at this point, maybe we need to wait for them higher up the chain
-                    // patchcoin todo: as it stands, claims are opt-in only
-                    for (const CTxOut& txout : tx.vout) {
-                        for (auto& [_, claim] : g_claims) {
-                            if (txout.scriptPubKey == claim.GetTarget()) {
-                                if (!claim.IsValid()) {
-                                    LogPrintf("ERROR: %s: Invalid claim found.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-invalid-claim");
-                                }
-                                if (claims.count(claim.GetSource()) > 0) {
-                                    LogPrintf("ERROR: %s: Multiple outputs per claim in a single block are not allowed.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-multiple-claim-outputs-per-block");
-                                }
-                                CAmount nTotalReceived = 0;
-                                unsigned int nOutputs = 0;
-                                if (!claim.GetTotalReceived(pindex, nTotalReceived, nOutputs)) {
-                                    LogPrintf("ERROR: %s: Failed to get claim total received amount.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-total-received");
-                                }
-                                nOutputs += 1;
-                                // patchcoin todo maxOutputs currently has no look-ahead, and could lead to breakage
-                                if (nOutputs > claim.MAX_POSSIBLE_OUTPUTS || (genesis_key_held && (nOutputs > claim.MAX_OUTPUTS || nOutputs > claim.GetMaxOutputs()))) {
-                                    LogPrintf("ERROR: %s: Claim outputs would exceed allowed outputs.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-output-amount");
-                                }
-                                nTotalReceived += txout.nValue;
-                                if (!MoneyRange(nTotalReceived)) {
-                                    LogPrintf("ERROR: %s: Claim total received out of range.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-amount");
-                                }
-                                if (nTotalReceived > claim.GetEligible()) { // this is the real check
-                                    LogPrintf("ERROR: %s: Claim would exceed eligible.\n", __func__);
-                                    return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-would-exceed-eligible");
-                                }
-                                claims[claim.GetSource()] = std::make_pair(&claim, txout.nValue);
-                                LogPrintf("%s: Claim processed: source=%s target=%s amount=%s total=%s/%s outputs=%s%s\n", __func__,
-                                          claim.GetSourceAddress(), claim.GetTargetAddress(), FormatMoney(txout.nValue),
-                                          FormatMoney(nTotalReceived), FormatMoney(claim.GetEligible()), nOutputs,
-                                          genesis_key_held ? std::string("/") + std::to_string(claim.GetMaxOutputs()) : std::string(""));
-
-                            }
-                        }
-                    }
-                }
-            } else {
+            if (!tx.IsCoinStake())
                 nFees += txfee;
-            }
             if (!MoneyRange(nFees)) {
                 LogPrintf("ERROR: %s: accumulated fee in the block out of range.\n", __func__);
                 return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-txns-accumulated-fee-outofrange");
@@ -2266,19 +2216,20 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     const int64_t nMint = nValueOut - nValueIn + nFees;
     const int64_t nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
 
+    const CAmount& genesisValue = params.GetConsensus().genesisValue;
     if (block_hash != params.GetConsensus().hashGenesisBlock) {
         if (nMint > nFees) {
             LogPrintf("ERROR: %s: coinstake/base pays too much (actual=%d vs limit=%d)\n", __func__, nMint, nFees);
             return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
         }
-        if (nMint > params.GetConsensus().genesisValue) {
+        if (nMint > genesisValue) {
             LogPrintf("ERROR: %s: reward in the block out of range\n", __func__);
             return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-txns-reward-outofrange");
         }
     }
 
-    if (nMoneySupply > params.GetConsensus().genesisValue) {
-        LogPrintf("ERROR: %s: total network value would exceed %d %s\n", __func__, FormatMoney(params.GetConsensus().genesisValue), CURRENCY_UNIT);
+    if (nMoneySupply > genesisValue) {
+        LogPrintf("ERROR: %s: total network value would exceed %d %s\n", __func__, FormatMoney(genesisValue), CURRENCY_UNIT);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-ms-amount");
     }
 
@@ -5056,7 +5007,7 @@ typedef std::vector<unsigned char> valtype;
 bool SignBlock(CBlock& block, const CWallet& keystore)
 {
     std::vector<valtype> vSolutions;
-    const CTxOut& txout = genesis_key_held ? Params().GenesisBlock().vtx[0]->vout[0] : block.vtx[1]->vout[1];
+    const CTxOut& txout = block.vtx[1]->vout[1];
 
     if (Solver(txout.scriptPubKey, vSolutions) != TxoutType::PUBKEY)
         return false;
@@ -5090,6 +5041,9 @@ bool CheckBlockSignature(const CBlock& block)
 {
     if (block.GetHash() == Params().GetConsensus().hashGenesisBlock)
         return block.vchBlockSig.empty();
+
+    if (!block.IsProofOfStake())
+        return false;
 
     std::vector<valtype> vSolutions;
     const CTxOut& txout = block.vtx[1]->vout[1];

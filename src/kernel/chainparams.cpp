@@ -154,6 +154,7 @@ public:
         consensus.nPowTargetSpacing = consensus.nStakeTargetSpacing;
         consensus.nStakeMinAge = 60 * 60 * 24 * 30; // minimum age for coin age
         consensus.nStakeMaxAge = 60 * 60 * 24 * 90;
+        consensus.nStakeGenesisLockTime = 60 * 60 * 24 * 180 + consensus.nStakeMaxAge;
         consensus.nModifierInterval = 6 * 60 * 60; // Modifier interval: time to elapse before new modifier is computed
         consensus.nCoinbaseMaturity = 500;
 
@@ -180,13 +181,15 @@ public:
         m_assumed_blockchain_size = 1;
 
         consensus.genesisValue = 21000000 * COIN;
-        consensus.genesisOutputs = 8750; // patchcoin todo
-        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs); // patchcoin todo
+        consensus.genesisOutputs = 8750;
+        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs); // patchcoin todo
         // MineGenesisBlock(genesis);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
+        consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
+        consensus.genesisNTime = genesis.nTime;
         assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
         assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
         consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
@@ -260,6 +263,7 @@ public:
         consensus.nPowTargetSpacing = consensus.nStakeTargetSpacing;
         consensus.nStakeMinAge = 60 * 60 * 24; // test net min age is 1 day
         consensus.nStakeMaxAge = 60 * 60 * 24 * 90;
+        consensus.nStakeGenesisLockTime = 60 * 60 * 24 * 180 + consensus.nStakeMaxAge;
         consensus.nModifierInterval = 60 * 20; // Modifier interval: time to elapse before new modifier is computed
         consensus.nCoinbaseMaturity = 60;
 
@@ -282,11 +286,13 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
+        consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
+        consensus.genesisNTime = genesis.nTime;
         assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
         assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
         consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
@@ -430,6 +436,8 @@ public:
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
+        consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
+        consensus.genesisNTime = genesis.nTime;
         assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
         assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
         consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
@@ -481,6 +489,7 @@ public:
 
         consensus.nStakeMinAge = 60 * 60 * 24; // test net min age is 1 day
         consensus.nStakeMaxAge = 60 * 60 * 24 * 90;
+        consensus.nStakeGenesisLockTime = 60 * 60 * 24 * 180 + consensus.nStakeMaxAge;
         consensus.nModifierInterval = 60 * 20; // Modifier interval: time to elapse before new modifier is computed
         consensus.nCoinbaseMaturity = 60;
 
@@ -538,11 +547,13 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
+        consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
+        consensus.genesisNTime = genesis.nTime;
         assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
         assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
         consensus.hashPeercoinSnapshot = uint256S("0xd99dab1aa20d7ed77f928c366d738746db78466974d9de60d25de4028bc3c5ea");
