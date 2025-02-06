@@ -111,3 +111,7 @@ RUN if [[ "${HOST}" == "x86_64-apple-darwin" || "${HOST}" == "arm64-apple-darwin
       tar -C /SDKs -xaf /tmp/xcode.tar.gz && \
       rm /tmp/xcode.tar.gz; \
     fi
+
+FROM guix-host AS guix-host-cache
+
+COPY base_cache/ /base_cache/
