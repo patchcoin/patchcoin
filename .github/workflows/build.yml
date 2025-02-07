@@ -11,8 +11,43 @@ on:
       - '**/*.md'
 
 jobs:
+  infrastructure-init:
+    runs-on: coordinator
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .tf
+
+      - name: Write Runner Private Key
+        working-directory: .tf
+        run: echo "${{ secrets.RUNNER_PRIVATE_KEY }}" > runner_private_key.pem
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: .tf
+        run: terraform init
+
+      - name: Terraform apply single server
+        working-directory: .tf
+        run: |
+          terraform apply -auto-approve \
+            -var "runner_count=1" \
+            -var "hcloud_token=${{ secrets.HCLOUD_TOKEN }}" \
+            -var "github_pat=${{ secrets.GH_PAT }}" \
+            -var "github_owner=${{ github.repository_owner }}" \
+            -var "github_repo=${{ github.event.repository.name }}" \
+            -var "run_id=${{ github.run_id }}" \
+            -var "runner_public_key=${{ secrets.RUNNER_PUBLIC_KEY }}" \
+            -var "existing_ssh_key_name=runner-key"
+          mv terraform.tfstate /tmp/terraform.tfstate-${{ github.run_id }}
+
   guix-base:
-    runs-on: self-hosted
+    runs-on: hetzner
+    needs: infrastructure-init
     if: github.event_name != 'pull_request'
     outputs:
       tag-hash: ${{ steps.detect.outputs.tag-hash }}
@@ -59,9 +94,57 @@ jobs:
             type=registry,ref=ghcr.io/patchcoin/patchcoin/ci-tools/guix-base:${{ steps.detect.outputs.tag-hash }}
           cache-to: type=inline
 
-  guix-host:
-    runs-on: self-hosted
+  infrastructure-next:
+    runs-on: coordinator
     needs: guix-base
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .tf
+
+      - name: Write Runner Private Key
+        working-directory: .tf
+        run: echo "${{ secrets.RUNNER_PRIVATE_KEY }}" > runner_private_key.pem
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: .tf
+        run: |
+          ln -s /tmp/terraform.tfstate-${{ github.run_id }} terraform.tfstate
+          terraform init
+
+      - name: Terraform remove single server
+        working-directory: .tf
+        run: |
+          terraform apply -auto-approve \
+            -var "runner_count=0" \
+            -var "hcloud_token=${{ secrets.HCLOUD_TOKEN }}" \
+            -var "github_pat=${{ secrets.GH_PAT }}" \
+            -var "github_owner=${{ github.repository_owner }}" \
+            -var "github_repo=${{ github.event.repository.name }}" \
+            -var "run_id=${{ github.run_id }}" \
+            -var "runner_public_key=${{ secrets.RUNNER_PUBLIC_KEY }}" \
+            -var "existing_ssh_key_name=runner-key"
+
+      - name: Terraform apply 7 servers
+        working-directory: .tf
+        run: |
+          terraform apply -auto-approve \
+            -var "runner_count=7" \
+            -var "hcloud_token=${{ secrets.HCLOUD_TOKEN }}" \
+            -var "github_pat=${{ secrets.GH_PAT }}" \
+            -var "github_owner=${{ github.repository_owner }}" \
+            -var "github_repo=${{ github.event.repository.name }}" \
+            -var "run_id=${{ github.run_id }}" \
+            -var "runner_public_key=${{ secrets.RUNNER_PUBLIC_KEY }}" \
+            -var "existing_ssh_key_name=runner-key"
+
+  guix-host:
+    runs-on: hetzner
+    needs: [guix-base, infrastructure-next]
     if: github.event_name != 'pull_request'
     strategy:
       matrix:
@@ -118,8 +201,9 @@ jobs:
           cache-to: type=inline
 
   binary:
-    runs-on: self-hosted
-    needs: [guix-base, guix-host]
+    runs-on: hetzner
+    needs: [guix-base, guix-host, infrastructure-next]
+    if: always()
     strategy:
       matrix:
         host:
@@ -140,12 +224,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - run: echo tag-hash="$(echo "${{ hashFiles('contrib/guix/manifest.scm', 'contrib/guix/patches/**') }}" | cut -c 1-8)" >> $GITHUB_OUTPUT
+        id: detect
+
+      - run: |
+          echo "TIMESTAMP=$(git log -1 --pretty=%ct)" >> $GITHUB_ENV
+          echo TARGET=ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ steps.detect.outputs.tag-hash }}-${{ matrix.host }} >> $GITHUB_ENV
+          echo TARGET_CACHE=ghcr.io/${{ github.repository }}/ci-tools/guix-host-depends-cache:${{ steps.detect.outputs.tag-hash }}-${{ matrix.host }} >> $GITHUB_ENV
+
       - name: Build ${{ matrix.host }} Binaries
         shell: bash
         id: build
         run: |
           set -euo pipefail
-
           cleanup() {
             docker stop build-${{ matrix.host }} || true
           }
@@ -154,12 +245,12 @@ jobs:
           docker run --pull=always --rm -d --privileged --name=build-${{ matrix.host }} \
             -v "${PWD}":/patchcoin_aux \
             -v ~/.base_cache:/base_cache_aux \
-            ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ needs.guix-base.outputs.tag-hash }}-${{ matrix.host }}-cache \
+            ${{ env.TARGET_CACHE }} \
           && echo cache-image-used=true >> $GITHUB_OUTPUT \
           || docker run --pull=always --rm -d --privileged --name=build-${{ matrix.host }} \
             -v "${PWD}":/patchcoin_aux \
             -v ~/.base_cache:/base_cache_aux \
-            ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ needs.guix-base.outputs.tag-hash }}-${{ matrix.host }}
+            ${{ env.TARGET }}
 
           docker exec -i build-${{ matrix.host }} bash -c "
             source /root/.guix-profile/etc/profile
@@ -171,10 +262,9 @@ jobs:
             env BASE_CACHE=/base_cache SOURCES_PATH=/sources SDK_PATH=/SDKs ./contrib/guix/guix-build
             rm -rf /base_cache_aux/* || true
             mv /base_cache/* /base_cache_aux/ || true
-            source "/patchcoin/contrib/guix/libexec/prelude.bash"
+            source \"/patchcoin/contrib/guix/libexec/prelude.bash\"
             mv \${OUTDIR_BASE:-\${VERSION_BASE}/output}/${{ matrix.host }}/* /patchcoin_aux/ || true
           "
-
           docker stop build-${{ matrix.host }}
 
       - run: cp -r ~/.base_cache base_cache
@@ -186,18 +276,15 @@ jobs:
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - run: |
-          echo "TIMESTAMP=$(git log -1 --pretty=%ct)" >> $GITHUB_ENV
-          echo TARGET=ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ needs.guix-base.outputs.tag-hash }}-${{ matrix.host }} >> $GITHUB_ENV
-          echo TARGET_CACHE=ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ needs.guix-base.outputs.tag-hash }}-${{ matrix.host }}-cache >> $GITHUB_ENV
-
-      - name: Build and Push guix-host-cache Docker image
+      - name: Build and Push guix-host-depends-cache Docker image
         uses: docker/build-push-action@v6
+        if: github.event_name != 'pull_request'
         env:
           SOURCE_DATE_EPOCH: ${{ env.TIMESTAMP }}
         with:
@@ -205,9 +292,8 @@ jobs:
           file: contrib/guix/Dockerfile
           push: true
           allow: security.insecure
-          tags: |
-            ghcr.io/${{ github.repository }}/ci-tools/guix-host:${{ needs.guix-base.outputs.tag-hash }}-${{ matrix.host }}-cache
-          target: guix-host-cache
+          tags: ${{ env.TARGET_CACHE }}
+          target: guix-host-depends-cache
           build-args: |
             HOST=${{ matrix.host }}
           cache-from: ${{ steps.build.outputs.cache-image-used == 'true' && env.TARGET_CACHE || env.TARGET }}
@@ -231,8 +317,8 @@ jobs:
           if-no-files-found: error
 
   docker:
-    runs-on: self-hosted
-    needs: [binary]
+    runs-on: hetzner
+    needs: binary
     steps:
       - uses: actions/checkout@v4
         with:
@@ -276,11 +362,11 @@ jobs:
           fi
           if [[ $GITHUB_REF == refs/heads/release-* ]]; then
             PUSH=true
-            TAG_NAME=${GITHUB_REF/refs\/heads\//}
+            TAG_NAME=${GITHUB_REF/refs/heads/}
           fi
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             PUSH=true
-            TAG_NAME=${GITHUB_REF/refs\/tags\//}
+            TAG_NAME=${GITHUB_REF/refs/tags/}
             TAG_NAME=${TAG_NAME/ptc\./}
             TAG_NAME=${TAG_NAME/ptc/}
             TAG_NAME=${TAG_NAME/v/}
@@ -319,8 +405,8 @@ jobs:
             ghcr.io/${{ github.repository }}/patchcoind:${{ steps.detect.outputs.tag-name }}
 
   release:
-    runs-on: self-hosted
-    needs: [binary]
+    runs-on: hetzner
+    needs: binary
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release-')
     steps:
       - name: Detect env
@@ -430,3 +516,40 @@ jobs:
           prerelease: true
           name: "${{ steps.detect.outputs.release-title }}"
           files: ${{ steps.detect.outputs.tag-name }}/*
+
+  infrastructure-cleanup:
+    runs-on: coordinator
+    needs: [ infrastructure-next, guix-base, guix-host, binary, docker, release ]
+    if: always()
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .tf
+
+      - name: Write Runner Private Key
+        working-directory: .tf
+        run: echo "${{ secrets.RUNNER_PRIVATE_KEY }}" > runner_private_key.pem
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: .tf
+        run: |
+          ln -s /tmp/terraform.tfstate-${{ github.run_id }} terraform.tfstate
+          terraform init
+
+      - name: Terraform final destroy
+        working-directory: .tf
+        run: |
+          terraform apply -auto-approve \
+            -var "runner_count=0" \
+            -var "hcloud_token=${{ secrets.HCLOUD_TOKEN }}" \
+            -var "github_pat=${{ secrets.GH_PAT }}" \
+            -var "github_owner=${{ github.repository_owner }}" \
+            -var "github_repo=${{ github.event.repository.name }}" \
+            -var "run_id=${{ github.run_id }}" \
+            -var "runner_public_key=${{ secrets.RUNNER_PUBLIC_KEY }}" \
+            -var "existing_ssh_key_name=runner-key"
+          rm /tmp/terraform.tfstate-${{ github.run_id }}

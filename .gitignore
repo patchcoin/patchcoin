@@ -174,3 +174,6 @@ dist/
 /guix-build-*
 
 /ci/scratch/
+
+/.tf/.terraform.lock.hcl
+/.tf/.terraform/
