@@ -28,7 +28,7 @@ class SnapshotManager
     std::string FormatCustomMoney(CAmount amount);
 
     std::map<CScript, CAmount> m_valid_scripts;
-    std::map<CScript, CAmount> m_incompatible_scripts;
+    std::map<CScript, std::vector<std::pair<COutPoint, Coin>>> m_incompatible_scripts;
 
     uint256 m_hash_scripts;
 
@@ -62,12 +62,12 @@ public:
 
     uint256 GetHash() const;
 
-    void UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible);
+    void UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible);
 
     std::map<CScript, CAmount>& GetScriptPubKeys() {
         return m_valid_scripts;
     }
-    std::map<CScript, CAmount>& GetIncompatibleScriptPubKeys() {
+    std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& GetIncompatibleScriptPubKeys() {
         return m_incompatible_scripts;
     }
 

@@ -30,8 +30,9 @@ public:
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
 
 private:
-    static const std::map<CScript, CAmount>& snapshot;
     static const uint256& hashSnapshot;
+    static const std::map<CScript, CAmount>& snapshot;
+    static const std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& snapshot_incompatible;
     SnapshotIterator snapshotIt;
     uint32_t snapshotPos;
 

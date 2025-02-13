@@ -317,15 +317,15 @@ void TransactionView::PopulateSnapshotTable()
         valItem->setFlags(valItem->flags() & ~Qt::ItemIsEditable);
         elItem->setFlags(elItem->flags() & ~Qt::ItemIsEditable);
 
-        if (!isCompatible) {
-            addressItem->setForeground(greyBrush);
-            valItem->setForeground(greyBrush);
-            elItem->setForeground(greyBrush);
-
-            addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsSelectable);
-            valItem->setFlags(valItem->flags() & ~Qt::ItemIsSelectable);
-            elItem->setFlags(elItem->flags() & ~Qt::ItemIsSelectable);
-        }
+        // if (!isCompatible) {
+        //     addressItem->setForeground(greyBrush);
+        //     valItem->setForeground(greyBrush);
+        //     elItem->setForeground(greyBrush);
+        //
+        //     addressItem->setFlags(addressItem->flags() & ~Qt::ItemIsSelectable);
+        //     valItem->setFlags(valItem->flags() & ~Qt::ItemIsSelectable);
+        //     elItem->setFlags(elItem->flags() & ~Qt::ItemIsSelectable);
+        // }
 
         snapshotTable->setItem(row, 0, addressItem);
         snapshotTable->setItem(row, 1, valItem);
@@ -339,7 +339,7 @@ void TransactionView::PopulateSnapshotTable()
     }
 
     if (!incompMap.empty()) {
-        QTableWidgetItem* headerItem = new QTableWidgetItem(tr("Incompatible addresses"));
+        QTableWidgetItem* headerItem = new QTableWidgetItem(tr("Claim supported via dummy tx"));
         headerItem->setTextAlignment(Qt::AlignCenter);
         headerItem->setFlags(headerItem->flags() & ~Qt::ItemIsSelectable & ~Qt::ItemIsEditable);
 
@@ -350,7 +350,11 @@ void TransactionView::PopulateSnapshotTable()
         row++;
     }
 
-    for (const auto& [scriptPubKey, balance] : incompMap) {
+    for (const auto& [scriptPubKey, outs] : incompMap) {
+        CAmount balance = 0;
+        for (const auto& [out, coin] : outs) {
+            balance += coin.out.nValue;
+        }
         addRowToTable(scriptPubKey, balance, false);
     }
 }

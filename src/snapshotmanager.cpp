@@ -31,7 +31,7 @@ void SnapshotManager::SetNull()
     m_hash_scripts = uint256();
 }
 
-void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, CAmount>& incompatible)
+void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible)
 {
     LOCK(m_snapshot_mutex);
     m_valid_scripts = std::move(valid);
@@ -52,7 +52,7 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
     LogPrintf("[snapshot] loading coins from snapshot %s\n", base_blockhash.ToString());
 
     std::map<CScript, CAmount> valid_scripts;
-    std::map<CScript, CAmount> incompatible_scripts;
+    std::map<CScript, std::vector<std::pair<COutPoint, Coin>>> incompatible_scripts;
 
     CAmount compatible_amount_total = 0;
     CAmount incompatible_amount_total = 0;
@@ -99,12 +99,12 @@ bool SnapshotManager::PopulateAndValidateSnapshotForeign(
             const PKHash* pkhash = std::get_if<PKHash>(&dest);
             if (pkhash) {
                 valid_scripts[script] += coin.out.nValue;
-                assert(MoneyRange(valid_scripts[script]));
                 compatible_amount_total += coin.out.nValue;
+                // assert(MoneyRange(compatible_amount_total));
             } else {
-                incompatible_scripts[script] += coin.out.nValue;
-                assert(MoneyRange(incompatible_scripts[script]));
+                incompatible_scripts[script].push_back(std::make_pair(outpoint, coin));
                 incompatible_amount_total += coin.out.nValue;
+                // assert(MoneyRange(incompatible_amount_total));
             }
         }
 
