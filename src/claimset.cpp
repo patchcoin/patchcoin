@@ -1,6 +1,5 @@
 #include <key.h>
 #include <claimset.h>
-#include <sendclaimset.h>
 #include <index/claimindex.h>
 #include <rpc/server_util.h>
 #include <wallet/wallet.h>
@@ -77,16 +76,16 @@ void ApplyClaimSet(const CClaimSet& claimset)
         if (!claim.IsValid()) return;
         const auto& it = g_claims.find(claim.GetSource());
         if (it == g_claims.end()) {
-            claim.seen = true;
+            claim.m_seen = true;
             if (!(claim.Insert() && g_claimindex->AddClaim(claim)))
                 return;
         } else {
-            it->second.seen = true;
+            it->second.m_seen = true;
             it->second.nTime = claim.nTime;
             Claim claim_t;
             g_claimindex->FindClaim(claim.GetSource(), claim_t);
             claim_t.nTime = claim.nTime;
-            claim_t.seen = true;
+            claim_t.m_seen = true;
             g_claimindex->AddClaim(claim_t);
         }
     }

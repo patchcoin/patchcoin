@@ -21,8 +21,20 @@ Claim::Claim()
     SetNull();
 }
 
-Claim::Claim(const std::string& source_address, const std::string& signature, const std::string& target_address)
-    : sourceAddress(source_address), signatureString(signature), targetAddress(target_address)
+Claim::Claim(const std::string& source_address, const std::string& signature_str, const std::string& target_address)
+    : m_claim(source_address, target_address, signature_str)
+    , m_source_address(source_address)
+    , m_signature_string(signature_str)
+    , m_target_address(target_address)
+{
+    Init();
+}
+
+Claim::Claim(const CClaim& claim)
+    : m_claim(claim)
+    , m_source_address(claim.sourceAddress)
+    , m_signature_string(claim.signatureString)
+    , m_target_address(claim.targetAddress)
 {
     Init();
 }
@@ -33,20 +45,21 @@ void Claim::Init()
 {
     if (GetBaseSize() != 6)
         return;
-    const CScript& source_script = GetScriptFromAddress(sourceAddress);
+
+    const CScript& source_script = GetScriptFromAddress(m_source_address);
     if (source_script.empty())
         return;
 
-    if (const auto decoded_signature = DecodeBase64(signatureString)) {
-        signature = *decoded_signature;
+    if (const auto decodedSig = DecodeBase64(m_signature_string)) {
+        m_signature = *decodedSig;
     } else {
         return;
     }
     if (GetBaseSize() != (6 + CPubKey::COMPACT_SIGNATURE_SIZE))
         return;
 
-    target = GetScriptFromAddress(targetAddress);
-    if (target.empty())
+    m_target = GetScriptFromAddress(m_target_address);
+    if (m_target.empty())
         return;
 
     if (GetBaseSize() != CLAIM_SIZE)
@@ -58,7 +71,7 @@ void Claim::Init()
             snapshotPos = std::distance(snapshot.begin(), snapshotIt);
             source = std::make_shared<CScript>(snapshotIt->first);
             peercoinBalance = std::make_shared<CAmount>(snapshotIt->second);
-            eligible = GetEligible();
+            m_eligible = GetEligible();
             GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue)
                                    / static_cast<double>(Params().GetConsensus().genesisOutputs);
             MAX_POSSIBLE_OUTPUTS = std::min(20u,
@@ -69,7 +82,8 @@ void Claim::Init()
     }
 }
 
-bool Claim::SnapshotIsValid() const {
+bool Claim::SnapshotIsValid() const
+{
     return hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot
         && !SnapshotManager::Peercoin().GetScriptPubKeys().empty();
 }
@@ -109,24 +123,44 @@ std::string Claim::LocateAddress(const uint32_t& pos)
     return address;
 }
 
-std::string Claim::GetSourceAddress() const { return sourceAddress; }
-std::string Claim::GetSignatureString() const { return signatureString; }
-std::string Claim::GetTargetAddress() const { return targetAddress; }
+std::string Claim::GetSourceAddress() const {
+    return m_source_address;
+}
 
-CScript Claim::GetSource() const { return source ? *source : CScript(); } // patchcoin todo: recheck
-std::vector<unsigned char> Claim::GetSignature() const { return signature; }
-CScript Claim::GetTarget() const { return target; }
+std::string Claim::GetSignatureString() const {
+    return m_signature_string;
+}
 
-CAmount Claim::GetPeercoinBalance() const {
-    return snapshotIt != SnapshotManager::Peercoin().GetScriptPubKeys().end() ? *peercoinBalance : 0;
+std::string Claim::GetTargetAddress() const {
+    return m_target_address;
+}
+
+CScript Claim::GetSource() const {
+    return source ? *source : CScript();
+}
+
+std::vector<unsigned char> Claim::GetSignature() const {
+    return m_signature;
+}
+
+CScript Claim::GetTarget() const {
+    return m_target;
+}
+
+CAmount Claim::GetPeercoinBalance() const
+{
+    return (snapshotIt != SnapshotManager::Peercoin().GetScriptPubKeys().end() && peercoinBalance) ? *peercoinBalance : 0;
 }
 
 CAmount Claim::GetEligible() const
 {
-    if (eligible > 0) return eligible;
+    if (m_eligible > 0) {
+        return m_eligible;
+    }
     CAmount eligibleAmount = 0;
     if (!SnapshotManager::Peercoin().CalculateEligible(GetPeercoinBalance(), eligibleAmount)
-        || !MoneyRange(eligibleAmount)) {
+        || !MoneyRange(eligibleAmount))
+    {
         return 0;
     }
     return eligibleAmount;
@@ -134,8 +168,6 @@ CAmount Claim::GetEligible() const
 
 CAmount Claim::GetMaxOutputs() const
 {
-    // patchcoin todo not accurate and merely serves as a static fence-in
-    // patchcoin todo add look-ahead, similar to
     const unsigned int maxOutputs = static_cast<unsigned int>(
         std::ceil(static_cast<double>(GetEligible()) / GENESIS_OUTPUTS_AMOUNT)) + 4;
     return std::min(maxOutputs, MAX_POSSIBLE_OUTPUTS);
@@ -143,21 +175,21 @@ CAmount Claim::GetMaxOutputs() const
 
 bool Claim::GetReceived(const wallet::CWallet* pwallet, CAmount& received) const
 {
-    return SnapshotManager::Peercoin().CalculateReceived(pwallet, target, received);
+    return SnapshotManager::Peercoin().CalculateReceived(pwallet, m_target, received);
 }
 
 bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const
 {
     if (GetEligible() == 0) return false;
-    while (pindex && outputs < outs.size()) {
-        const auto& it = outs.find(pindex->GetBlockHash());
-        if (it != outs.end()) {
+    while (pindex && outputs < m_outs.size()) {
+        const auto& it = m_outs.find(pindex->GetBlockHash());
+        if (it != m_outs.end()) {
             outputs++;
             received += it->second;
         }
         pindex = pindex->pprev;
     }
-    if (received > eligible) {
+    if (received > m_eligible) {
         return false;
     }
     if (outputs > MAX_POSSIBLE_OUTPUTS /*|| outputs > MAX_OUTPUTS || outputs > GetMaxOutputs()*/) {
@@ -168,22 +200,31 @@ bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsig
 
 void Claim::SetNull()
 {
-    sourceAddress.clear();
-    signatureString.clear();
-    targetAddress.clear();
     source.reset();
-    signature.clear();
-    target.clear();
+    m_signature.clear();
+    m_target.clear();
     peercoinBalance.reset();
-    seen = false;
-    outs.clear();
+    m_seen = false;
+    m_outs.clear();
+
+    m_source_address.clear();
+    m_signature_string.clear();
+    m_target_address.clear();
+    m_eligible = 0;
 }
 
 bool Claim::IsAnyNull() const
 {
-    return sourceAddress.empty() || signatureString.empty() || targetAddress.empty()
-        || !source || signature.empty() || target.empty() || !peercoinBalance
-        || GetSource().empty() || GetSignature().empty() || GetTarget().empty();
+    return m_source_address.empty()
+        || m_signature_string.empty()
+        || m_target_address.empty()
+        || !source
+        || m_signature.empty()
+        || m_target.empty()
+        || !peercoinBalance
+        || GetSource().empty()
+        || GetSignature().empty()
+        || GetTarget().empty();
 }
 
 bool Claim::IsValid() const
@@ -195,7 +236,7 @@ bool Claim::IsValid() const
         }
         if (IsAnyNull()) {
             LogPrintf("[claim] error: called on an empty string source=%s signature=%s target=%s\n",
-               sourceAddress.c_str(), signatureString.c_str(), targetAddress.c_str());
+               m_claim.sourceAddress, m_claim.signatureString, m_claim.targetAddress);
             return false;
         }
         if (IsSourceTarget() || IsSourceTargetAddress()) {
@@ -210,27 +251,30 @@ bool Claim::IsValid() const
             LogPrintf("[claim] error: source script not found in snapshot\n");
             return false;
         }
-        if (sourceAddress.empty() || GetScriptFromAddress(sourceAddress).empty() || source == nullptr
-            || GetAddressFromScript(*source).empty()) {
+        if (GetScriptFromAddress(m_source_address).empty()
+            || source == nullptr
+            || GetAddressFromScript(*source).empty())
+        {
             LogPrintf("[claim] error: failed to extract destination from source script\n");
             return false;
         }
-        if (targetAddress.empty() || GetScriptFromAddress(targetAddress).empty()
-            || GetAddressFromScript(target).empty()) {
+        if (GetScriptFromAddress(m_target_address).empty()
+            || GetAddressFromScript(m_target).empty())
+        {
             LogPrintf("[claim] error: failed to extract destination from target script\n");
             return false;
         }
         MessageVerificationResult res = MessageVerify(
-            sourceAddress,
-            signatureString,
-            targetAddress,
+            m_source_address,
+            m_signature_string,
+            m_target_address,
             PEERCOIN_MESSAGE_MAGIC
         );
         if (res != MessageVerificationResult::OK) {
             LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
             return false;
         }
-        if (!MoneyRange(snapshotIt->second) || !MoneyRange(this->GetPeercoinBalance())) {
+        if (!MoneyRange(snapshotIt->second) || !MoneyRange(GetPeercoinBalance())) {
             LogPrintf("[claim] error: peercoin balance out of range\n");
             return false;
         }
@@ -258,7 +302,7 @@ bool Claim::IsSourceTarget() const
 
 bool Claim::IsSourceTargetAddress() const
 {
-    return GetSourceAddress() == GetTargetAddress();
+    return m_source_address == m_target_address;
 }
 
 bool Claim::IsUnique() const
@@ -283,15 +327,15 @@ bool Claim::IsUniqueSource() const
 
 bool Claim::IsUniqueTarget() const
 {
-    if (target.empty()) {
+    if (m_target.empty()) {
         return false;
     }
-    if (g_claims.count(target) != 0) {
+    if (g_claims.count(m_target) != 0) {
         return false;
     }
     return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
         const Claim& claim = entry.second;
-        return claim.GetTarget() == target;
+        return claim.GetTarget() == m_target;
     });
 }
 

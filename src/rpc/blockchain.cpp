@@ -247,7 +247,7 @@ UniValue blockToJSON(BlockManager& blockman, const CBlock& block, const CBlockIn
 
     std::vector<Claim> claims;
     for (const auto& [script, claim] : g_claims) {
-        for (const auto& [hashBlock, amount] : claim.outs) {
+        for (const auto& [hashBlock, amount] : claim.m_outs) {
             if (hashBlock == block.GetHash()) {
                 claims.push_back(claim);
                 break;

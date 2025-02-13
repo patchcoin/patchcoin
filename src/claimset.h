@@ -5,13 +5,12 @@
 #include <serialize.h>
 #include <uint256.h>
 #include <pubkey.h>
-#include <hash.h>
 #include <chainparams.h>
 #include <algorithm>
 #include <vector>
 #include <cstdint>
 #include <wallet/wallet.h>
-#include <logging.h>
+#include <util/time.h>
 
 // patchcoin todo:
 // do we actually need or want this?
@@ -57,7 +56,7 @@ public:
     {
         CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
         claimSetClaim.nTime = claim.nTime;
-        claimSetClaim.outs = claim.outs; // patchcoin todo
+        claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
         if (!claimSetClaim.IsValid()) {
             return false;
         }

@@ -105,7 +105,7 @@ void ClaimsTableModel::updateData(const std::vector<Claim>& claims)
 
     for (const auto& c : claims) {
         ClaimData data;
-        data.queued = QString::fromStdString(c.seen ? "✔️" : "❌"); // lol
+        data.queued = QString::fromStdString(c.m_seen ? "✔️" : "❌"); // lol
         data.sourceAddress = QString::fromStdString(c.GetSourceAddress());
         data.targetAddress = QString::fromStdString(c.GetTargetAddress());
 

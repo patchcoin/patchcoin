@@ -336,7 +336,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
                 }
             } else {
                 const auto& it = g_claims.find(claim.GetSource());
-                if (it != g_claims.end() && it->second.seen) {
+                if (it != g_claims.end() && it->second.m_seen) {
                     ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
                     ui->statusLabel_VM->setText(
                         QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));

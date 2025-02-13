@@ -7,6 +7,9 @@
 #include <consensus/amount.h>
 #include <script/script.h>
 #include <util/strencodings.h>
+#include <util/time.h>
+
+#include <primitives/claim.h>
 
 class CBlockIndex;
 class Coin;
@@ -34,14 +37,17 @@ private:
     SnapshotIterator snapshotIt;
     uint32_t snapshotPos;
 
-    std::string sourceAddress;
-    std::string signatureString;
-    std::string targetAddress;
+    CClaim m_claim;
+
+    std::string m_source_address;
+    std::string m_signature_string;
+    std::string m_target_address;
+
     std::shared_ptr<const CScript> source;
-    std::vector<unsigned char> signature;
-    CScript target;
+    std::vector<unsigned char> m_signature;
+    CScript m_target;
     std::shared_ptr<const CAmount> peercoinBalance;
-    CAmount eligible = 0;
+    CAmount m_eligible = 0;
 
     void Init();
 
@@ -52,12 +58,13 @@ public:
     unsigned int MAX_OUTPUTS = 0;
     // patchcoin todo do we want these mutable?
     mutable int64_t nTime = GetTime();
-    mutable bool seen = false;
-    mutable std::map<uint256, CAmount> outs;
+    mutable bool m_seen = false;
+    mutable std::map<uint256, CAmount> m_outs;
     mutable CAmount nTotalReceived = 0;
 
     Claim();
     Claim(const std::string& source_address, const std::string& signature, const std::string& target_address);
+    explicit Claim(const CClaim& claim);
     ~Claim();
 
     bool SnapshotIsValid() const;
@@ -66,23 +73,25 @@ public:
     static std::string GetAddressFromScript(const CScript& script);
     static std::string LocateAddress(const uint32_t& pos);
 
-    SERIALIZE_METHODS(Claim, obj) {
+    SERIALIZE_METHODS(Claim, obj)
+    {
         std::vector<unsigned char> signature;
         CScript target_script;
         SER_WRITE(obj, signature = obj.GetSignature());
         SER_WRITE(obj, target_script = obj.GetTarget());
         READWRITE(obj.snapshotPos, signature, target_script);
         if (s.GetType() & SER_DISK)
-            READWRITE(obj.nTime, obj.seen, obj.outs, obj.nTotalReceived);
-        SER_READ(obj, obj.sourceAddress = LocateAddress(obj.snapshotPos));
-        SER_READ(obj, obj.signatureString = EncodeBase64(signature));
-        SER_READ(obj, obj.targetAddress = GetAddressFromScript(target_script));
+            READWRITE(obj.nTime, obj.m_seen, obj.m_outs, obj.nTotalReceived);
+        SER_READ(obj, obj.m_source_address = LocateAddress(obj.snapshotPos));
+        SER_READ(obj, obj.m_signature_string = EncodeBase64(signature));
+        SER_READ(obj, obj.m_target_address = GetAddressFromScript(target_script));
         SER_READ(obj, obj.Init());
     }
 
     std::string GetSourceAddress() const;
     std::string GetSignatureString() const;
     std::string GetTargetAddress() const;
+
     CScript GetSource() const; // patchcoin todo: recheck
     std::vector<unsigned char> GetSignature() const;
     CScript GetTarget() const;

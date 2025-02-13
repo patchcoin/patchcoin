@@ -2282,7 +2282,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
         std::vector<Claim> claims;
         if (!veryBigBlock && peer.m_peercoin_snapshot_held) {
             for (const auto& [script, claim] : g_claims) {
-                for (const auto& [hashBlock, amount] : claim.outs) {
+                for (const auto& [hashBlock, amount] : claim.m_outs) {
                     if (hashBlock == pblock->GetHash()) {
                         claims.emplace_back(claim);
                         break;
