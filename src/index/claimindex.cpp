@@ -3,7 +3,7 @@
 #include <util/system.h>
 #include <dbwrapper.h>
 #include <chainparams.h>
-#include <primitives/claim.h>
+#include <claim.h>
 
 static constexpr uint8_t DB_CLAIMINDEX{'c'};
 

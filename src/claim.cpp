@@ -1,4 +1,4 @@
-#include <primitives/claim.h>
+#include <claim.h>
 
 #include <hash.h>
 

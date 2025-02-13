@@ -17,7 +17,6 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <primitives/claim.h>
 
 class ArgsManager;
 class CBlock;

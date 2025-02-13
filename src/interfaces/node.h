@@ -24,7 +24,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-#include <primitives/claim.h>
 #include <util/error.h>
 
 class BanMan;

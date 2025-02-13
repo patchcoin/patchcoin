@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <vector>
-#include <primitives/claim.h>
+#include <claim.h>
 #include <script/script.h>
 
 class CBlockIndex;

@@ -8,7 +8,7 @@
 
 #include <net.h>
 #include <validationinterface.h>
-#include <primitives/claim.h>
+#include <claim.h>
 
 class AddrMan;
 class CChainParams;

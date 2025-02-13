@@ -2,7 +2,7 @@
 #define PATCHCOIN_INDEX_CLAIMINDEX_H
 
 #include <index/base.h>
-#include <primitives/claim.h>
+#include <claim.h>
 #include <string>
 #include <memory>
 

@@ -1,7 +1,7 @@
 #ifndef PATCHCOIN_CLAIMSET_H
 #define PATCHCOIN_CLAIMSET_H
 
-#include <primitives/claim.h>
+#include <claim.h>
 #include <serialize.h>
 #include <uint256.h>
 #include <pubkey.h>

@@ -9,7 +9,7 @@
 #include <QVBoxLayout>
 #include <QTimer>
 #include <claimset.h>
-#include <primitives/claim.h>
+#include <claim.h>
 
 BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWidget* parent)
     : QWidget(parent)

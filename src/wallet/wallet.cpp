@@ -61,7 +61,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
 #include <index/claimindex.h>
-#include <primitives/claim.h>
+#include <claim.h>
 
 using interfaces::FoundBlock;
 

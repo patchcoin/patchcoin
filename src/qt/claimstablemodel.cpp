@@ -4,7 +4,7 @@
 #include <qt/claimstablemodel.h>
 #include <QDateTime>
 #include <key_io.h>
-#include <primitives/claim.h>
+#include <claim.h>
 #include <qt/walletmodel.h>
 
 static int column_alignments[] = {

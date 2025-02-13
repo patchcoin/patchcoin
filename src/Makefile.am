@@ -347,7 +347,7 @@ BITCOIN_CORE_H = \
 ## --- patchcoin start --- ##
   claimset.h \
   index/claimindex.h \
-  primitives/claim.h \
+  claim.h \
   snapshotmanager.h \
   sendclaimset.h
 
@@ -444,7 +444,7 @@ libbitcoin_node_a_SOURCES = \
 ## --- patchcoin start --- ##
   claimset.cpp \
   index/claimindex.cpp \
-  primitives/claim.cpp \
+  claim.cpp \
   snapshotmanager.cpp \
   $(BITCOIN_CORE_H)
 
