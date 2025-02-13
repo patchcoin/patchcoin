@@ -5925,7 +5925,6 @@ const std::chrono::seconds RECENT_CLAIM_THRESHOLD(10);
 
 void PeerManagerImpl::MaybeSendClaimsetPing(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
-    return;
     // if (!peer.m_wants_claimset_announcements) return;
     if (!peer.m_peercoin_snapshot_held) return;
 

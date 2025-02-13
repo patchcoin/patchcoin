@@ -220,6 +220,9 @@ void Interrupt(NodeContext& node)
     if (g_txindex) {
         g_txindex->Interrupt();
     }
+    if (g_claimindex) {
+        g_claimindex->Interrupt();
+    }
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Interrupt(); });
     if (g_coin_stats_index) {
         g_coin_stats_index->Interrupt();

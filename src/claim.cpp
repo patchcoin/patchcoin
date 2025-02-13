@@ -24,16 +24,16 @@ Claim::Claim()
 }
 
 Claim::Claim(const std::string& source_address, const std::string& target_address, const std::string& signature_string)
+    : m_claim(source_address, target_address, signature_string)
 {
     SetNull();
-    m_claim = CClaim(source_address, target_address, signature_string);
     Init();
 }
 
 Claim::Claim(const CClaim& claim)
+    : m_claim(claim)
 {
     SetNull();
-    m_claim = claim;
     Init();
 }
 
@@ -217,7 +217,7 @@ bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsig
 
 void Claim::SetNull()
 {
-    m_claim = CClaim();
+    // m_claim = CClaim();
     source.reset();
     m_signature.clear();
     m_dummy_tx = CMutableTransaction();
@@ -246,11 +246,21 @@ void Claim::SetNull()
 bool Claim::VerifyDummyTx() const
 {
     if (m_dummy_tx.vin.size() != 1) {
-        LogPrintf("VerifyDummyTx: verification failed: input size must be 1\n");
+        LogPrintf("VerifyDummyTx failed: input size must be 1\n");
         return false;
     }
     if (m_dummy_tx.vout.size() != 1) {
-        LogPrintf("VerifyDummyTx: verification failed: output size must be 1\n");
+        LogPrintf("VerifyDummyTx failed: output size must be 1\n");
+        return false;
+    }
+    if (!MoneyRange(m_dummy_tx.vout[0].nValue)) {
+        LogPrintf("VerifyDummyTx failed: tx target output amount out of range\n");
+        return false;
+    }
+    const CScript& scriptPubKey = m_dummy_tx.vout[0].scriptPubKey;
+    const std::string& targetAddress = GetAddressFromScript(scriptPubKey);
+    if (m_claim.targetAddress != targetAddress || targetAddress != m_target_address || scriptPubKey != m_target) {
+        LogPrintf("VerifyDummyTx failed: target address must match tx target address\n");
         return false;
     }
     Coin coin;
@@ -276,23 +286,22 @@ bool Claim::VerifyDummyTx() const
             break;
     }
     if (!found || prevout.IsNull()) {
-        LogPrintf("VerifyDummyTx: verification failed: unable to find previous output\n");
+        LogPrintf("VerifyDummyTx failed: unable to find previous output\n");
         return false;
     }
     if (coin.out.nValue != m_dummy_tx.vout[0].nValue) {
-        LogPrintf("VerifyDummyTx: verification failed: input value must match output value\n");
+        LogPrintf("VerifyDummyTx failed: input value must match output value\n");
         return false;
     }
     PrecomputedTransactionData txdata;
     txdata.Init(m_dummy_tx, std::vector<CTxOut>{prevout} /*, true*/);
     const MutableTransactionSignatureChecker checker(&m_dummy_tx, nIn, prevout.nValue, txdata, MissingDataBehavior::FAIL/* ASSERT_FAIL */);
     ScriptError serror;
-    if (VerifyScript(m_dummy_tx.vin[nIn].scriptSig, prevout.scriptPubKey, &(m_dummy_tx.vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, &serror))
-    {
-        return true;
+    if (!VerifyScript(m_dummy_tx.vin[nIn].scriptSig, prevout.scriptPubKey, &(m_dummy_tx.vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, &serror)) {
+        LogPrintf("VerifyDummyTx failed: %s\n", ScriptErrorString(serror));
+        return false;
     }
-    LogPrintf("VerifyDummyTx: verification failed: %s\n", ScriptErrorString(serror));
-    return false;
+    return true;
 }
 
 bool Claim::IsValid() const
