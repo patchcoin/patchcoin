@@ -4,7 +4,7 @@
 #include <QAbstractTableModel>
 #include <vector>
 
-class CClaim;
+class Claim;
 
 struct ClaimData {
     QString queued;
@@ -29,7 +29,7 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
-    void updateData(const std::vector<CClaim>& claims);
+    void updateData(const std::vector<Claim>& claims);
 
 private:
     std::vector<ClaimData> m_claims;

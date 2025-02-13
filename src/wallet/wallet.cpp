@@ -3648,7 +3648,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     CScript scriptPubKeyOut;
     bool bMinterKey = false;
 
-    std::vector<CClaim> claims;
+    std::vector<Claim> claims;
     CScript genesisKeyOut = Params().GenesisBlock().vtx[0]->vout[0].scriptPubKey;
 
     for (const auto& pcoin : result->GetInputSet())
@@ -3798,7 +3798,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         // patchcoin todo: wait maybe 10-20 claims on network creation?
         if (claims.empty() && chainman.ActiveHeight() == 0)
             return false;
-        std::sort(claims.begin(), claims.end(), [](const CClaim& a, const CClaim& b) {
+        std::sort(claims.begin(), claims.end(), [](const Claim& a, const Claim& b) {
             return a.nTime < b.nTime;
         });
         for (const auto& claim : claims) {
@@ -3825,7 +3825,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         if (!claims.empty() && genesis_key_held) {
             // patchcoin todo: never count ourselves actually
             claims.erase(
-                std::remove_if(claims.begin(), claims.end(), [&](const CClaim& claim) {
+                std::remove_if(claims.begin(), claims.end(), [&](const Claim& claim) {
                     if (!claim.IsValid()) return true;
                     CAmount nTotalReceived = 0;
                     if (!claim.GetReceived(pwallet, nTotalReceived)) return true;

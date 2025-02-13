@@ -262,7 +262,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, 
 }
 
 bool CheckClaimOutputFormat(TxValidationState& state, const CCoinsViewCache& view, const Consensus::Params& params, const CTransaction& tx,
-   const CTxOut& txout, const unsigned int pos, const CClaim* claim)
+   const CTxOut& txout, const unsigned int pos, const Claim* claim)
 {
     // Two allowed output formats:
     //
@@ -328,8 +328,8 @@ bool CheckClaimOutputFormat(TxValidationState& state, const CCoinsViewCache& vie
 }
 
 
-bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const CClaim* claim, const CBlockIndex* pindex,
-                              const std::map<const CScript, std::pair<CClaim*, CAmount>>& claims, CAmount& nTotalReceived, unsigned int& nOutputs)
+bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const Claim* claim, const CBlockIndex* pindex,
+                              const std::map<const CScript, std::pair<Claim*, CAmount>>& claims, CAmount& nTotalReceived, unsigned int& nOutputs)
 {
     assert(claim != nullptr);
 
@@ -370,7 +370,7 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
 }
 
 bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params,
-    const CTransaction& tx, const unsigned int nTimeTx, std::map<const CScript, std::pair<CClaim*, CAmount>>& claims)
+    const CTransaction& tx, const unsigned int nTimeTx, std::map<const CScript, std::pair<Claim*, CAmount>>& claims)
 {
     // patchcoin todo claim period is done, stop tracking
     if (nTimeTx - params.genesisNTime > params.nStakeGenesisLockTime) {
@@ -398,7 +398,7 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
 
     for (unsigned int pos = 0; pos < tx.vout.size(); pos++) {
         const CTxOut& txout = tx.vout[pos];
-        CClaim* claim = nullptr;
+        Claim* claim = nullptr;
         for (auto& [_, fClaim] : g_claims) {
             if (txout.scriptPubKey == fClaim.GetTarget()) {
                 claim = &fClaim;

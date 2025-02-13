@@ -18,19 +18,19 @@
 
 typedef std::vector<unsigned char> valtype;
 
-class CClaimSetClaim : public CClaim
+class CClaimSetClaim : public Claim
 {
 public:
     static constexpr unsigned int CLAIMSET_CLAIM_SIZE = CLAIM_SIZE + 8;
     SERIALIZE_METHODS(CClaimSetClaim, obj)
     {
-        READWRITEAS(CClaim, obj);
+        READWRITEAS(Claim, obj);
         READWRITE(obj.nTime);
     }
 
     CClaimSetClaim() = default;
     CClaimSetClaim(const std::string& source_address, const std::string& signature_string, const std::string& target_address)
-        : CClaim(source_address, signature_string, target_address) {}
+        : Claim(source_address, signature_string, target_address) {}
 };
 
 class CClaimSet
@@ -53,7 +53,7 @@ public:
             READWRITE(obj.vchSig);
     }
 
-    bool AddClaim(const CClaim& claim)
+    bool AddClaim(const Claim& claim)
     {
         CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
         claimSetClaim.nTime = claim.nTime;
@@ -75,12 +75,12 @@ public:
         if (g_claims.empty()) return false;
         {
             LOCK(cs_main);
-            std::vector<CClaim> sortedClaims;
+            std::vector<Claim> sortedClaims;
             for (const auto& [_, claim] : g_claims) {
                 sortedClaims.push_back(claim);
             }
             std::sort(sortedClaims.begin(), sortedClaims.end(),
-                      [](const CClaim& a, const CClaim& b) {
+                      [](const Claim& a, const Claim& b) {
                           return a.nTime < b.nTime;
                       });
             for (const auto& claim : sortedClaims) {

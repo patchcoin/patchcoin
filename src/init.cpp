@@ -1535,9 +1535,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 return false;
             }
             // patchcoin todo store them somewhere
-            std::vector<CClaim> claims;
+            std::vector<Claim> claims;
             g_claimindex->GetAllClaims(claims);
-            for (const CClaim& claim : claims) {
+            for (const Claim& claim : claims) {
                 if (!claim.Insert()) {
                     return false;
                 }

@@ -2126,7 +2126,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && parallel_script_checks ? &scriptcheckqueue : nullptr);
     std::vector<PrecomputedTransactionData> txsdata(block.vtx.size());
 
-    std::map<const CScript, std::pair<CClaim*, CAmount>> claims;
+    std::map<const CScript, std::pair<Claim*, CAmount>> claims;
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int64_t nValueIn = 0;

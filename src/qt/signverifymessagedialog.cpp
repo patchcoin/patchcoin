@@ -306,7 +306,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
 
     debounce_input[source_address] = GetTimeMillis();
     try {
-        CClaim claim(source_address, signature, target_address);
+        Claim claim(source_address, signature, target_address);
         // bool a = claim.IsSourceTargetAddress();
         // bool b = claim.IsSourceTarget();
         // bool x = claim.Commit();
@@ -372,7 +372,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
             return;
         }
         debounce[claim.GetSource()] = GetTime();
-        // CClaim& dbClaim = claim;
+        // Claim& dbClaim = claim;
         // patchcoin todo check claimset
         // if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
         //     g_claimindex->AddClaim(claim); // patchcoin this might fail as well
@@ -392,7 +392,7 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
             QString("<nobr>") + tr("Claim published.") + QString("</nobr>")
         );
     } catch (const std::exception& e) {
-        std::cerr << "Error initializing CClaim: " << e.what() << std::endl;
+        std::cerr << "Error initializing Claim: " << e.what() << std::endl;
     }
 }
 

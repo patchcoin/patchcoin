@@ -789,7 +789,7 @@ void static ThreadCsPub(NodeContext& m_node)
                 const bool timeout_occurred = now - last_publish_time >= 60;
 
                 bool has_new_claims = false;
-                std::vector<CClaim> new_claims;
+                std::vector<Claim> new_claims;
 
                 for (const auto& [script, claim] : g_claims) {
                     if (claim.nTime > last_publish_time) {
@@ -804,7 +804,7 @@ void static ThreadCsPub(NodeContext& m_node)
 
                     if (has_new_claims) {
                         std::sort(new_claims.begin(), new_claims.end(),
-                            [](const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; });
+                            [](const Claim& a, const Claim& b) { return a.nTime > b.nTime; });
 
                         for (const auto& claim : new_claims) {
                             if (!sendThis.AddClaim(claim)) {

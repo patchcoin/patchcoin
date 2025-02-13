@@ -25,13 +25,13 @@ public:
     explicit ClaimIndex(std::unique_ptr<interfaces::Chain> chain, size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
     ~ClaimIndex() override;
 
-    bool AddClaim(const CClaim& claim);
+    bool AddClaim(const Claim& claim);
 
     bool ClaimExists(const CScript& source) const;
 
-    bool FindClaim(const CScript& source, CClaim& claim) const;
+    bool FindClaim(const CScript& source, Claim& claim) const;
 
-    bool GetAllClaims(std::vector<CClaim>& claims) const;
+    bool GetAllClaims(std::vector<Claim>& claims) const;
 };
 
 extern std::unique_ptr<ClaimIndex> g_claimindex;

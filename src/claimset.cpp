@@ -54,7 +54,7 @@ bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet)
     if (!claimSet.IsValid())
         return false;
 
-    for (const CClaim& claim : claimSet.claims) {
+    for (const Claim& claim : claimSet.claims) {
         CAmount nTotalReceived = 0;
         if (!claim.GetReceived(&wallet, nTotalReceived) || !MoneyRange(nTotalReceived) || nTotalReceived < claim.nTotalReceived || nTotalReceived > claim.GetEligible()) {
             LogPrintf("claimset: cached and wallet amounts mismatch. this should not happen\n");
@@ -72,7 +72,7 @@ void ApplyClaimSet(const CClaimSet& claimset)
 
     for (const CClaimSetClaim& cClaim : claimset.claims) {
         if (!cClaim.IsValid()) return;
-        const CClaim claim(cClaim.GetSourceAddress(), cClaim.GetSignatureString(), cClaim.GetTargetAddress());
+        const Claim claim(cClaim.GetSourceAddress(), cClaim.GetSignatureString(), cClaim.GetTargetAddress());
         claim.nTime = cClaim.nTime;
         if (!claim.IsValid()) return;
         const auto& it = g_claims.find(claim.GetSource());
@@ -83,7 +83,7 @@ void ApplyClaimSet(const CClaimSet& claimset)
         } else {
             it->second.seen = true;
             it->second.nTime = claim.nTime;
-            CClaim claim_t;
+            Claim claim_t;
             g_claimindex->FindClaim(claim.GetSource(), claim_t);
             claim_t.nTime = claim.nTime;
             claim_t.seen = true;

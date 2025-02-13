@@ -2279,7 +2279,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
     }
     if (pblock) {
         bool veryBigBlock{::GetSerializeSize(pblock, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SERIALIZED_SIZE / 2};
-        std::vector<CClaim> claims;
+        std::vector<Claim> claims;
         if (!veryBigBlock && peer.m_peercoin_snapshot_held) {
             for (const auto& [script, claim] : g_claims) {
                 for (const auto& [hashBlock, amount] : claim.outs) {
@@ -4402,7 +4402,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // patchcoin todo check if we can produce a claim set?
         if (!g_claimindex) return;
 
-        CClaim dummy;
+        Claim dummy;
         if (!dummy.SnapshotIsValid()) return;
         vRecv >> dummy;
         if (!dummy.IsValid()) {
@@ -4415,7 +4415,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         claims_seen[dummy.GetSource()] = GetTime();
 
-        CClaim claim(dummy.GetSourceAddress(), dummy.GetSignatureString(), dummy.GetTargetAddress());
+        Claim claim(dummy.GetSourceAddress(), dummy.GetSignatureString(), dummy.GetTargetAddress());
         if (!claim.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
@@ -4448,7 +4448,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         std::vector<CScript> request_claims;
         vRecv >> request_claims;
 
-        std::vector<CClaim> found_claims;
+        std::vector<Claim> found_claims;
         // {
             // LOCK(g_claims_mutex);
             for (const auto& script : request_claims) {
@@ -4468,7 +4468,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
 
     if (msg_type == NetMsgType::SENDCLAIMS) {
-        std::vector<CClaim> incoming_claims;
+        std::vector<Claim> incoming_claims;
         vRecv >> incoming_claims;
 
         for (const auto& c : incoming_claims) {
@@ -4592,18 +4592,18 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         vRecv >> cmpctblock;
         if (!vRecv.empty() && !genesis_key_held && g_claimindex) {
             try {
-                std::vector<CClaim> claims;
+                std::vector<Claim> claims;
                 vRecv >> claims;
                 if (claims.size() > 100) { // patchcoin todo
                     Misbehaving(*peer, 100, "too many claims");
                     return;
                 }
-                CClaim dummy;
+                Claim dummy;
                 if (!dummy.SnapshotIsValid()) throw std::runtime_error("snapshot invalid");
-                for (const CClaim& claim_incoming : claims) {
+                for (const Claim& claim_incoming : claims) {
                     const std::string source_address = claim_incoming.GetSourceAddress();
 
-                    CClaim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
+                    Claim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
                     if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
@@ -5074,18 +5074,18 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         vRecv >> *pblock2;
         if (!vRecv.empty() && !genesis_key_held && g_claimindex) {
             try {
-                std::vector<CClaim> claims;
+                std::vector<Claim> claims;
                 vRecv >> claims;
                 if (claims.size() > 100) { // patchcoin todo
                     Misbehaving(*peer, 100, "too many claims");
                     return;
                 }
-                CClaim dummy;
+                Claim dummy;
                 if (!dummy.SnapshotIsValid()) throw std::runtime_error("snapshot invalid");
-                for (const CClaim& claim_incoming : claims) {
+                for (const Claim& claim_incoming : claims) {
                     const std::string source_address = claim_incoming.GetSourceAddress();
 
-                    CClaim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
+                    Claim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
                     if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;

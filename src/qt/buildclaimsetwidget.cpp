@@ -91,14 +91,14 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
         selectedClaims.insert(claimId);
     }
 
-    std::vector<CClaim> allClaims;
+    std::vector<Claim> allClaims;
     CAmount totalCoinsSent = 0;
     for (const auto& [_, claim] : g_claims) {
         allClaims.emplace_back(claim);
         totalCoinsSent += claim.nTotalReceived;
     }
     std::sort(allClaims.begin(), allClaims.end(),
-              [](const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; });
+              [](const Claim& a, const Claim& b) { return a.nTime > b.nTime; });
 
     m_claimsModel->updateData(allClaims);
     selectionModel->clearSelection();

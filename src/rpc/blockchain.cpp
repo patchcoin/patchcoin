@@ -245,7 +245,7 @@ UniValue blockToJSON(BlockManager& blockman, const CBlock& block, const CBlockIn
 
     result.pushKV("tx", txs);
 
-    std::vector<CClaim> claims;
+    std::vector<Claim> claims;
     for (const auto& [script, claim] : g_claims) {
         for (const auto& [hashBlock, amount] : claim.outs) {
             if (hashBlock == block.GetHash()) {
@@ -256,7 +256,7 @@ UniValue blockToJSON(BlockManager& blockman, const CBlock& block, const CBlockIn
     }
     // patchcoin todo add claimsToJSON()
     UniValue claims_arr(UniValue::VARR);
-    for (const CClaim& claim : claims) {
+    for (const Claim& claim : claims) {
         UniValue claim_obj(UniValue::VOBJ);
         claim_obj.pushKV("peercoin_address", claim.GetSourceAddress());
         claim_obj.pushKV("patchcoin_address", claim.GetTargetAddress());
@@ -2852,7 +2852,7 @@ static RPCHelpMan getclaims()
         }
     }
 
-    std::vector<std::reference_wrapper<const CClaim>> sorted;
+    std::vector<std::reference_wrapper<const Claim>> sorted;
     sorted.reserve(g_claims.size());
 
     for (const auto& [_, claim] : g_claims) {
@@ -2876,7 +2876,7 @@ static RPCHelpMan getclaims()
         }
     }
 
-    std::sort(sorted.begin(), sorted.end(), [](const CClaim& a, const CClaim& b) {
+    std::sort(sorted.begin(), sorted.end(), [](const Claim& a, const Claim& b) {
         return a.nTime > b.nTime;
     });
 
@@ -2888,7 +2888,7 @@ static RPCHelpMan getclaims()
         for (const auto& c : sorted) {
             if (limit > 0 && count >= limit) break;
 
-            const CClaim& claim = c.get();
+            const Claim& claim = c.get();
             UniValue claimObj(UniValue::VOBJ);
             claimObj.pushKV("peercoin_address", claim.GetSourceAddress());
             claimObj.pushKV("patchcoin_address", claim.GetTargetAddress());

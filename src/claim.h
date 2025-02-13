@@ -16,16 +16,16 @@
 #include <optional>
 #include <logging.h>
 
-class CClaim;
+class Claim;
 
 namespace wallet {
 class CWallet;
 } // namespace wallet
 
 extern Mutex g_claims_mutex;
-extern std::map<const CScript, CClaim> g_claims GUARDED_BY(g_claims_mutex);
+extern std::map<const CScript, Claim> g_claims GUARDED_BY(g_claims_mutex);
 
-class CClaim
+class Claim
 {
 public:
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
@@ -92,18 +92,18 @@ public:
     mutable std::map<uint256, CAmount> outs;
     mutable CAmount nTotalReceived = 0;
 
-    CClaim()
+    Claim()
     {
         SetNull();
     }
 
-    CClaim(const std::string& source_address, const std::string& signature, const std::string& target_address)
+    Claim(const std::string& source_address, const std::string& signature, const std::string& target_address)
         : sourceAddress(source_address), signatureString(signature), targetAddress(target_address)
     {
         Init();
     }
 
-    ~CClaim() = default;
+    ~Claim() = default;
 
     bool SnapshotIsValid() const {
         return hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot && !SnapshotManager::Peercoin().GetScriptPubKeys().empty();
@@ -144,7 +144,7 @@ public:
         return address;
     }
 
-    SERIALIZE_METHODS(CClaim, obj) {
+    SERIALIZE_METHODS(Claim, obj) {
         std::vector<unsigned char> signature;
         CScript target_script;
         SER_WRITE(obj, signature = obj.GetSignature());
@@ -321,7 +321,7 @@ public:
             return false;
         }
         return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
-            const CClaim& claim = entry.second;
+            const Claim& claim = entry.second;
             return claim.GetTarget() == *source;
         });
     }
@@ -335,7 +335,7 @@ public:
             return false;
         }
         return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
-            const CClaim& claim = entry.second;
+            const Claim& claim = entry.second;
             return claim.GetTarget() == target;
         });
     }
@@ -352,10 +352,10 @@ public:
 
     unsigned int GetBaseSize() const;
 
-    friend bool operator==(const CClaim& a, const CClaim& b) { return a.GetSource() == b.GetSource(); }
-    friend bool operator!=(const CClaim& a, const CClaim& b) { return a.GetSource() != b.GetSource(); }
-    friend bool operator<(const CClaim& a, const CClaim& b) { return a.nTime < b.nTime; }
-    friend bool operator>(const CClaim& a, const CClaim& b) { return a.nTime > b.nTime; }
+    friend bool operator==(const Claim& a, const Claim& b) { return a.GetSource() == b.GetSource(); }
+    friend bool operator!=(const Claim& a, const Claim& b) { return a.GetSource() != b.GetSource(); }
+    friend bool operator<(const Claim& a, const Claim& b) { return a.nTime < b.nTime; }
+    friend bool operator>(const Claim& a, const Claim& b) { return a.nTime > b.nTime; }
 };
 
 #endif // PATCHCOIN_PRIMITIVES_CLAIM_H

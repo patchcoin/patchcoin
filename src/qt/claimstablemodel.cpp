@@ -98,7 +98,7 @@ Qt::ItemFlags ClaimsTableModel::flags(const QModelIndex &index) const
     return QAbstractTableModel::flags(index);
 }
 
-void ClaimsTableModel::updateData(const std::vector<CClaim>& claims)
+void ClaimsTableModel::updateData(const std::vector<Claim>& claims)
 {
     beginResetModel();
     m_claims.clear();
