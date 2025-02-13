@@ -119,7 +119,7 @@ resource "hcloud_server" "runner" {
         GITHUB_OWNER="${var.github_owner}"
         GITHUB_REPO="${var.github_repo}"
         RUNNER_TOKEN="${local.ephemeral_runner_token}"
-        RUNNER_LABELS="${join(",", var.runner_labels)}"
+        RUNNER_LABELS="${join(",", var.runner_labels)},runid-${var.run_id}"
         RUNNER_VERSION="${local.runner_version}"
 
         cd /home/runner
@@ -134,7 +134,7 @@ resource "hcloud_server" "runner" {
         sudo -u runner env RUNNER_ALLOW_RUNASROOT=1 ./config.sh \
           --url "https://github.com/${var.github_owner}/${var.github_repo}" \
           --token "${local.ephemeral_runner_token}" \
-          --labels "${join(",", var.runner_labels)}" \
+          --labels "$RUNNER_LABELS" \
           --unattended --replace
 
         ./svc.sh install runner
