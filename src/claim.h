@@ -1,8 +1,7 @@
-#ifndef PATCHCOIN_PRIMITIVES_CLAIM_H
-#define PATCHCOIN_PRIMITIVES_CLAIM_H
+#ifndef PATCHCOIN_CLAIM_H
+#define PATCHCOIN_CLAIM_H
 
 #include <key_io.h>
-#include <outputtype.h>
 #include <snapshotmanager.h>
 #include <script/script.h>
 #include <util/message.h>
@@ -358,4 +357,4 @@ public:
     friend bool operator>(const Claim& a, const Claim& b) { return a.nTime > b.nTime; }
 };
 
-#endif // PATCHCOIN_PRIMITIVES_CLAIM_H
+#endif // PATCHCOIN_CLAIM_H
