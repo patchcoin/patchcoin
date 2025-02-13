@@ -23,6 +23,7 @@
 #include <netmessagemaker.h>
 #include <index/claimindex.h>
 #include <interfaces/node.h>
+#include <node/context.h>
 
 SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, const PlatformStyle *_platformStyle, QWidget *parent) :
     QDialog(parent, GUIUtil::dialog_flags),

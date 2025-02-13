@@ -20,6 +20,8 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/walletmodel.h>
 
+#include <key_io.h>
+#include <snapshotmanager.h>
 #include <node/interface_ui.h>
 
 #include <chrono>
