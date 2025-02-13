@@ -4415,7 +4415,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         claims_seen[dummy.GetSource()] = GetTime();
 
-        Claim claim(dummy.GetSourceAddress(), dummy.GetSignatureString(), dummy.GetTargetAddress());
+        Claim claim(dummy.GetSourceAddress(), dummy.GetTargetAddress(), dummy.GetSignatureString());
         if (!claim.IsValid()) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
@@ -4603,7 +4603,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 for (const Claim& claim_incoming : claims) {
                     const std::string source_address = claim_incoming.GetSourceAddress();
 
-                    Claim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
+                    Claim claim(source_address, claim_incoming.GetTargetAddress(), claim_incoming.GetSignatureString());
                     if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
@@ -5085,7 +5085,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 for (const Claim& claim_incoming : claims) {
                     const std::string source_address = claim_incoming.GetSourceAddress();
 
-                    Claim claim(source_address, claim_incoming.GetSignatureString(), claim_incoming.GetTargetAddress());
+                    Claim claim(source_address, claim_incoming.GetTargetAddress(), claim_incoming.GetSignatureString());
                     if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
@@ -5925,6 +5925,7 @@ const std::chrono::seconds RECENT_CLAIM_THRESHOLD(10);
 
 void PeerManagerImpl::MaybeSendClaimsetPing(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
+    return;
     // if (!peer.m_wants_claimset_announcements) return;
     if (!peer.m_peercoin_snapshot_held) return;
 

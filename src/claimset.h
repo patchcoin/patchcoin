@@ -12,6 +12,8 @@
 #include <wallet/wallet.h>
 #include <util/time.h>
 
+class Claim;
+
 // patchcoin todo:
 // do we actually need or want this?
 
@@ -20,7 +22,10 @@ typedef std::vector<unsigned char> valtype;
 class CClaimSetClaim : public Claim
 {
 public:
-    static constexpr unsigned int CLAIMSET_CLAIM_SIZE = CLAIM_SIZE + 8;
+    unsigned int GetAllowedSize() const {
+        return this->CLAIM_SIZE() + sizeof(nTime);
+    }
+
     SERIALIZE_METHODS(CClaimSetClaim, obj)
     {
         READWRITEAS(Claim, obj);
@@ -28,15 +33,15 @@ public:
     }
 
     CClaimSetClaim() = default;
-    CClaimSetClaim(const std::string& source_address, const std::string& signature_string, const std::string& target_address)
-        : Claim(source_address, signature_string, target_address) {}
+    CClaimSetClaim(const std::string& source_address, const std::string& target_address, const std::string& signature_string)
+        : Claim(source_address, target_address, signature_string) {}
 };
 
 class CClaimSet
 {
 public:
     static constexpr unsigned int MAX_CLAIMS_COUNT{2500};
-    static constexpr unsigned int MAX_CLAIMSET_SIZE{CClaimSetClaim::CLAIMSET_CLAIM_SIZE * MAX_CLAIMS_COUNT + 8 /* nTime */ + CPubKey::SIGNATURE_SIZE /* 72 */};
+    // static constexpr unsigned int MAX_CLAIMSET_SIZE{CClaimSetClaim::CLAIMSET_CLAIM_SIZE * MAX_CLAIMS_COUNT + 8 /* nTime */ + CPubKey::SIGNATURE_SIZE /* 72 */};
     std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
@@ -54,7 +59,7 @@ public:
 
     bool AddClaim(const Claim& claim)
     {
-        CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetSignatureString(), claim.GetTargetAddress());
+        CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetTargetAddress(), claim.GetSignatureString());
         claimSetClaim.nTime = claim.nTime;
         claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
         if (!claimSetClaim.IsValid()) {
@@ -85,8 +90,8 @@ public:
             for (const auto& claim : sortedClaims) {
                 if (claim.nTotalReceived >= claim.GetEligible())
                     continue;
-                if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + CClaimSetClaim::CLAIMSET_CLAIM_SIZE > MAX_CLAIMSET_SIZE)
-                    break;
+                // if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + CClaimSetClaim::CLAIMSET_CLAIM_SIZE > MAX_CLAIMSET_SIZE)
+                //     break;
                 if (!AddClaim(claim))
                     return false;
             }
@@ -105,9 +110,13 @@ public:
 
     bool IsValid() const
     {
-        if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_CLAIMSET_SIZE) {
+        if (IsEmpty()) {
             return false;
         }
+
+        // if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_CLAIMSET_SIZE) {
+        //     return false;
+        // }
 
         if (vchSig.empty()) {
             return false;
@@ -120,10 +129,6 @@ public:
         const valtype& vchPubKey = vSolutions[0];
         CPubKey key(vchPubKey);
         if (!key.Verify(GetHash(), vchSig)) {
-            return false;
-        }
-
-        if (IsEmpty()) {
             return false;
         }
 

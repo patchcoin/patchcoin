@@ -302,12 +302,12 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     ui->signatureIn_VM->setText(signature.data());
     ui->messageIn_VM->document()->setPlainText(target_address.data());
     ui->peercoinMessageCheckbox_SM->setCheckState(Qt::Checked);
-    if (!on_verifyMessageButton_VM_clicked())
-        return;
 
     debounce_input[source_address] = GetTimeMillis();
     try {
-        Claim claim(source_address, signature, target_address);
+        Claim claim(source_address, target_address, signature);
+        if (claim.m_compatible && !on_verifyMessageButton_VM_clicked()) // patchcoin todo: inquire claim about better feedback
+             return;
         // bool a = claim.IsSourceTargetAddress();
         // bool b = claim.IsSourceTarget();
         // bool x = claim.Commit();

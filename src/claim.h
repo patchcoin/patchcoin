@@ -7,8 +7,8 @@
 #include <consensus/amount.h>
 #include <script/script.h>
 #include <util/strencodings.h>
-#include <util/time.h>
 
+#include <primitives/transaction.h>
 #include <primitives/claim.h>
 
 class CBlockIndex;
@@ -29,41 +29,45 @@ class Claim
 {
 public:
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
+    using IncompatibleSnapshotIterator = std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>::const_iterator;
 
 private:
     static const uint256& hashSnapshot;
     static const std::map<CScript, CAmount>& snapshot;
     static const std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& snapshot_incompatible;
     SnapshotIterator snapshotIt;
-    uint32_t snapshotPos;
+    IncompatibleSnapshotIterator incompatibleSnapshotIt;
 
     CClaim m_claim;
 
     std::string m_source_address;
-    std::string m_signature_string;
     std::string m_target_address;
+    std::string m_signature_string;
 
     std::shared_ptr<const CScript> source;
     std::vector<unsigned char> m_signature;
+    CMutableTransaction m_dummy_tx;
     CScript m_target;
-    std::shared_ptr<const CAmount> peercoinBalance;
+    std::vector<std::shared_ptr<const CAmount>> m_peercoin_balances;
     CAmount m_eligible = 0;
 
     void Init();
 
 public:
-    static constexpr unsigned int CLAIM_SIZE{6 /* snapshotPos */  + CPubKey::COMPACT_SIGNATURE_SIZE /* 65 */ + 25 /* target script */};
+    unsigned int CLAIM_SIZE() const { return m_compatible ? 159 : 1500; };
     double GENESIS_OUTPUTS_AMOUNT = 0;
     unsigned int MAX_POSSIBLE_OUTPUTS = 0;
     unsigned int MAX_OUTPUTS = 0;
+    bool m_init = false;
+    bool m_compatible = false;
     // patchcoin todo do we want these mutable?
-    mutable int64_t nTime = GetTime();
+    mutable int64_t nTime = 0;
     mutable bool m_seen = false;
-    mutable std::map<uint256, CAmount> m_outs;
-    mutable CAmount nTotalReceived = 0;
+    mutable std::map<uint256, CAmount> m_outs;  // patchcoin todo remove
+    mutable CAmount nTotalReceived = 0;  // patchcoin todo remove
 
     Claim();
-    Claim(const std::string& source_address, const std::string& signature, const std::string& target_address);
+    explicit Claim(const std::string& source_address, const std::string& target_address, const std::string& signature_string);
     explicit Claim(const CClaim& claim);
     ~Claim();
 
@@ -71,26 +75,22 @@ public:
 
     static CScript GetScriptFromAddress(const std::string& address);
     static std::string GetAddressFromScript(const CScript& script);
-    static std::string LocateAddress(const uint32_t& pos);
 
     SERIALIZE_METHODS(Claim, obj)
     {
-        std::vector<unsigned char> signature;
-        CScript target_script;
-        SER_WRITE(obj, signature = obj.GetSignature());
-        SER_WRITE(obj, target_script = obj.GetTarget());
-        READWRITE(obj.snapshotPos, signature, target_script);
+        READWRITE(obj.m_claim);
         if (s.GetType() & SER_DISK)
             READWRITE(obj.nTime, obj.m_seen, obj.m_outs, obj.nTotalReceived);
-        SER_READ(obj, obj.m_source_address = LocateAddress(obj.snapshotPos));
-        SER_READ(obj, obj.m_signature_string = EncodeBase64(signature));
-        SER_READ(obj, obj.m_target_address = GetAddressFromScript(target_script));
         SER_READ(obj, obj.Init());
     }
 
     std::string GetSourceAddress() const;
-    std::string GetSignatureString() const;
     std::string GetTargetAddress() const;
+    std::string GetSignatureString() const;
+
+    std::string GetComputedSourceAddress() const;
+    std::string GetComputedTargetAddress() const;
+    std::string GetComputedSignatureString() const;
 
     CScript GetSource() const; // patchcoin todo: recheck
     std::vector<unsigned char> GetSignature() const;
@@ -103,7 +103,7 @@ public:
     bool GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const;
 
     void SetNull();
-    bool IsAnyNull() const;
+    bool VerifyDummyTx() const;
     bool IsValid() const;
     bool IsSourceTarget() const;
     bool IsSourceTargetAddress() const;
