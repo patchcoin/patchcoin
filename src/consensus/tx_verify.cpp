@@ -338,9 +338,10 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
                              strprintf("%s: multiple outputs per claim in a single block are not allowed", __func__));
     }
 
-    if (!claim->IsValid()) {
+    ScriptError serror;
+    if (claim->IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-invalid",
-                             strprintf("%s: invalid claim found", __func__));
+                             strprintf("%s: invalid claim found %s", __func__, ScriptErrorString(serror)));
     }
 
     if (!claim->GetTotalReceived(pindex, nTotalReceived, nOutputs)) {

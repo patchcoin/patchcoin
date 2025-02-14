@@ -4405,7 +4405,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         Claim dummy;
         if (!dummy.SnapshotIsValid()) return;
         vRecv >> dummy;
-        if (!dummy.IsValid()) {
+        ScriptError serror;
+        if (dummy.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         };
@@ -4416,7 +4417,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         claims_seen[dummy.GetSource()] = GetTime();
 
         Claim claim(dummy.GetSourceAddress(), dummy.GetTargetAddress(), dummy.GetSignatureString());
-        if (!claim.IsValid()) {
+        if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
         }
@@ -4472,7 +4473,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         vRecv >> incoming_claims;
 
         for (const auto& c : incoming_claims) {
-            if (!c.IsValid()) {
+            ScriptError serror;
+            if (c.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
                 Misbehaving(*peer, 10, "invalid-claim");
                 return;
             }
@@ -4608,7 +4610,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
                     }
-                    if (!claim.IsValid()) {
+                    ScriptError serror;
+                    if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
                     }
@@ -5090,7 +5093,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
                     }
-                    if (!claim.IsValid()) {
+                    ScriptError serror;
+                    if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
                         Misbehaving(*peer, 100, "invalid claim");
                         return;
                     }

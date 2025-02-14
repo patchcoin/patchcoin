@@ -25,6 +25,58 @@
 #include <interfaces/node.h>
 #include <node/context.h>
 
+static QString ClaimErrorMessage(const Claim::ClaimVerificationResult result)
+{
+    switch (result) {
+    case Claim::ClaimVerificationResult::ERR_NOT_INITIALIZED:
+        return "Claim was not properly initialized.";
+    case Claim::ClaimVerificationResult::ERR_SNAPSHOT_MISMATCH:
+        return "Snapshot hash does not match consensus.";
+    case Claim::ClaimVerificationResult::ERR_SIZE_MISMATCH:
+        return "Claim size is invalid.";
+    case Claim::ClaimVerificationResult::ERR_EMPTY_FIELDS:
+        return "Required fields are empty.";
+    case Claim::ClaimVerificationResult::ERR_SOURCE_EQUALS_TARGET:
+        return "Source address cannot match target address.";
+    case Claim::ClaimVerificationResult::ERR_SOURCE_SCRIPT_NOT_FOUND:
+        return "Source script not found in snapshot.";
+    case Claim::ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE:
+        return "Cannot decode source/target script.";
+    case Claim::ClaimVerificationResult::ERR_SIGNATURE_VERIFICATION_FAILED:
+        return "Signature verification failed.";
+    case Claim::ClaimVerificationResult::ERR_TX_VERIFICATION_FAILED:
+        return "Incompatible claim transaction failed.";
+    case Claim::ClaimVerificationResult::ERR_BALANCE_OUT_OF_RANGE:
+        return "Claim balance is out of valid range.";
+    case Claim::ClaimVerificationResult::ERR_RECEIVED_ABOVE_ELIGIBLE:
+        return "Received more than eligible amount.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_INPUT_SIZE:
+        return "Dummy tx must have exactly one input.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_OUTPUT_SIZE:
+        return "Dummy tx must have exactly one output.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_VALUE_RANGE:
+        return "Dummy transaction output is out of range.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_ADDRESS_MISMATCH:
+        return "Dummy tx output address mismatch.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_PREVOUT_NOT_FOUND:
+        return "Dummy tx previous output was not found.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_INPUT_VALUE_MISMATCH:
+        return "Input value does not match output.";
+    case Claim::ClaimVerificationResult::ERR_DUMMY_SIG_FAIL:
+        return "Failed to verify dummy tx signature.";
+    case Claim::ClaimVerificationResult::ERR_MESSAGE_INVALID_ADDRESS:
+        return "Invalid address in signature message.";
+    case Claim::ClaimVerificationResult::ERR_MESSAGE_DECODE_SIGNATURE:
+        return "Failed to decode signature data.";
+    case Claim::ClaimVerificationResult::ERR_MESSAGE_PUBKEY_RECOVERY:
+        return "Could not recover public key from signature.";
+    case Claim::ClaimVerificationResult::ERR_MESSAGE_NOT_SIGNED:
+        return "Message was not signed by the private key.";
+    default:
+        return "Unknown claim error occurred.";
+    }
+}
+
 SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, const PlatformStyle *_platformStyle, QWidget *parent) :
     QDialog(parent, GUIUtil::dialog_flags),
     ui(new Ui::SignVerifyMessageDialog),
@@ -216,7 +268,9 @@ bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     const std::string& address = ui->addressIn_VM->text().toStdString();
     const std::string& signature = ui->signatureIn_VM->text().toStdString();
     const std::string& message = ui->messageIn_VM->document()->toPlainText().toStdString();
-    const std::string& magic = ui->peercoinMessageCheckbox_SM->checkState() == Qt::Checked ? PEERCOIN_MESSAGE_MAGIC : MESSAGE_MAGIC;
+    const std::string& magic = (ui->peercoinMessageCheckbox_SM->checkState() == Qt::Checked)
+        ? PEERCOIN_MESSAGE_MAGIC
+        : MESSAGE_MAGIC;
 
     const auto result = MessageVerify(address, signature, message, magic);
 
@@ -293,108 +347,138 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
         );
         return;
     }
+
     const std::string& source_address = TrimString(ui->addressIn_VM->text().toStdString());
     if (GetTimeMillis() - debounce_input[source_address] < 2000)
         return;
+
     const std::string& signature = TrimString(ui->signatureIn_VM->text().toStdString());
     const std::string& target_address = TrimString(ui->messageIn_VM->document()->toPlainText().toStdString());
+
     ui->addressIn_VM->setText(source_address.data());
     ui->signatureIn_VM->setText(signature.data());
     ui->messageIn_VM->document()->setPlainText(target_address.data());
     ui->peercoinMessageCheckbox_SM->setCheckState(Qt::Checked);
 
     debounce_input[source_address] = GetTimeMillis();
-    try {
-        Claim claim(source_address, target_address, signature);
-        if (claim.m_compatible && !on_verifyMessageButton_VM_clicked()) // patchcoin todo: inquire claim about better feedback
-             return;
-        // bool a = claim.IsSourceTargetAddress();
-        // bool b = claim.IsSourceTarget();
-        // bool x = claim.Commit();
-        // bool d = claim.IsUnique();
-        if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
-            ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
-            ui->statusLabel_VM->setText(
-                QString("<nobr>") + tr("Source address cannot match output address.") + QString("</nobr>"));
-            return;
-        }
-        if (!claim.IsValid()) {
-            ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
-            ui->statusLabel_VM->setText(
-                QString("<nobr>") + tr("Claim invalid.") + QString("</nobr>"));
-            return;
-        }
-        {
-            LOCK2(cs_main, g_claims_mutex);
-            if (claim.IsUniqueSource()) {
-                // g_claims should be imperative over claimindex, as such overwrite it whenever
-                if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
-                    ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
-                    ui->statusLabel_VM->setText(
-                        QString("<nobr>") + tr("Database error.") + QString("</nobr>"));
-                    return;
-                }
-            } else {
-                const auto& it = g_claims.find(claim.GetSource());
-                if (it != g_claims.end() && it->second.m_seen) {
-                    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-                    ui->statusLabel_VM->setText(
-                        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
-                    return;
-                }
-            }
-        }
-        if (GetTime() - debounce[claim.GetSource()] < 2 * 60) {
-            int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetSource()]);
-            int minutes = timeLeft / 60;
-            int seconds = timeLeft % 60;
+    Claim claim(source_address, target_address, signature);
 
-            ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
-            QString timeText;
-
-            if (minutes > 0) {
-                timeText = QString("<nobr>") +
-                           tr("Please wait %1 minute%2 and %3 second%4...")
-                               .arg(minutes)
-                               .arg(minutes == 1 ? "" : "s")
-                               .arg(seconds)
-                               .arg(seconds == 1 ? "" : "s") +
-                           QString("</nobr>");
-            } else {
-                timeText = QString("<nobr>") +
-                           tr("Please wait %1 second%2...")
-                               .arg(seconds)
-                               .arg(seconds == 1 ? "" : "s") +
-                           QString("</nobr>");
-            }
-            timeText += QString("<br>") + tr("Or try a different claim.");
-
-            ui->statusLabel_VM->setText(timeText);
-            return;
-        }
-        debounce[claim.GetSource()] = GetTime();
-        // Claim& dbClaim = claim;
-        // patchcoin todo check claimset
-        // if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
-        //     g_claimindex->AddClaim(claim); // patchcoin this might fail as well
-        // if (dbClaim.IsValid() && dbClaim.seen) {
-        //    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-        //    ui->statusLabel_VM->setText(
-        //        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
-        //    return;
-        //}
-        m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
-            if (pnode->fDisconnect) return;
-            const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
-            m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
-        });
-        ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
-        ui->statusLabel_VM->setText(
-            QString("<nobr>") + tr("Claim published.") + QString("</nobr>")
-        );
-    } catch (const std::exception& e) {
-        std::cerr << "Error initializing Claim: " << e.what() << std::endl;
+    if ((!claim.m_init || claim.m_compatible) && !on_verifyMessageButton_VM_clicked()) {
+        return;
     }
+    // bool a = claim.IsSourceTargetAddress();
+    // bool b = claim.IsSourceTarget();
+    // bool x = claim.Commit();
+    // bool d = claim.IsUnique();
+    // if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
+    //     ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+    //     ui->statusLabel_VM->setText(
+    //         QString("<nobr>") + tr("Source address cannot match output address.") + QString("</nobr>"));
+    //     return;
+    // }
+
+    ScriptError serror = SCRIPT_ERR_OK;
+    const auto cvr = claim.IsValid(&serror);
+    if (cvr != Claim::ClaimVerificationResult::OK) {
+        ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+
+        switch (cvr) {
+        case Claim::ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE:
+            ui->addressIn_VM->setValid(false);
+            ui->statusLabel_VM->setText(
+                tr("Cannot decode source/target script.") + QString(" ") +
+                tr("Please check the claim data and try again.")
+            );
+            return;
+
+        case Claim::ClaimVerificationResult::ERR_SOURCE_SCRIPT_NOT_FOUND:
+            ui->addressIn_VM->setValid(false);
+            ui->statusLabel_VM->setText(
+                tr("Source script not found in snapshot.") + QString(" ") +
+                tr("Please check the claim data and try again.")
+            );
+            return;
+
+        default:
+            ui->statusLabel_VM->setText(
+                ClaimErrorMessage(cvr) + QString(" ") +
+                (serror == SCRIPT_ERR_OK
+                    ? tr("Please check the claim data and try again.")
+                    : QString::fromStdString(ScriptErrorString(serror)))
+            );
+            return;
+        }
+    }
+
+    {
+        LOCK2(cs_main, g_claims_mutex);
+        if (claim.IsUniqueSource()) {
+            // g_claims should be imperative over claimindex, as such overwrite it whenever
+            if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
+                ui->statusLabel_VM->setText(
+                    QString("<nobr>") + tr("Database error.") + QString("</nobr>"));
+                return;
+            }
+        } else {
+            const auto& it = g_claims.find(claim.GetSource());
+            if (it != g_claims.end() && it->second.m_seen) {
+                ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+                ui->statusLabel_VM->setText(
+                    QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+                return;
+            }
+        }
+    }
+    if (GetTime() - debounce[claim.GetSource()] < 2 * 60) {
+        int64_t timeLeft = 2 * 60 - (GetTime() - debounce[claim.GetSource()]);
+        int minutes = timeLeft / 60;
+        int seconds = timeLeft % 60;
+
+        ui->statusLabel_VM->setStyleSheet("QLabel { color: orange; }");
+        QString timeText;
+
+        if (minutes > 0) {
+            timeText = QString("<nobr>") +
+                       tr("Please wait %1 minute%2 and %3 second%4...")
+                           .arg(minutes)
+                           .arg(minutes == 1 ? "" : "s")
+                           .arg(seconds)
+                           .arg(seconds == 1 ? "" : "s") +
+                       QString("</nobr>");
+        } else {
+            timeText = QString("<nobr>") +
+                       tr("Please wait %1 second%2...")
+                           .arg(seconds)
+                           .arg(seconds == 1 ? "" : "s") +
+                       QString("</nobr>");
+        }
+        timeText += QString("<br>") + tr("Or try a different claim.");
+
+        ui->statusLabel_VM->setText(timeText);
+        return;
+    }
+    debounce[claim.GetSource()] = GetTime();
+    // Claim& dbClaim = claim;
+    // patchcoin todo check claimset
+    // if (!g_claimindex->FindClaim(claim.GetHash(), dbClaim))
+    //     g_claimindex->AddClaim(claim); // patchcoin this might fail as well
+    // if (dbClaim.IsValid() && dbClaim.seen) {
+    //    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+    //    ui->statusLabel_VM->setText(
+    //        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
+    //    return;
+    //}
+    m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
+        if (pnode->fDisconnect) return;
+        const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
+        m_client_model->node().context()->connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CLAIM, claim));
+    });
+
+    ui->statusLabel_VM->setStyleSheet("QLabel { color: green; }");
+    ui->statusLabel_VM->setText(
+        QString("<nobr>") + tr("Claim published.") + QString("</nobr>")
+    );
 }
 
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()

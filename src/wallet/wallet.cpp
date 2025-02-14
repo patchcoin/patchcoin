@@ -3802,7 +3802,8 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             return a.nTime < b.nTime;
         });
         for (const auto& claim : claims) {
-            if (!claim.IsValid())
+            ScriptError serror;
+            if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK)
                 return error("CreateCoinStake : invalid claim found");
             CAmount nTotalReceived = 0;
             CAmount nEligible = claim.GetEligible();
@@ -3826,7 +3827,8 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             // patchcoin todo: never count ourselves actually
             claims.erase(
                 std::remove_if(claims.begin(), claims.end(), [&](const Claim& claim) {
-                    if (!claim.IsValid()) return true;
+                    ScriptError serror;
+                    if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) return true;
                     CAmount nTotalReceived = 0;
                     if (!claim.GetReceived(pwallet, nTotalReceived)) return true;
                     return nTotalReceived >= claim.GetEligible();
@@ -3947,7 +3949,8 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             {
                 // patchcoin todo tally everything at the end, maybe not even in this loop to absolutely ensure we're not randomly dropping / adding anything
                 // patchcoin todo potentially reset nTotalReceived since this here is just virtual
-                if (!claim.IsValid()) {
+                ScriptError serror;
+                if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
                     continue;
                 }
                 CAmount nTotalReceived = 0;

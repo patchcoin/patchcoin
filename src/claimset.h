@@ -62,7 +62,8 @@ public:
         CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetTargetAddress(), claim.GetSignatureString());
         claimSetClaim.nTime = claim.nTime;
         claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
-        if (!claimSetClaim.IsValid()) {
+        ScriptError serror;
+        if (claimSetClaim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             return false;
         }
         if (std::any_of(claims.begin(), claims.end(), [&](const CClaimSetClaim& claim_new) {
@@ -138,7 +139,8 @@ public:
             if (!seenScripts.insert(claim.GetSource()).second) {
                 return false;
             }
-            if (!claim.IsValid()) {
+            ScriptError serror;
+            if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
                 return false;
             }
         }

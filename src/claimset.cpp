@@ -70,10 +70,11 @@ void ApplyClaimSet(const CClaimSet& claimset)
     if (!g_claimindex) return;
 
     for (const CClaimSetClaim& cClaim : claimset.claims) {
-        if (!cClaim.IsValid()) return;
-        const Claim claim(cClaim.GetSourceAddress(), cClaim.GetSignatureString(), cClaim.GetTargetAddress());
+        ScriptError serror;
+        if (cClaim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) return;
+        const Claim claim(cClaim.GetSourceAddress(), cClaim.GetTargetAddress(), cClaim.GetSignatureString());
         claim.nTime = cClaim.nTime;
-        if (!claim.IsValid()) return;
+        if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) return;
         const auto& it = g_claims.find(claim.GetSource());
         if (it == g_claims.end()) {
             claim.m_seen = true;

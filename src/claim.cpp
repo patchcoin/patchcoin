@@ -1,5 +1,5 @@
-#include <chain.h>
 #include <claim.h>
+#include <chain.h>
 #include <chainparams.h>
 #include <core_io.h>
 #include <hash.h>
@@ -42,10 +42,12 @@ Claim::~Claim() = default;
 void Claim::Init()
 {
     if (!SnapshotIsValid()) {
+        LogPrintf("[claim] Init: snapshot is invalid or empty.\n");
         return;
     }
 
     if (m_claim.sourceAddress.empty() || m_claim.targetAddress.empty() || m_claim.signatureString.empty()) {
+        LogPrintf("[claim] Init: one or more string fields are empty (source/target/signature).\n");
         return;
     }
 
@@ -56,6 +58,7 @@ void Claim::Init()
     m_target_address = GetAddressFromScript(m_target);
 
     if (m_source_address.empty() || m_target_address.empty()) {
+        LogPrintf("[claim] Init: failed to decode source or target address.\n");
         return;
     }
 
@@ -67,6 +70,7 @@ void Claim::Init()
             m_signature = *decoded_sig;
             m_signature_string = EncodeBase64(m_signature);
         } else {
+            LogPrintf("[claim] Init: failed to decode base64 signature.\n");
             return;
         }
         m_peercoin_balances.push_back(std::make_shared<CAmount>(snapshotIt->second));
@@ -74,10 +78,12 @@ void Claim::Init()
     } else {
         incompatibleSnapshotIt = snapshot_incompatible.find(source_tmp);
         if (incompatibleSnapshotIt == snapshot_incompatible.end()) {
+            LogPrintf("[claim] Init: source script not found in snapshot_incompatible.\n");
             return;
         }
         source = std::make_shared<const CScript>(incompatibleSnapshotIt->first);
         if (!DecodeHexTx(m_dummy_tx, m_claim.signatureString)) {
+            LogPrintf("[claim] Init: failed to decode hex transaction signature.\n");
             return;
         }
         for (const auto& [outpoint, coin] : incompatibleSnapshotIt->second) {
@@ -88,21 +94,40 @@ void Claim::Init()
 
     m_eligible = GetEligible();
     assert(MoneyRange(m_eligible) && m_eligible <= MAX_CLAIM_REWARD);
+
     GENESIS_OUTPUTS_AMOUNT = static_cast<double>(Params().GetConsensus().genesisValue)
                              / static_cast<double>(Params().GetConsensus().genesisOutputs);
     MAX_POSSIBLE_OUTPUTS = std::min(20u,
         static_cast<unsigned int>(std::ceil(static_cast<double>(MAX_CLAIM_REWARD) / GENESIS_OUTPUTS_AMOUNT))) + 4;
     MAX_OUTPUTS = GetMaxOutputs();
+
     m_init = true;
 }
 
 bool Claim::SnapshotIsValid() const
 {
-    return hashSnapshot == Params().GetConsensus().hashPeercoinSnapshot
-        && !SnapshotManager::Peercoin().GetScriptPubKeys().empty()
-        && !SnapshotManager::Peercoin().GetIncompatibleScriptPubKeys().empty()
-        && !snapshot.empty()
-        && !snapshot_incompatible.empty();
+    if (hashSnapshot != Params().GetConsensus().hashPeercoinSnapshot) {
+        LogPrintf("[claim] SnapshotIsValid: mismatch with consensus hash\n");
+        return false;
+    }
+    if (SnapshotManager::Peercoin().GetScriptPubKeys().empty()) {
+        LogPrintf("[claim] SnapshotIsValid: empty scriptPubKeys in SnapshotManager\n");
+        return false;
+    }
+    if (SnapshotManager::Peercoin().GetIncompatibleScriptPubKeys().empty()) {
+        LogPrintf("[claim] SnapshotIsValid: empty incompatibleScriptPubKeys in SnapshotManager\n");
+        return false;
+    }
+    if (snapshot.empty()) {
+        LogPrintf("[claim] SnapshotIsValid: local snapshot map is empty\n");
+        return false;
+    }
+    if (snapshot_incompatible.empty()) {
+        LogPrintf("[claim] SnapshotIsValid: local snapshot_incompatible map is empty\n");
+        return false;
+    }
+
+    return true;
 }
 
 CScript Claim::GetScriptFromAddress(const std::string& address)
@@ -243,30 +268,32 @@ void Claim::SetNull()
     MAX_OUTPUTS = 0;
 }
 
-bool Claim::VerifyDummyTx() const
+Claim::ClaimVerificationResult Claim::VerifyDummyTx(ScriptError* serror) const
 {
     if (m_dummy_tx.vin.size() != 1) {
-        LogPrintf("VerifyDummyTx failed: input size must be 1\n");
-        return false;
+        LogPrintf("VerifyDummyTx failed: input size must be one\n");
+        return ClaimVerificationResult::ERR_DUMMY_INPUT_SIZE;
     }
     if (m_dummy_tx.vout.size() != 1) {
-        LogPrintf("VerifyDummyTx failed: output size must be 1\n");
-        return false;
+        LogPrintf("VerifyDummyTx failed: output size must be one\n");
+        return ClaimVerificationResult::ERR_DUMMY_OUTPUT_SIZE;
     }
     if (!MoneyRange(m_dummy_tx.vout[0].nValue)) {
         LogPrintf("VerifyDummyTx failed: tx target output amount out of range\n");
-        return false;
+        return ClaimVerificationResult::ERR_DUMMY_VALUE_RANGE;
     }
     const CScript& scriptPubKey = m_dummy_tx.vout[0].scriptPubKey;
     const std::string& targetAddress = GetAddressFromScript(scriptPubKey);
     if (m_claim.targetAddress != targetAddress || targetAddress != m_target_address || scriptPubKey != m_target) {
         LogPrintf("VerifyDummyTx failed: target address must match tx target address\n");
-        return false;
+        return ClaimVerificationResult::ERR_DUMMY_ADDRESS_MISMATCH;
     }
+
     Coin coin;
     CTxOut prevout;
     constexpr unsigned int nIn = 0;
     bool found = false;
+
     for (const auto& [script, utxo] : snapshot_incompatible)
     {
         if (script != *source)
@@ -285,75 +312,79 @@ bool Claim::VerifyDummyTx() const
         if (found)
             break;
     }
+
     if (!found || prevout.IsNull()) {
         LogPrintf("VerifyDummyTx failed: unable to find previous output\n");
-        return false;
+        return ClaimVerificationResult::ERR_DUMMY_PREVOUT_NOT_FOUND;
     }
+
     if (coin.out.nValue != m_dummy_tx.vout[0].nValue) {
         LogPrintf("VerifyDummyTx failed: input value must match output value\n");
-        return false;
+        return ClaimVerificationResult::ERR_DUMMY_INPUT_VALUE_MISMATCH;
     }
+
     PrecomputedTransactionData txdata;
     txdata.Init(m_dummy_tx, std::vector<CTxOut>{prevout} /*, true*/);
     const MutableTransactionSignatureChecker checker(&m_dummy_tx, nIn, prevout.nValue, txdata, MissingDataBehavior::FAIL/* ASSERT_FAIL */);
-    ScriptError serror;
-    if (!VerifyScript(m_dummy_tx.vin[nIn].scriptSig, prevout.scriptPubKey, &(m_dummy_tx.vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, &serror)) {
-        LogPrintf("VerifyDummyTx failed: %s\n", ScriptErrorString(serror));
-        return false;
+    if (!VerifyScript(m_dummy_tx.vin[nIn].scriptSig, prevout.scriptPubKey, &(m_dummy_tx.vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, serror)) {
+        LogPrintf("VerifyDummyTx failed: %s\n", ScriptErrorString(*serror));
+        return ClaimVerificationResult::ERR_DUMMY_SIG_FAIL;
     }
-    return true;
+
+    return ClaimVerificationResult::OK;
 }
 
-bool Claim::IsValid() const
+Claim::ClaimVerificationResult Claim::IsValid(ScriptError *serror) const
 {
     if (!m_init) {
         LogPrintf("[claim] error: not initialized\n");
-        return false;
+        return ClaimVerificationResult::ERR_NOT_INITIALIZED;
     }
+
     try {
         if (!SnapshotIsValid()) {
             LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
-            return false;
+            return ClaimVerificationResult::ERR_SNAPSHOT_MISMATCH;
         }
         const unsigned int size = GetBaseSize();
         if (m_compatible && size != CLAIM_SIZE()) {
-            LogPrintf("[claim] error: size mismatch: current=%s target=%s\n", size, CLAIM_SIZE());
-            return false;
+            LogPrintf("[claim] error: size mismatch: current=%u target=%zu\n", size, CLAIM_SIZE());
+            return ClaimVerificationResult::ERR_SIZE_MISMATCH;
         }
         if (!m_compatible && size > CLAIM_SIZE()) {
-            LogPrintf("[claim] error: size mismatch: current=%s target=%s\n", size, CLAIM_SIZE());
-            return false;
+            LogPrintf("[claim] error: size mismatch: current=%u target=%zu\n", size, CLAIM_SIZE());
+            return ClaimVerificationResult::ERR_SIZE_MISMATCH;
         }
         if (!m_claim.sourceAddress.size() || !m_claim.targetAddress.size() || !m_claim.signatureString.size()) {
-            LogPrintf("[claim] error: called on an empty string source=%s target=%s signature=%s\n",
-               m_claim.sourceAddress, m_claim.targetAddress, m_claim.signatureString);
-            return false;
+            LogPrintf("[claim] error: called on empty string fields\n");
+            return ClaimVerificationResult::ERR_EMPTY_FIELDS;
         }
         if (IsSourceTarget() || IsSourceTargetAddress()) {
             LogPrintf("[claim] error: input matches output address\n");
-            return false;
+            return ClaimVerificationResult::ERR_SOURCE_EQUALS_TARGET;
         }
         if (m_compatible && snapshotIt == snapshot.end()) {
             LogPrintf("[claim] error: source script not found in snapshot\n");
-            return false;
+            return ClaimVerificationResult::ERR_SOURCE_SCRIPT_NOT_FOUND;
         }
         if (!m_compatible && incompatibleSnapshotIt == snapshot_incompatible.end()) {
             LogPrintf("[claim] error: source script not found in snapshot\n");
-            return false;
+            return ClaimVerificationResult::ERR_SOURCE_SCRIPT_NOT_FOUND;
         }
         if (GetScriptFromAddress(m_source_address).empty()
             || source == nullptr
             || GetAddressFromScript(*source).empty())
         {
             LogPrintf("[claim] error: failed to extract destination from source script\n");
-            return false;
+            return ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE;
         }
         if (GetScriptFromAddress(m_target_address).empty()
             || GetAddressFromScript(m_target).empty())
         {
             LogPrintf("[claim] error: failed to extract destination from target script\n");
-            return false;
+            return ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE;
         }
+
         if (m_compatible) {
             MessageVerificationResult res = MessageVerify(
                 m_source_address,
@@ -363,32 +394,33 @@ bool Claim::IsValid() const
             );
             if (res != MessageVerificationResult::OK) {
                 LogPrintf("[claim] error: signature verification failed (%d)\n", static_cast<int>(res));
-                return false;
+                return ClaimVerificationResult::ERR_SIGNATURE_VERIFICATION_FAILED;
             }
         } else {
-            if (!VerifyDummyTx()) {
-                LogPrintf("[claim] error: tx verification failed\n");
-                return false;
+            ClaimVerificationResult dummyRes = VerifyDummyTx(serror);
+            if (dummyRes != ClaimVerificationResult::OK) {
+                LogPrintf("[claim] error: tx verification failed (dummyRes=%d)\n", static_cast<int>(dummyRes));
+                return ClaimVerificationResult::ERR_TX_VERIFICATION_FAILED;
             }
         }
         if (!MoneyRange(GetPeercoinBalance())) {
             LogPrintf("[claim] error: peercoin balance out of range\n");
-            return false;
+            return ClaimVerificationResult::ERR_BALANCE_OUT_OF_RANGE;
         }
         const CAmount eligible = GetEligible();
         if (!MoneyRange(eligible)) {
             LogPrintf("[claim] error: eligible balance out of range\n");
-            return false;
+            return ClaimVerificationResult::ERR_BALANCE_OUT_OF_RANGE;
         }
         if (eligible < nTotalReceived) {
             LogPrintf("[claim] error: total received above eligible\n");
-            return false;
+            return ClaimVerificationResult::ERR_RECEIVED_ABOVE_ELIGIBLE;
         }
         // patchcoin todo: set isChecked and return early? need to make sure we haven't been modified
-        return true;
+        return ClaimVerificationResult::OK;
     } catch (const std::exception& e) {
         LogPrintf("[claim] error: unexpected exception in validation: %s\n", e.what());
-        return false;
+        return ClaimVerificationResult::ERR_MESSAGE_NOT_SIGNED;
     }
 }
 
@@ -438,8 +470,11 @@ bool Claim::IsUniqueTarget() const
 
 bool Claim::Insert() const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex)
 {
-    if (!(IsValid() && IsUnique()))
+    ScriptError serror;
+    const ClaimVerificationResult result = IsValid(&serror);
+    if (result != ClaimVerificationResult::OK || !IsUnique()) {
         return false;
+    }
     const auto [_, inserted]{g_claims.try_emplace(GetSource(), *this)};
     return inserted && !IsUniqueSource();
 }

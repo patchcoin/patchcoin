@@ -10,6 +10,7 @@
 
 #include <primitives/transaction.h>
 #include <primitives/claim.h>
+#include <script/script_error.h>
 
 class CBlockIndex;
 class Coin;
@@ -28,6 +29,35 @@ extern std::map<const CScript, Claim> g_claims GUARDED_BY(g_claims_mutex);
 class Claim
 {
 public:
+    enum class ClaimVerificationResult {
+        ERR_NOT_INITIALIZED,
+        ERR_SNAPSHOT_MISMATCH,
+        ERR_SIZE_MISMATCH,
+        ERR_EMPTY_FIELDS,
+        ERR_SOURCE_EQUALS_TARGET,
+        ERR_SOURCE_SCRIPT_NOT_FOUND,
+        ERR_DECODE_SCRIPT_FAILURE,
+        ERR_SIGNATURE_VERIFICATION_FAILED,
+        ERR_TX_VERIFICATION_FAILED,
+        ERR_BALANCE_OUT_OF_RANGE,
+        ERR_RECEIVED_ABOVE_ELIGIBLE,
+
+        ERR_DUMMY_INPUT_SIZE,
+        ERR_DUMMY_OUTPUT_SIZE,
+        ERR_DUMMY_VALUE_RANGE,
+        ERR_DUMMY_ADDRESS_MISMATCH,
+        ERR_DUMMY_PREVOUT_NOT_FOUND,
+        ERR_DUMMY_INPUT_VALUE_MISMATCH,
+        ERR_DUMMY_SIG_FAIL,
+
+        ERR_MESSAGE_INVALID_ADDRESS,
+        ERR_MESSAGE_DECODE_SIGNATURE,
+        ERR_MESSAGE_PUBKEY_RECOVERY,
+        ERR_MESSAGE_NOT_SIGNED,
+
+        OK
+    };
+
     using SnapshotIterator = std::map<CScript, CAmount>::const_iterator;
     using IncompatibleSnapshotIterator = std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>::const_iterator;
 
@@ -103,8 +133,8 @@ public:
     bool GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const;
 
     void SetNull();
-    bool VerifyDummyTx() const;
-    bool IsValid() const;
+    ClaimVerificationResult VerifyDummyTx(ScriptError *serror) const;
+    ClaimVerificationResult IsValid(ScriptError *serror) const;
     bool IsSourceTarget() const;
     bool IsSourceTargetAddress() const;
     bool IsUnique() const;
