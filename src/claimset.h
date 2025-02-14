@@ -41,7 +41,6 @@ class CClaimSet
 {
 public:
     static constexpr unsigned int MAX_CLAIMS_COUNT{2500};
-    // static constexpr unsigned int MAX_CLAIMSET_SIZE{CClaimSetClaim::CLAIMSET_CLAIM_SIZE * MAX_CLAIMS_COUNT + 8 /* nTime */ + CPubKey::SIGNATURE_SIZE /* 72 */};
     std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
@@ -91,8 +90,8 @@ public:
             for (const auto& claim : sortedClaims) {
                 if (claim.nTotalReceived >= claim.GetEligible())
                     continue;
-                // if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) + CClaimSetClaim::CLAIMSET_CLAIM_SIZE > MAX_CLAIMSET_SIZE)
-                //     break;
+                if (claims.size() >= MAX_CLAIMS_COUNT)
+                     break;
                 if (!AddClaim(claim))
                     return false;
             }
@@ -115,9 +114,9 @@ public:
             return false;
         }
 
-        // if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_CLAIMSET_SIZE) {
-        //     return false;
-        // }
+        if (claims.size() > MAX_CLAIMS_COUNT) {
+            return false;
+        }
 
         if (vchSig.empty()) {
             return false;

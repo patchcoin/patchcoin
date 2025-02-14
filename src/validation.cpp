@@ -2297,6 +2297,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         p.first->m_seen = true;
         p.first->m_outs[pindex->GetBlockHash()] = p.second;
         p.first->nTotalReceived = nTotalReceived + p.second;
+        p.first->nTime = pindex->nTime;
         g_claimindex->AddClaim(*p.first);
     }
 
