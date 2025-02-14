@@ -62,12 +62,12 @@ public:
 
     uint256 GetHash() const;
 
-    void UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible);
+    void UpdateAllScriptPubKeys(const std::map<CScript, CAmount>& valid, const std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible);
 
-    std::map<CScript, CAmount>& GetScriptPubKeys() {
+    const std::map<CScript, CAmount>& GetScriptPubKeys() const {
         return m_valid_scripts;
     }
-    std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& GetIncompatibleScriptPubKeys() {
+    const std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& GetIncompatibleScriptPubKeys() const {
         return m_incompatible_scripts;
     }
 

@@ -30,11 +30,11 @@ void SnapshotManager::SetNull()
     m_hash_scripts = uint256();
 }
 
-void SnapshotManager::UpdateAllScriptPubKeys(std::map<CScript, CAmount>& valid, std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible)
+void SnapshotManager::UpdateAllScriptPubKeys(const std::map<CScript, CAmount>& valid, const std::map<CScript, std::vector<std::pair<COutPoint, Coin>>>& incompatible)
 {
     LOCK(m_snapshot_mutex);
-    m_valid_scripts = std::move(valid);
-    m_incompatible_scripts = std::move(incompatible);
+    m_valid_scripts = valid;
+    m_incompatible_scripts = incompatible;
     m_hash_scripts = GetHash();
 }
 

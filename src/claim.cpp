@@ -41,7 +41,7 @@ Claim::Claim(const std::string& source_address, const std::string& target_addres
         }
     }
 
-    m_claim = CClaim(source, target, std::move(vSig), MakeTransactionRef(std::move(mtx)));
+    m_claim = CClaim(source, target, vSig, MakeTransactionRef(std::move(mtx)));
 
     SetNull();
     Init();
