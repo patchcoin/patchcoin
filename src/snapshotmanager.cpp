@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <cassert>
 #include <sstream>
-#include <iomanip>
 
 RecursiveMutex m_snapshot_mutex;
 

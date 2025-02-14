@@ -9,7 +9,6 @@
 #include <chainparams.h>
 #include <clientversion.h>
 #include <core_io.h>
-#include <fstream>
 #include <net_permissions.h>
 #include <net_processing.h>
 #include <net_types.h> // For banmap_t
@@ -32,12 +31,8 @@
 
 #include <key_io.h>
 #include <optional>
-#include <snapshotmanager.h>
 
 #include <univalue.h>
-#include <consensus/merkle.h>
-#include <index/claimindex.h>
-#include <util/message.h>
 
 using node::NodeContext;
 

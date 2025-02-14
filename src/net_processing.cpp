@@ -213,8 +213,7 @@ struct QueuedBlock {
  * TODO: move remaining application-layer data members from CNode to this structure.
  */
 // std::chrono::microseconds m_last_claimset_hash_sent_timestamp GUARDED_BY(m_claimset_send_times_mutex){0};
-struct Peer
-{
+struct Peer {
     /** Same id as the CNode object for this peer */
     const NodeId m_id{0};
 
@@ -312,8 +311,7 @@ struct Peer
       * to the peer. */
     std::chrono::microseconds m_next_send_feefilter GUARDED_BY(NetEventsInterface::g_msgproc_mutex){0};
 
-    struct TxRelay
-    {
+    struct TxRelay {
         mutable RecursiveMutex m_bloom_filter_mutex;
         /** Whether we relay transactions to this peer. */
         bool m_relay_txs GUARDED_BY(m_bloom_filter_mutex){false};
@@ -441,9 +439,8 @@ struct Peer
 
     explicit Peer(NodeId id, ServiceFlags our_services)
         : m_id{id}
-          , m_our_services{our_services}
-    {
-    }
+        , m_our_services{our_services}
+    {}
 
 private:
     mutable Mutex m_tx_relay_mutex;

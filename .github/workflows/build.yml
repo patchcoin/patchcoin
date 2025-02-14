@@ -212,7 +212,7 @@ jobs:
       - hetzner
       - runid-${{ github.run_id }}
     needs: [guix-base, guix-host, infrastructure-next]
-    if: always()
+    if: ${{ !cancelled() }}
     strategy:
       matrix:
         host:

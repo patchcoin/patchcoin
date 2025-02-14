@@ -8,7 +8,6 @@
 
 #include <net.h>
 #include <validationinterface.h>
-#include <claim.h>
 
 class AddrMan;
 class CChainParams;

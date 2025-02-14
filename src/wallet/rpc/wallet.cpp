@@ -5,7 +5,6 @@
 
 #include <core_io.h>
 //#include <interfaces/wallet.h>
-#include <claimset.h>
 #include <key_io.h>
 #include <rpc/server.h>
 #include <rpc/server_util.h>
@@ -27,7 +26,6 @@
 #include <kernelrecord.h>
 #include <node/miner.h>
 #include <boost/lexical_cast.hpp>
-#include <index/claimindex.h>
 
 using wallet::WalletContext;
 

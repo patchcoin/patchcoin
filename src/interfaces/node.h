@@ -24,7 +24,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-#include <util/error.h>
 
 class BanMan;
 class CNodeStats;
