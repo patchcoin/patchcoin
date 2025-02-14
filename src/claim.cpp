@@ -24,8 +24,25 @@ Claim::Claim()
 }
 
 Claim::Claim(const std::string& source_address, const std::string& target_address, const std::string& signature_string)
-    : m_claim(source_address, target_address, signature_string)
 {
+    const CTxDestination destination = DecodeDestination(source_address);
+    if (!IsValidDestination(destination)) {
+        return;
+    }
+    const CScript source = GetScriptFromAddress(source_address);
+    const CScript target = GetScriptFromAddress(target_address);
+    std::vector<unsigned char> vSig;
+    CMutableTransaction mtx;
+    if (std::get_if<PKHash>(&destination) != nullptr) {
+        vSig = DecodeBase64(signature_string).value_or(std::vector<unsigned char>{});
+    } else {
+        if (!DecodeHexTx(mtx, signature_string)) {
+            return;
+        }
+    }
+
+    m_claim = CClaim(source, target, std::move(vSig), MakeTransactionRef(std::move(mtx)));
+
     SetNull();
     Init();
 }
@@ -46,50 +63,33 @@ void Claim::Init()
         return;
     }
 
-    if (m_claim.sourceAddress.empty() || m_claim.targetAddress.empty() || m_claim.signatureString.empty()) {
-        LogPrintf("[claim] Init: one or more string fields are empty (source/target/signature).\n");
-        return;
-    }
-
-    const CScript source_tmp = GetScriptFromAddress(m_claim.sourceAddress);
-    m_source_address = GetAddressFromScript(source_tmp);
-
-    m_target = GetScriptFromAddress(m_claim.targetAddress);
-    m_target_address = GetAddressFromScript(m_target);
+    m_source_address = GetAddressFromScript(m_claim.source);
+    m_target_address = GetAddressFromScript(m_claim.target);
 
     if (m_source_address.empty() || m_target_address.empty()) {
-        LogPrintf("[claim] Init: failed to decode source or target address.\n");
+        LogPrintf("[claim] Init: failed to decode source or target address\n");
         return;
     }
 
-    snapshotIt = snapshot.find(source_tmp);
+    snapshotIt = snapshot.find(m_claim.source);
 
     if (snapshotIt != snapshot.end()) {
         source = std::make_shared<const CScript>(snapshotIt->first);
-        if (const auto decoded_sig = DecodeBase64(m_claim.signatureString)) {
-            m_signature = *decoded_sig;
-            m_signature_string = EncodeBase64(m_signature);
-        } else {
-            LogPrintf("[claim] Init: failed to decode base64 signature.\n");
-            return;
-        }
         m_peercoin_balances.push_back(std::make_shared<CAmount>(snapshotIt->second));
+        m_signature_string = EncodeBase64(m_claim.signature);
         m_compatible = true;
     } else {
-        incompatibleSnapshotIt = snapshot_incompatible.find(source_tmp);
+        incompatibleSnapshotIt = snapshot_incompatible.find(m_claim.source);
         if (incompatibleSnapshotIt == snapshot_incompatible.end()) {
-            LogPrintf("[claim] Init: source script not found in snapshot_incompatible.\n");
+            LogPrintf("[claim] Init: source script not found in snapshot_incompatible\n");
             return;
         }
         source = std::make_shared<const CScript>(incompatibleSnapshotIt->first);
-        if (!DecodeHexTx(m_dummy_tx, m_claim.signatureString)) {
-            LogPrintf("[claim] Init: failed to decode hex transaction signature.\n");
-            return;
-        }
         for (const auto& [outpoint, coin] : incompatibleSnapshotIt->second) {
             m_peercoin_balances.push_back(std::make_shared<CAmount>(coin.out.nValue));
         }
-        m_signature_string = m_claim.signatureString;
+        m_signature_string = EncodeHexTx(*m_claim.dummyTx);
+        m_compatible = false;
     }
 
     m_eligible = GetEligible();
@@ -151,46 +151,34 @@ std::string Claim::GetAddressFromScript(const CScript& script)
 }
 
 std::string Claim::GetSourceAddress() const {
-    return m_claim.sourceAddress;
-}
-
-std::string Claim::GetTargetAddress() const {
-    return m_claim.targetAddress;
-}
-
-std::string Claim::GetSignatureString() const {
-    return m_claim.signatureString;
-}
-
-std::string Claim::GetComputedSourceAddress() const {
     return m_source_address;
 }
 
-std::string Claim::GetComputedTargetAddress() const {
+std::string Claim::GetTargetAddress() const {
     return m_target_address;
 }
 
-std::string Claim::GetComputedSignatureString() const {
+std::string Claim::GetSignatureString() const {
     return m_signature_string;
 }
 
 CScript Claim::GetSource() const {
-    return source ? *source : CScript();
+    return *source;
 }
 
 std::vector<unsigned char> Claim::GetSignature() const {
-    return m_signature;
+    return m_claim.signature;
 }
 
 CScript Claim::GetTarget() const {
-    return m_target;
+    return m_claim.target;
 }
 
 CAmount Claim::GetPeercoinBalance() const {
-    const CAmount balance = std::accumulate(m_peercoin_balances.begin(), m_peercoin_balances.end(), 0,
-        [](CAmount sum, const auto& bal) {
-            return sum + *bal;
-        });
+    CAmount balance = 0;
+    for (const auto& bal : m_peercoin_balances) {
+        balance += *bal;
+    }
     return MoneyRange(balance) ? balance : 0;
 }
 
@@ -217,7 +205,7 @@ CAmount Claim::GetMaxOutputs() const
 
 bool Claim::GetReceived(const wallet::CWallet* pwallet, CAmount& received) const
 {
-    return SnapshotManager::Peercoin().CalculateReceived(pwallet, m_target, received);
+    return SnapshotManager::Peercoin().CalculateReceived(pwallet, m_claim.target, received);
 }
 
 bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const
@@ -244,9 +232,6 @@ void Claim::SetNull()
 {
     // m_claim = CClaim();
     source.reset();
-    m_signature.clear();
-    m_dummy_tx = CMutableTransaction();
-    m_target.clear();
     m_peercoin_balances.clear();
     m_seen = false;
     m_outs.clear();
@@ -270,21 +255,21 @@ void Claim::SetNull()
 
 Claim::ClaimVerificationResult Claim::VerifyDummyTx(ScriptError* serror) const
 {
-    if (m_dummy_tx.vin.size() != 1) {
+    if (m_claim.dummyTx->vin.size() != 1) {
         LogPrintf("VerifyDummyTx failed: input size must be one\n");
         return ClaimVerificationResult::ERR_DUMMY_INPUT_SIZE;
     }
-    if (m_dummy_tx.vout.size() != 1) {
+    if (m_claim.dummyTx->vout.size() != 1) {
         LogPrintf("VerifyDummyTx failed: output size must be one\n");
         return ClaimVerificationResult::ERR_DUMMY_OUTPUT_SIZE;
     }
-    if (!MoneyRange(m_dummy_tx.vout[0].nValue)) {
+    if (!MoneyRange(m_claim.dummyTx->vout[0].nValue)) {
         LogPrintf("VerifyDummyTx failed: tx target output amount out of range\n");
         return ClaimVerificationResult::ERR_DUMMY_VALUE_RANGE;
     }
-    const CScript& scriptPubKey = m_dummy_tx.vout[0].scriptPubKey;
+    const CScript& scriptPubKey = m_claim.dummyTx->vout[0].scriptPubKey;
     const std::string& targetAddress = GetAddressFromScript(scriptPubKey);
-    if (m_claim.targetAddress != targetAddress || targetAddress != m_target_address || scriptPubKey != m_target) {
+    if (targetAddress != m_target_address || scriptPubKey != m_claim.target) {
         LogPrintf("VerifyDummyTx failed: target address must match tx target address\n");
         return ClaimVerificationResult::ERR_DUMMY_ADDRESS_MISMATCH;
     }
@@ -300,8 +285,8 @@ Claim::ClaimVerificationResult Claim::VerifyDummyTx(ScriptError* serror) const
             continue;
         for (const auto& [outpoint, coin_t] : utxo)
         {
-            if (outpoint.hash == m_dummy_tx.vin[nIn].prevout.hash &&
-                outpoint.n == m_dummy_tx.vin[nIn].prevout.n)
+            if (outpoint.hash == m_claim.dummyTx->vin[nIn].prevout.hash &&
+                outpoint.n == m_claim.dummyTx->vin[nIn].prevout.n)
             {
                 coin = coin_t;
                 prevout = coin.out;
@@ -318,15 +303,15 @@ Claim::ClaimVerificationResult Claim::VerifyDummyTx(ScriptError* serror) const
         return ClaimVerificationResult::ERR_DUMMY_PREVOUT_NOT_FOUND;
     }
 
-    if (coin.out.nValue != m_dummy_tx.vout[0].nValue) {
+    if (coin.out.nValue != m_claim.dummyTx->vout[0].nValue) {
         LogPrintf("VerifyDummyTx failed: input value must match output value\n");
         return ClaimVerificationResult::ERR_DUMMY_INPUT_VALUE_MISMATCH;
     }
 
     PrecomputedTransactionData txdata;
-    txdata.Init(m_dummy_tx, std::vector<CTxOut>{prevout} /*, true*/);
-    const MutableTransactionSignatureChecker checker(&m_dummy_tx, nIn, prevout.nValue, txdata, MissingDataBehavior::FAIL/* ASSERT_FAIL */);
-    if (!VerifyScript(m_dummy_tx.vin[nIn].scriptSig, prevout.scriptPubKey, &(m_dummy_tx.vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, serror)) {
+    txdata.Init(*m_claim.dummyTx, std::vector<CTxOut>{prevout} /*, true*/);
+    const TransactionSignatureChecker checker(&(*m_claim.dummyTx), nIn, prevout.nValue, txdata, MissingDataBehavior::FAIL/* ASSERT_FAIL */);
+    if (!VerifyScript(m_claim.dummyTx->vin[nIn].scriptSig, prevout.scriptPubKey, &(m_claim.dummyTx->vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, serror)) {
         LogPrintf("VerifyDummyTx failed: %s\n", ScriptErrorString(*serror));
         return ClaimVerificationResult::ERR_DUMMY_SIG_FAIL;
     }
@@ -346,6 +331,10 @@ Claim::ClaimVerificationResult Claim::IsValid(ScriptError *serror) const
             LogPrintf("[claim] error: snapshot hash does not match consensus hash\n");
             return ClaimVerificationResult::ERR_SNAPSHOT_MISMATCH;
         }
+        if (!m_claim.signature.empty() && m_claim.dummyTx && !m_claim.dummyTx->IsNull()) {
+            LogPrintf("[claim] error: signature and tx cannot both be set\n");
+            return ClaimVerificationResult::ERR_NOT_INITIALIZED;
+        }
         const unsigned int size = GetBaseSize();
         if (m_compatible && size != CLAIM_SIZE()) {
             LogPrintf("[claim] error: size mismatch: current=%u target=%zu\n", size, CLAIM_SIZE());
@@ -355,7 +344,15 @@ Claim::ClaimVerificationResult Claim::IsValid(ScriptError *serror) const
             LogPrintf("[claim] error: size mismatch: current=%u target=%zu\n", size, CLAIM_SIZE());
             return ClaimVerificationResult::ERR_SIZE_MISMATCH;
         }
-        if (!m_claim.sourceAddress.size() || !m_claim.targetAddress.size() || !m_claim.signatureString.size()) {
+        if (!m_source_address.size() || !m_target_address.size() /*|| !m_signature_string.size()*/) {
+            LogPrintf("[claim] error: called on empty string fields\n");
+            return ClaimVerificationResult::ERR_EMPTY_FIELDS;
+        }
+        if (m_compatible && !m_signature_string.size()) {
+            LogPrintf("[claim] error: called on empty string fields\n");
+            return ClaimVerificationResult::ERR_EMPTY_FIELDS;
+        }
+        if (!m_compatible && m_claim.dummyTx && m_claim.dummyTx->IsNull()) {
             LogPrintf("[claim] error: called on empty string fields\n");
             return ClaimVerificationResult::ERR_EMPTY_FIELDS;
         }
@@ -378,9 +375,7 @@ Claim::ClaimVerificationResult Claim::IsValid(ScriptError *serror) const
             LogPrintf("[claim] error: failed to extract destination from source script\n");
             return ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE;
         }
-        if (GetScriptFromAddress(m_target_address).empty()
-            || GetAddressFromScript(m_target).empty())
-        {
+        if (GetScriptFromAddress(m_target_address).empty()) {
             LogPrintf("[claim] error: failed to extract destination from target script\n");
             return ClaimVerificationResult::ERR_DECODE_SCRIPT_FAILURE;
         }
@@ -456,15 +451,15 @@ bool Claim::IsUniqueSource() const
 
 bool Claim::IsUniqueTarget() const
 {
-    if (m_target.empty()) {
+    if (m_claim.target.empty()) {
         return false;
     }
-    if (g_claims.count(m_target) != 0) {
+    if (g_claims.count(m_claim.target) != 0) {
         return false;
     }
     return std::none_of(g_claims.begin(), g_claims.end(), [this](const auto& entry) {
         const Claim& claim = entry.second;
-        return claim.GetTarget() == m_target;
+        return claim.GetTarget() == m_claim.target;
     });
 }
 

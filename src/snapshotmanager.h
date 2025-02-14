@@ -76,6 +76,57 @@ public:
         return m_hash_scripts;
     }
 
+    // template<typename Stream>
+    // void Serialize(Stream& s) const {
+    //     ::Serialize(s, VARINT(m_valid_scripts.size()));
+    //     for (const auto& [script, amount] : m_valid_scripts) {
+    //         ::Serialize(s, Using<ScriptCompression>(script));
+    //         ::Serialize(s, Using<AmountCompression>(amount));
+    //     }
+    //     ::Serialize(s, VARINT(m_incompatible_scripts.size()));
+    //     for (const auto& [script, coins] : m_incompatible_scripts) {
+    //         ::Serialize(s, Using<ScriptCompression>(script));
+    //         ::Serialize(s, VARINT(coins.size()));
+    //         for (const auto& [outpoint, coin] : coins) {
+    //             ::Serialize(s, outpoint);
+    //             coin.Serialize(s);
+    //         }
+    //     }
+    // }
+    //
+    // template<typename Stream>
+    // void Unserialize(Stream& s) {
+    //     m_valid_scripts.clear();
+    //     m_incompatible_scripts.clear();
+    //     size_t valid_size = 0;
+    //     ::Unserialize(s, VARINT(valid_size));
+    //     for (size_t i = 0; i < valid_size; i++) {
+    //         CScript script;
+    //         CAmount amount;
+    //         ::Unserialize(s, Using<ScriptCompression>(script));
+    //         ::Unserialize(s, Using<AmountCompression>(amount));
+    //         m_valid_scripts.emplace(std::move(script), amount);
+    //     }
+    //     size_t incompatible_size = 0;
+    //     ::Unserialize(s, VARINT(incompatible_size));
+    //     for (size_t i = 0; i < incompatible_size; i++) {
+    //         CScript script;
+    //         ::Unserialize(s, Using<ScriptCompression>(script));
+    //         size_t coins_size = 0;
+    //         ::Unserialize(s, VARINT(coins_size));
+    //         std::vector<std::pair<COutPoint, Coin>> coins;
+    //         coins.reserve(coins_size);
+    //         for (size_t j = 0; j < coins_size; j++) {
+    //             COutPoint outpoint;
+    //             Coin coin;
+    //             ::Unserialize(s, outpoint);
+    //             coin.Unserialize(s);
+    //             coins.emplace_back(std::move(outpoint), std::move(coin));
+    //         }
+    //         m_incompatible_scripts.emplace(std::move(script), std::move(coins));
+    //     }
+    // }
+
     SERIALIZE_METHODS(SnapshotManager, obj)
     {
         READWRITE(obj.m_valid_scripts, obj.m_incompatible_scripts);

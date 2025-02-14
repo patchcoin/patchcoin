@@ -1,8 +1,9 @@
 #include <primitives/claim.h>
 
-CClaim::CClaim(const std::string& sourceAddressIn, const std::string& targetAddressIn, const std::string& signatureStringIn)
+CClaim::CClaim(const CScript& sourceIn, const CScript& targetIn, const std::vector<unsigned char>& signatureIn, const CTransactionRef& dummyTxIn)
 {
-    sourceAddress = sourceAddressIn;
-    targetAddress = targetAddressIn;
-    signatureString = signatureStringIn;
+    source = sourceIn;
+    target = targetIn;
+    signature = signatureIn;
+    dummyTx = dummyTxIn;
 }

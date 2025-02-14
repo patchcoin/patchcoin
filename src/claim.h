@@ -75,16 +75,13 @@ private:
     std::string m_signature_string;
 
     std::shared_ptr<const CScript> source;
-    std::vector<unsigned char> m_signature;
-    CMutableTransaction m_dummy_tx;
-    CScript m_target;
     std::vector<std::shared_ptr<const CAmount>> m_peercoin_balances;
     CAmount m_eligible = 0;
 
     void Init();
 
 public:
-    unsigned int CLAIM_SIZE() const { return m_compatible ? 159 : 1500; };
+    unsigned int CLAIM_SIZE() const { return m_compatible ? 132 : 1000; };
     double GENESIS_OUTPUTS_AMOUNT = 0;
     unsigned int MAX_POSSIBLE_OUTPUTS = 0;
     unsigned int MAX_OUTPUTS = 0;
@@ -117,10 +114,6 @@ public:
     std::string GetSourceAddress() const;
     std::string GetTargetAddress() const;
     std::string GetSignatureString() const;
-
-    std::string GetComputedSourceAddress() const;
-    std::string GetComputedTargetAddress() const;
-    std::string GetComputedSignatureString() const;
 
     CScript GetSource() const; // patchcoin todo: recheck
     std::vector<unsigned char> GetSignature() const;

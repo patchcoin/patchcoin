@@ -294,12 +294,14 @@ bool SnapshotManager::LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CA
     }
 
     /*
+     *
     const auto it_incompat = m_incompatible_scripts.find(scriptPubKey);
     if (it_incompat != m_incompatible_scripts.end()) {
         balance = it_incompat->second;
         eligible = 0;
         return true;
     }
+
     */
 
     return false;
