@@ -309,7 +309,7 @@ Claim::ClaimVerificationResult Claim::VerifyDummyTx(ScriptError* serror) const
     }
 
     PrecomputedTransactionData txdata;
-    txdata.Init(*m_claim.dummyTx, std::vector<CTxOut>{prevout} /*, true*/);
+    txdata.Init(*m_claim.dummyTx, std::vector<CTxOut>{prevout}, true);
     const TransactionSignatureChecker checker(&(*m_claim.dummyTx), nIn, prevout.nValue, txdata, MissingDataBehavior::FAIL/* ASSERT_FAIL */);
     if (!VerifyScript(m_claim.dummyTx->vin[nIn].scriptSig, prevout.scriptPubKey, &(m_claim.dummyTx->vin[nIn].scriptWitness), STANDARD_SCRIPT_VERIFY_FLAGS, checker, serror)) {
         LogPrintf("VerifyDummyTx failed: %s\n", ScriptErrorString(*serror));
