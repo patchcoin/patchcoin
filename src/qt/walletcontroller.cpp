@@ -92,6 +92,9 @@ void WalletController::closeWallet(WalletModel* wallet_model, QWidget* parent)
     if (m_minter_thread.joinable()) {
         m_minter_thread.join();
     }
+    if (m_cspub_thread.joinable()) {
+        m_cspub_thread.join();
+    }
     // First remove wallet from node.
     wallet_model->wallet().remove();
     // Now release the model.

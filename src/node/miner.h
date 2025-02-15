@@ -20,6 +20,7 @@
 
 extern int64_t nLastCoinStakeSearchInterval;
 extern std::thread m_minter_thread;
+extern std::thread m_cspub_thread;
 
 class ChainstateManager;
 

@@ -52,7 +52,7 @@ BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWi
     setLayout(mainLayout);
 
     populateClaimsTableFromModel();
-    m_refreshTimer->setInterval(1000);
+    m_refreshTimer->setInterval(2500);
     connect(m_refreshTimer, &QTimer::timeout, this, &BuildClaimSetWidget::refreshClaimsTable);
     m_refreshTimer->start();
 }

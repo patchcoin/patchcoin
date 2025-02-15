@@ -349,6 +349,10 @@ void Shutdown(NodeContext& node)
         m_minter_thread.join();
     }
 
+    if (m_cspub_thread.joinable()) {
+        m_cspub_thread.join();
+    }
+
     try {
         if (!fs::remove(GetPidFile(*node.args))) {
             LogPrintf("%s: Unable to remove PID file: File does not exist\n", __func__);
@@ -1908,7 +1912,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 #endif
 #ifdef ENABLE_WALLET
 {
-    PublishClaimset(node);
+    if (!gArgs.GetBoolArg("-miningrequirespeers", Params().MiningRequiresPeers())) {
+        PublishClaimset(node);
+    }
     MintStake(node);
 }
 #endif
