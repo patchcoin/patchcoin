@@ -400,14 +400,8 @@ void BitcoinGUI::createActions()
     openWebAction = new QAction(tr("&Website"), this);
     openWebAction->setStatusTip(tr("Open the Patchcoin website in a web browser."));
 
-    openDonateAction = new QAction(tr("&Donate"), this);
-    openDonateAction->setStatusTip(tr("Finacially support development of the Patchcoin project."));
-
-    openChatroomAction = new QAction(tr("&Chatroom"), this);
-    openChatroomAction->setStatusTip(tr("Open the Patchcoin Discord chat in a web browser."));
-
     openForumAction = new QAction(tr("&Forum"), this);
-    openForumAction->setStatusTip(tr("Open talk.patchcoin.net in a web browser."));
+    openForumAction->setStatusTip(tr("Open patchcointalk.org in a web browser."));
 
     m_mask_values_action = new QAction(tr("&Mask values"), this);
     m_mask_values_action->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
@@ -424,8 +418,6 @@ void BitcoinGUI::createActions()
     connect(quitAction, &QAction::triggered, rpcConsole, &QWidget::hide);
 
     connect(openWebAction, SIGNAL(triggered()), this, SLOT(openWeb()));
-    connect(openDonateAction, SIGNAL(triggered()), this, SLOT(openDonate()));
-    connect(openChatroomAction, SIGNAL(triggered()), this, SLOT(openChatroom()));
     connect(openForumAction, SIGNAL(triggered()), this, SLOT(openForum()));
 
 #ifdef ENABLE_WALLET
@@ -609,8 +601,6 @@ void BitcoinGUI::createMenuBar()
 
     QMenu *help = appMenuBar->addMenu(tr("&Help"));
     help->addAction(openWebAction);
-    help->addAction(openDonateAction);
-    help->addAction(openChatroomAction);
     help->addAction(openForumAction);
     help->addAction(showHelpMessageAction);
     help->addSeparator();
@@ -1086,17 +1076,8 @@ void BitcoinGUI::openWeb() {
     QDesktopServices::openUrl(QUrl("https://patchcoin.org"));
 }
 
-void BitcoinGUI::openDonate() {
-    QDesktopServices::openUrl(QUrl("https://www.patchcoin.net/foundation"));
-}
-// patchcoin todo
-
-void BitcoinGUI::openChatroom() {
-    QDesktopServices::openUrl(QUrl("https://discord.gg/XPxfwtG"));
-}
-
 void BitcoinGUI::openForum() {
-    QDesktopServices::openUrl(QUrl("https://talk.patchcoin.net"));
+    QDesktopServices::openUrl(QUrl("https://patchcointalk.org"));
 }
 
 void BitcoinGUI::updateNetworkState()
