@@ -18,7 +18,7 @@
 
 CBlockHeaderAndShortTxIDs::CBlockHeaderAndShortTxIDs(const CBlock& block) :
         nonce(GetRand(std::numeric_limits<uint64_t>::max())),
-        shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block), vchBlockSig(block.vchBlockSig) {
+        shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block), vchBlockSig(block.vchBlockSig), vClaim(block.vClaim) {
     FillShortTxIDSelector();
     //TODO: Use our mempool prior to block acceptance to predictively fill more than just the coinbase
     prefilledtxn[0] = {0, block.vtx[0]};
@@ -58,6 +58,7 @@ ReadStatus PartiallyDownloadedBlock::InitData(const CBlockHeaderAndShortTxIDs& c
 
     header = cmpctblock.header;
     vchBlockSig = cmpctblock.vchBlockSig;
+    vClaim = cmpctblock.vClaim;
     txn_available.resize(cmpctblock.BlockTxCount());
 
     int32_t lastprefilledindex = -1;
@@ -186,6 +187,7 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(CBlock& block, const std::vector<
     uint256 hash = header.GetHash();
     block = header;
     block.vchBlockSig = vchBlockSig;
+    block.vClaim = vClaim;
     block.vtx.resize(txn_available.size());
 
     size_t tx_missing_offset = 0;

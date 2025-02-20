@@ -6,6 +6,7 @@
 #ifndef BITCOIN_PRIMITIVES_BLOCK_H
 #define BITCOIN_PRIMITIVES_BLOCK_H
 
+#include <primitives/claim.h>
 #include <primitives/transaction.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -87,6 +88,8 @@ public:
     // peercoin: block signature - signed by coin base txout[0]'s owner
     std::vector<unsigned char> vchBlockSig;
 
+    std::vector<CClaim> vClaim;
+
     // Memory-only flags for caching expensive checks
     mutable bool fChecked;                            // CheckBlock()
     mutable bool m_checked_witness_commitment{false}; // CheckWitnessCommitment()
@@ -106,8 +109,7 @@ public:
     SERIALIZE_METHODS(CBlock, obj)
     {
         READWRITEAS(CBlockHeader, obj);
-        READWRITE(obj.vtx);
-        READWRITE(obj.vchBlockSig);
+        READWRITE(obj.vtx, obj.vchBlockSig, obj.vClaim);
     }
 
     void SetNull()

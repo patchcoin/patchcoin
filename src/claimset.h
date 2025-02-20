@@ -60,7 +60,7 @@ public:
     {
         CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetTargetAddress(), claim.GetSignatureString());
         claimSetClaim.nTime = claim.nTime;
-        claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
+        // claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
         ScriptError serror;
         if (claimSetClaim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             return false;

@@ -989,8 +989,7 @@ private:
     /** peercoin: blocks that are waiting to be processed, the key points to previous CBlockIndex entry */
     struct WaitElement {
         std::shared_ptr<CBlock> pblock;
-        int64_t time;
-        std::set<CScript> neededClaims;
+            int64_t time;
     };
     std::map<CBlockIndex*, WaitElement> mapBlocksWait;
 
@@ -2275,31 +2274,10 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
         pblock = pblockRead;
     }
     if (pblock) {
-        bool veryBigBlock{::GetSerializeSize(pblock, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SERIALIZED_SIZE / 2};
-        std::vector<Claim> claims;
-        if (!veryBigBlock && peer.m_peercoin_snapshot_held) {
-            for (const auto& [script, claim] : g_claims) {
-                for (const auto& [hashBlock, amount] : claim.m_outs) {
-                    if (hashBlock == pblock->GetHash()) {
-                        claims.emplace_back(claim);
-                        break;
-                    }
-                }
-            }
-        }
-        bool sendClaims{!veryBigBlock && peer.m_peercoin_snapshot_held && !claims.empty()};
-
         if (inv.IsMsgBlk()) {
-            if (sendClaims)
-                m_connman.PushMessage(&pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, *pblock, claims));
-            else
-                m_connman.PushMessage(&pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, *pblock));
+            m_connman.PushMessage(&pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, *pblock));
         } else if (inv.IsMsgWitnessBlk()) {
-            if (sendClaims)
-                m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock, claims));
-            else
-                m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock));
-
+            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock));
         } else if (inv.IsMsgFilteredBlk()) {
             bool sendMerkleBlock = false;
             CMerkleBlock merkleBlock;
@@ -2331,22 +2309,13 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
             // instead we respond with the full, non-compact block.
             if (CanDirectFetch() && pindex->nHeight >= m_chainman.ActiveChain().Height() - MAX_CMPCTBLOCK_DEPTH) {
                 if (a_recent_compact_block && a_recent_compact_block->header.GetHash() == pindex->GetBlockHash()) {
-                    if (sendClaims)
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, *a_recent_compact_block, claims));
-                    else
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, *a_recent_compact_block));
+                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, *a_recent_compact_block));
                 } else {
                     CBlockHeaderAndShortTxIDs cmpctblock{*pblock};
-                    if (sendClaims)
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, cmpctblock, claims));
-                    else
-                        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, cmpctblock));
+                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, cmpctblock));
                 }
             } else {
-                if (sendClaims)
-                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock, claims));
-                else
-                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock));
+                m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock));
             }
         }
     }
@@ -4589,59 +4558,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         CBlockHeaderAndShortTxIDs cmpctblock;
         vRecv >> cmpctblock;
-        if (!vRecv.empty() && !genesis_key_held && g_claimindex) {
-            try {
-                std::vector<Claim> claims;
-                vRecv >> claims;
-                if (claims.size() > 100) { // patchcoin todo
-                    Misbehaving(*peer, 100, "too many claims");
-                    return;
-                }
-                Claim dummy;
-                if (!dummy.SnapshotIsValid()) throw std::runtime_error("snapshot invalid");
-                for (const Claim& claim_incoming : claims) {
-                    const std::string source_address = claim_incoming.GetSourceAddress();
-
-                    Claim claim(source_address, claim_incoming.GetTargetAddress(), claim_incoming.GetSignatureString());
-                    if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
-                        Misbehaving(*peer, 100, "invalid claim");
-                        return;
-                    }
-                    ScriptError serror;
-                    if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
-                        Misbehaving(*peer, 100, "invalid claim");
-                        return;
-                    }
-
-                    {
-                        LOCK2(cs_main, g_claims_mutex);
-                        // patchcoin todo dupe check here?
-                        // if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
-                        //     throw std::runtime_error("debounced");
-                        // claims_seen[claim.GetSource()] = GetTime();
-
-                        if (claim.IsUniqueSource()) { // first time we register this thing
-                            claim.nTime = cmpctblock.header.GetBlockTime(); // patchcoin this isn't valid
-                            if (claim.Insert() && g_claimindex->AddClaim(claim)) {
-                                if (!peer->m_scack_sent) {
-                                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
-                                    peer->m_scack_sent = true;
-                                }
-                            } else
-                                throw std::runtime_error("db error");
-                        } /*else { could store nTime if signed
-                            const auto& it4 = g_claims.find(source);
-                            if (it4 != g_claims.end() && it4->second.seen) {
-                                break;
-                            }
-                        }*/
-                    }
-                }
-            }
-            catch (const std::exception& e) {
-                LogPrintf("Error processing claims message: %s\n", e.what());
-            }
-        }
 
         bool received_new_header = false;
         const auto blockhash = cmpctblock.header.GetHash();
@@ -5022,6 +4938,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 vRecv >> headers[n];
                 ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
                 ReadCompactSize(vRecv); // needed for vchBlockSig.
+                ReadCompactSize(vRecv); // claims
 
                 // peercoin: quick check to see if we should ban peers for PoS spam
                 // note: at this point we don't know if PoW headers are valid - we just assume they are
@@ -5072,60 +4989,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         std::shared_ptr<CBlock> pblock2 = std::make_shared<CBlock>();
         vRecv >> *pblock2;
-        if (!vRecv.empty() && !genesis_key_held && g_claimindex) {
-            try {
-                std::vector<Claim> claims;
-                vRecv >> claims;
-                if (claims.size() > 100) { // patchcoin todo
-                    Misbehaving(*peer, 100, "too many claims");
-                    return;
-                }
-                Claim dummy;
-                if (!dummy.SnapshotIsValid()) throw std::runtime_error("snapshot invalid");
-                for (const Claim& claim_incoming : claims) {
-                    const std::string source_address = claim_incoming.GetSourceAddress();
-
-                    Claim claim(source_address, claim_incoming.GetTargetAddress(), claim_incoming.GetSignatureString());
-                    if (claim.IsSourceTargetAddress() || claim.IsSourceTarget()) {
-                        Misbehaving(*peer, 100, "invalid claim");
-                        return;
-                    }
-                    ScriptError serror;
-                    if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
-                        Misbehaving(*peer, 100, "invalid claim");
-                        return;
-                    }
-
-                    {
-                        LOCK2(cs_main, g_claims_mutex);
-                        // patchcoin todo dupe check here?
-                        // if (GetTime() - claims_seen[claim.GetSource()] < 1.5 * 60)
-                        //     throw std::runtime_error("debounced");
-                        // claims_seen[claim.GetSource()] = GetTime();
-
-                        if (claim.IsUniqueSource()) { // first time we register this thing
-                            claim.nTime = pblock2->GetBlockTime(); // patchcoin or check claimset -> doesnt _really_ matter
-                            if (claim.Insert() && g_claimindex->AddClaim(claim)) {
-                                if (!peer->m_scack_sent) {
-                                    m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
-                                    peer->m_scack_sent = true;
-                                }
-                            } else
-                                throw std::runtime_error("db error");
-                        } /*else { could store nTime if signed
-                            const auto& it4 = g_claims.find(source);
-                            if (it4 != g_claims.end() && it4->second.seen) {
-                                break;
-                            }
-                        }*/
-                    }
-                }
-            }
-            catch (const std::exception& e) {
-                LogPrintf("Error processing claims message: %s\n", e.what());
-            }
-        }
-
         int64_t nTimeNow = GetTime();
 
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock2->GetHash().ToString(), pfrom.GetId());
@@ -5172,33 +5035,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 }
             }
             // peercoin: store in memory until we can connect it to some chain
-            WaitElement we;
-            we.pblock = pblock2;
-            we.time = nTimeNow;
-
-            std::set<CScript> neededClaims;
-            const CCoinsViewCache& view = m_chainman.ActiveChainstate().CoinsTip();
-            for (const auto& tx : pblock2->vtx) {
-                if (tx->IsCoinStake()) {
-                    bool usesGenesis = false;
-                    for (const auto& txin : tx->vin) {
-                        const Coin& coinIn = view.AccessCoin(txin.prevout);
-                        if (coinIn.out.scriptPubKey == m_chainparams.GetConsensus().genesisPubKey) {
-                            usesGenesis = true;
-                            break;
-                        }
-                    }
-                    if (usesGenesis) {
-                        for (const auto& txout : tx->vout) {
-                            if (!txout.scriptPubKey.empty() && txout.scriptPubKey != m_chainparams.GetConsensus().genesisPubKey) {
-                                neededClaims.insert(txout.scriptPubKey);
-                            }
-                        }
-                    }
-                }
-            }
-            we.neededClaims = neededClaims;
-
+            WaitElement we; we.pblock = pblock2; we.time = nTimeNow;
             mapBlocksWait[prev_block] = we;
             tip = m_chainman.ActiveChain().Tip();
         }
@@ -5228,66 +5065,28 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     fSelected = true;
                 } else
                 // otherwise: try to scan for it
-                for (auto it2 = mapBlocksWait.begin(); it2 != mapBlocksWait.end(); ) {
-                    pindexPrev = it2->first;
-                    pblock = it2->second.pblock;
+                for (auto& pair : mapBlocksWait) {
+                    pindexPrev = pair.first;
+                    pblock = pair.second.pblock;
                     const uint256 hash(pblock->GetHash());
                     // remove blocks that were not connected in 60 seconds
-                    if (nTimeNow > it2->second.time + 60) {
-                        mapBlocksWait.erase(it2++);
+                    if (nTimeNow > pair.second.time + 60) {
+                        mapBlocksWait.erase(pindexPrev);
                         fContinue = true;
                         RemoveBlockRequest(hash, std::nullopt);
-                        continue;
+                        break;
                     }
                     if (!pindexPrev->IsValid(BLOCK_VALID_TRANSACTIONS)) {
                         if (pindexPrev->nStatus & BLOCK_FAILED_MASK) {
-                            mapBlocksWait.erase(it2++);  // prev block was rejected
+                            mapBlocksWait.erase(pindexPrev);  // prev block was rejected
                             fContinue = true;
                             RemoveBlockRequest(hash, pfrom.GetId());
-                        } else {
-                            ++it2; // prev block was not (yet) accepted on disk, skip to next one
+                            break;
                         }
-                        continue;
+                        continue;   // prev block was not (yet) accepted on disk, skip to next one
                     }
 
-                    std::vector<CScript> missingClaims;
-
-                    // LOCK(g_claims_mutex);
-                    for (const CScript& needed : it2->second.neededClaims) {
-                        bool foundClaim = false;
-                        for (const auto& [_, claim] : g_claims) {
-                            if (claim.GetTarget() == needed) {
-                                foundClaim = true;
-                                break;
-                            }
-                        }
-                        if (!foundClaim) {
-                            missingClaims.push_back(needed);
-                        }
-                    }
-
-                    if (!missingClaims.empty()) {
-                        // patchcoin todo :^)
-                        std::vector<CScript> meh;
-                        for (auto& mc : missingClaims) {
-                            if (std::find(peer->m_claims_requested.begin(), peer->m_claims_requested.end(), mc) == peer->m_claims_requested.end()) {
-                                meh.push_back(mc);
-                            }
-                        }
-                        if (meh.size() > 0) {
-                            m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
-                                AssertLockHeld(cs_main);
-                                if (/*!peer->m_peercoin_snapshot_held || */pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
-                                const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
-                                m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::GETCLAIMS, meh));
-                            });
-
-                        }
-                        ++it2;
-                        continue;
-                    }
-
-                    mapBlocksWait.erase(it2);
+                    mapBlocksWait.erase(pindexPrev);
                     fContinue = true;
                     fSelected = true;
                     break;

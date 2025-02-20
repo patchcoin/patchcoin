@@ -3572,7 +3572,7 @@ double SecurityToOptimalFraction(double security, bool isTestnet) {
 
 // peercoin: create coin stake transaction
 typedef std::vector<unsigned char> valtype;
-bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, CTxDestination destination, CAmount nFees)
+bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, std::vector<Claim>& vClaim, CTxDestination destination, CAmount nFees)
 {
     bool bDebug = (gArgs.GetBoolArg("-debug", false) && gArgs.GetBoolArg("-printcoinstake", false));
 
@@ -3790,8 +3790,6 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         return false;
 
     if (genesisKeyOut == scriptPubKeyOut) {
-        // patchcoin todo use existing or build new claimset?
-        // g_claimindex && g_claimindex->GetAllClaims(claims);
         for (const auto& [_, claim] : g_claims) {
             claims.push_back(claim);
         }
@@ -3809,7 +3807,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             CAmount nEligible = claim.GetEligible();
             if (!claim.GetReceived(pwallet, nTotalReceived))
                 return error("CreateCoinStake : unable to calculate claim total received");
-            LogPrintf("BullShit 1: %s\n", FormatMoney(nTotalReceived));
+            LogPrintf("claim 1: %s\n", FormatMoney(nTotalReceived));
             if (nTotalReceived > nEligible)
                 return error("CreateCoinStake : claim received too many coins");
             if (!(MoneyRange(nEligible) && MoneyRange(nTotalReceived)))
@@ -3967,6 +3965,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                 CAmount amountToSend = std::min(current, neededForClaim);
                 if (amountToSend > 0) {
                     txNew.vout.push_back(CTxOut(amountToSend, claim.GetTarget()));
+                    vClaim.push_back(Claim(claim.GetClaim()));
                     /*
                     if (txNew.vout.size() > (size_t)maxOutputs) {
                         // patchcoin todo

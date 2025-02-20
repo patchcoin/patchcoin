@@ -162,6 +162,11 @@ std::string Claim::GetSignatureString() const {
     return m_signature_string;
 }
 
+CClaim Claim::GetClaim() const
+{
+    return m_claim;
+}
+
 CScript Claim::GetSource() const {
     return *source;
 }
@@ -210,15 +215,17 @@ bool Claim::GetReceived(const wallet::CWallet* pwallet, CAmount& received) const
 
 bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsigned int& outputs) const
 {
-    if (GetEligible() == 0) return false;
-    while (pindex && outputs < m_outs.size()) {
-        const auto& it = m_outs.find(pindex->GetBlockHash());
-        if (it != m_outs.end()) {
-            outputs++;
+    if (GetEligible() <= 0) return false;
+    const CBlockIndex* pindexFrom = pindex;
+    while (pindexFrom) {
+        const auto& it = pindexFrom->nClaims.find(*source);
+        if (it != pindexFrom->nClaims.end()) {
             received += it->second;
+            outputs++;
         }
-        pindex = pindex->pprev;
+        pindexFrom = pindexFrom->pprev;
     }
+
     if (received > m_eligible) {
         return false;
     }
@@ -231,22 +238,20 @@ bool Claim::GetTotalReceived(const CBlockIndex* pindex, CAmount& received, unsig
 void Claim::SetNull()
 {
     // m_claim = CClaim();
-    source.reset();
-    m_peercoin_balances.clear();
-    m_seen = false;
-    m_outs.clear();
-
     m_source_address.clear();
     m_signature_string.clear();
     m_target_address.clear();
+    m_peercoin_balances.clear();
     m_eligible = 0;
 
     snapshotIt = snapshot.end();
     incompatibleSnapshotIt = snapshot_incompatible.end();
+    source.reset();
 
     nTime = 0; // GetTime();
     m_init = false;
     m_compatible = false;
+    m_seen = false;
 
     GENESIS_OUTPUTS_AMOUNT = 0;
     MAX_POSSIBLE_OUTPUTS = 0;

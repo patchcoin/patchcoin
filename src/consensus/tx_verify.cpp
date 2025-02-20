@@ -344,7 +344,7 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
                              strprintf("%s: invalid claim found %s", __func__, ScriptErrorString(serror)));
     }
 
-    if (!claim->GetTotalReceived(pindex, nTotalReceived, nOutputs)) {
+    if (!claim->GetTotalReceived(pindex->pprev, nTotalReceived, nOutputs)) {
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-total-check",
                              strprintf("%s: failed to get claim total received amount", __func__));
     }
@@ -364,17 +364,24 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
 
     if (nTotalReceived > claim->GetEligible()) { // this is the real check
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-exceed-eligible",
-                             strprintf("%s: claim would exceed eligible", __func__));
+                             strprintf("%s: claim would exceed eligible eligible=%s would_receive=%s", __func__, FormatMoney(claim->GetEligible()), FormatMoney(nTotalReceived)));
     }
 
     return true;
 }
 
 bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params,
-    const CTransaction& tx, const unsigned int nTimeTx, std::map<const CScript, std::pair<Claim*, CAmount>>& claims)
+    const CTransaction& tx, const unsigned int nTimeTx, const std::vector<CClaim>& vClaim, std::map<const CScript, std::pair<Claim*, CAmount>>& claims)
 {
+    if (vClaim.empty()) {
+        return true;
+    }
+
     // patchcoin todo claim period is done, stop tracking
     if (nTimeTx - params.genesisNTime > params.nStakeGenesisLockTime) {
+        if (!vClaim.empty()) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-outside-claim-period");
+        }
         return true;
     }
 
@@ -389,10 +396,31 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
     }
 
     if (!isAnyFromGenesis) {
+        if (!vClaim.empty()) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claims-not-empty",
+                strprintf("%s: claims must only originate from genesis", __func__));
+        }
         return true;
     }
 
+    if (vClaim.size() > (tx.vout.size() - 2)) {
+        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claims-too-many",
+            strprintf("%s: claim size must not exceed usable txout size", __func__));
+    }
+
     LOCK(g_claims_mutex);
+
+    for (const CClaim& claim : vClaim) {
+        Claim maybe_valid{claim};
+        ScriptError serror;
+        if (maybe_valid.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-invalid",
+                strprintf("%s: invalid claim found %s", __func__, ScriptErrorString(serror)));
+        }
+        if (maybe_valid.IsUnique() && !maybe_valid.Insert()) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-no-insert");
+        };
+    }
 
     std::map<CScript, CAmount> total_received;
     std::map<CScript, unsigned int> outputs;
@@ -403,7 +431,7 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
         for (auto& [_, fClaim] : g_claims) {
             if (txout.scriptPubKey == fClaim.GetTarget()) {
                 claim = &fClaim;
-                total_received.try_emplace(claim->GetSource(), 0);
+                total_received[claim->GetSource()] = 0;
                 outputs.try_emplace(claim->GetSource(), 0);
                 break;
             }
@@ -431,7 +459,7 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
                   FormatMoney(txout.nValue),
                   FormatMoney(nTotalReceived),
                   FormatMoney(claim->GetEligible()),
-                  nOutputs,
+                  nOutputs - 1,
                   genesis_key_held ? strprintf("/%u", claim->GetMaxOutputs()) : "");
     }
 

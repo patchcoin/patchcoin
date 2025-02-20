@@ -7,6 +7,7 @@
 #define BITCOIN_CHAIN_H
 
 #include <arith_uint256.h>
+#include <claim.h>
 #include <consensus/params.h>
 #include <flatfile.h>
 #include <kernel/cs_main.h>
@@ -277,6 +278,16 @@ public:
     }
 // peercoin end
 
+    std::map<CScript, uint64_t> nClaims;
+
+    std::vector<std::shared_ptr<Claim>> GetClaims() const {
+        std::vector<std::shared_ptr<Claim>> claims;
+        for (const auto& [source, received] : nClaims) {
+            claims.push_back(std::make_shared<Claim>(g_claims[source]));
+        }
+        return claims;
+    }
+
     explicit CBlockIndex(const CBlockHeader& block)
         : nVersion{block.nVersion},
           hashMerkleRoot{block.hashMerkleRoot},
@@ -520,6 +531,8 @@ public:
             READWRITE(obj.prevoutStake);
             READWRITE(obj.nStakeTime);
             READWRITE(obj.hashProofOfStake);
+
+            READWRITE(obj.nClaims);
         }
 
         // block header

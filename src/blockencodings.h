@@ -106,6 +106,7 @@ public:
 
     CBlockHeader header;
     std::vector<unsigned char> vchBlockSig;
+    std::vector<CClaim> vClaim;
 
     // Dummy for deserialization
     CBlockHeaderAndShortTxIDs() {}
@@ -118,7 +119,7 @@ public:
 
     SERIALIZE_METHODS(CBlockHeaderAndShortTxIDs, obj)
     {
-        READWRITE(obj.header, obj.nonce, obj.vchBlockSig, Using<VectorFormatter<CustomUintFormatter<SHORTTXIDS_LENGTH>>>(obj.shorttxids), obj.prefilledtxn);
+        READWRITE(obj.header, obj.nonce, obj.vchBlockSig, obj.vClaim, Using<VectorFormatter<CustomUintFormatter<SHORTTXIDS_LENGTH>>>(obj.shorttxids), obj.prefilledtxn);
         if (ser_action.ForRead()) {
             if (obj.BlockTxCount() > std::numeric_limits<uint16_t>::max()) {
                 throw std::ios_base::failure("indexes overflowed 16 bits");
@@ -136,6 +137,7 @@ protected:
 public:
     CBlockHeader header;
     std::vector<unsigned char> vchBlockSig;
+    std::vector<CClaim> vClaim;
 
     // Can be overridden for testing
     using CheckBlockFn = std::function<bool(const CBlock&, BlockValidationState&, const Consensus::Params&, bool, bool, bool)>;

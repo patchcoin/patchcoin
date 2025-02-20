@@ -81,7 +81,7 @@ private:
     void Init();
 
 public:
-    unsigned int CLAIM_SIZE() const { return m_compatible ? 132 : 1000; };
+    unsigned int CLAIM_SIZE() const { return m_compatible ? 132 : 1000; }
     double GENESIS_OUTPUTS_AMOUNT = 0;
     unsigned int MAX_POSSIBLE_OUTPUTS = 0;
     unsigned int MAX_OUTPUTS = 0;
@@ -90,8 +90,7 @@ public:
     // patchcoin todo do we want these mutable?
     mutable int64_t nTime = 0;
     mutable bool m_seen = false;
-    mutable std::map<uint256, CAmount> m_outs;  // patchcoin todo remove
-    mutable CAmount nTotalReceived = 0;  // patchcoin todo remove
+    mutable CAmount nTotalReceived = 0;
 
     Claim();
     explicit Claim(const std::string& source_address, const std::string& target_address, const std::string& signature_string);
@@ -107,7 +106,7 @@ public:
     {
         READWRITE(obj.m_claim);
         if (s.GetType() & SER_DISK)
-            READWRITE(obj.nTime, obj.m_seen, obj.m_outs, obj.nTotalReceived);
+            READWRITE(obj.nTime, obj.m_seen, obj.nTotalReceived);
         SER_READ(obj, obj.Init());
     }
 
@@ -115,6 +114,7 @@ public:
     std::string GetTargetAddress() const;
     std::string GetSignatureString() const;
 
+    CClaim GetClaim() const;
     CScript GetSource() const; // patchcoin todo: recheck
     std::vector<unsigned char> GetSignature() const;
     CScript GetTarget() const;

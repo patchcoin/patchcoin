@@ -2151,7 +2151,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
-            if (!CheckClaims(tx_state, pindex, view, Params().GetConsensus(), tx, tx.nTime ? tx.nTime : block.nTime, claims)) {
+            if (!CheckClaims(tx_state, pindex, view, Params().GetConsensus(), tx, tx.nTime ? tx.nTime : block.nTime, block.vClaim, claims)) {
                 state.Invalid(BlockValidationResult::BLOCK_CONSENSUS,
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: CheckClaims: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
@@ -2269,6 +2269,20 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (gArgs.GetBoolArg("-printcreation", false))
         LogPrintf("%s: destroy=%s nFees=%lld\n", __func__, FormatMoney(nFees), nFees);
 
+    if (!claims.empty())
+        assert(g_claimindex);
+    for (const auto& [_, p] : claims) {
+        p.first->m_seen = true;
+        if (p.first->nTime == 0)
+            p.first->nTime = pindex->nTime;
+        pindex->nClaims[p.first->GetSource()] = p.second;
+        CAmount nTotal = 0;
+        unsigned int outputs = 0;
+        p.first->GetTotalReceived(pindex, nTotal, outputs);
+        p.first->nTotalReceived = nTotal;
+        g_claimindex->AddClaim(*p.first);
+    }
+
     if (block_hash != params.GetConsensus().hashGenesisBlock) {
         if (!m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, params)) {
             return false;
@@ -2285,20 +2299,6 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (!pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
         pindex->RaiseValidity(BLOCK_VALID_SCRIPTS);
         m_blockman.m_dirty_blockindex.insert(pindex);
-    }
-
-    if (!claims.empty())
-        assert(g_claimindex);
-    for (const auto& [_, p] : claims) {
-        // patchcoin todo error checking
-        CAmount nTotalReceived = 0;
-        unsigned int outputs = 0;
-        p.first->GetTotalReceived(pindex, nTotalReceived, outputs);
-        p.first->m_seen = true;
-        p.first->m_outs[pindex->GetBlockHash()] = p.second;
-        p.first->nTotalReceived = nTotalReceived + p.second;
-        p.first->nTime = pindex->nTime;
-        g_claimindex->AddClaim(*p.first);
     }
 
     // add this block to the view's block chain

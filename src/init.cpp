@@ -97,7 +97,6 @@
 #include <sys/stat.h>
 #endif
 
-#include <claimset.h>
 #include <snapshotmanager.h>
 #include <boost/signals2/signal.hpp>
 #include <index/claimindex.h>
@@ -1531,24 +1530,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
         auto [status, error] = catch_exceptions([&]{ return LoadChainstate(chainman, cache_sizes, options); });
         if (status == node::ChainstateLoadStatus::SUCCESS) {
-            // patchcoin todo verify OOE, unsure about this loop
-            uiInterface.InitMessage(_("Loading peercoin utxo snapshot…").translated);
-            if (!SnapshotManager::Peercoin().LoadSnapshotOnStartup()) {
-                uiInterface.InitMessage(_("Unable to load peercoin utxo snapshot.").translated);
-            }
-            g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
-            if (!g_claimindex->Start()) {
-                LogPrintf("Failed to start ClaimIndex.\n");
-                return false;
-            }
-            // patchcoin todo store them somewhere
-            std::vector<Claim> claims;
-            g_claimindex->GetAllClaims(claims);
-            for (const Claim& claim : claims) {
-                if (!claim.Insert()) {
-                    return false;
-                }
-            }
             uiInterface.InitMessage(_("Verifying blocks…").translated);
             if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
                 LogPrintfCategory(BCLog::PRUNE, "pruned datadir may not have more than %d blocks; only checking available blocks\n",
@@ -1601,6 +1582,25 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     RegisterValidationInterface(node.peerman.get());
 
     // ********************************************************* Step 8: start indexers
+    uiInterface.InitMessage(_("Loading peercoin utxo snapshot…").translated);
+    if (!SnapshotManager::Peercoin().LoadSnapshotOnStartup()) {
+        uiInterface.InitMessage(_("Unable to load peercoin utxo snapshot.").translated);
+    }
+
+    g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
+    if (!g_claimindex->Start()) {
+        LogPrintf("Failed to start ClaimIndex.\n");
+        return false;
+    }
+
+    std::vector<Claim> claims;
+    g_claimindex->GetAllClaims(claims);
+    for (const Claim& claim : claims) {
+        if (!claim.Insert()) {
+            return false;
+        }
+    }
+
     if (const auto error{WITH_LOCK(cs_main, return CheckLegacyTxindex(*Assert(chainman.m_blockman.m_block_tree_db)))}) {
         return InitError(*error);
     }
