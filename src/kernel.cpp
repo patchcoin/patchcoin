@@ -59,12 +59,12 @@ const unsigned int nProtocolV15TestSwitchTime = 1734004800; // Thu 12 Dec 12:00:
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0x0e00670bu )
+    ( 0, 0xfd11f4e7u )
     ;
 
 static std::map<int, unsigned int> mapStakeModifierTestnetCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0x0e00670bu )
+    ( 0, 0xfd11f4e7u )
     ;
 
 // Whether the given coinstake is subject to new v0.3 protocol
@@ -161,6 +161,7 @@ bool IsProtocolV14(const CBlockIndex* pindexPrev)
 // Whether a given block is subject to new v15 protocol
 bool IsProtocolV15(const CBlockIndex* pindexPrev)
 {
+  return true;
   if (Params().NetworkIDString() == CBaseChainParams::REGTEST)
       return true;
 

@@ -233,7 +233,7 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 244683519u,  0x1d00ffff, 6, consensus.genesisValue, consensus.genesisOutputs);
         // MineGenesisBlock(genesis);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
@@ -241,7 +241,7 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(consensus.hashGenesisBlock == uint256S("0x00000000ac42d8edb3d3998251a90bde339d0d715c0987e2947a8d7e47de7280"));
         assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
@@ -337,14 +337,14 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 244683519u,  0x1d00ffff, 6, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(consensus.hashGenesisBlock == uint256S("0x00000000ac42d8edb3d3998251a90bde339d0d715c0987e2947a8d7e47de7280"));
         assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
@@ -482,14 +482,14 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1732230000, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1732230000, 244683519u,  0x1d00ffff, 6, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(consensus.hashGenesisBlock == uint256S("0x00000000ac42d8edb3d3998251a90bde339d0d715c0987e2947a8d7e47de7280"));
         assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
@@ -598,14 +598,14 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 244683519u,  0x1d00ffff, 6, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(consensus.hashGenesisBlock == uint256S("0x00000000ac42d8edb3d3998251a90bde339d0d715c0987e2947a8d7e47de7280"));
         assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
