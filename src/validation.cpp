@@ -871,6 +871,10 @@ bool MemPoolAccept::PolicyScriptChecks(const ATMPArgs& args, Workspace& ws)
     //if (IsProtocolV12(tx.nTime))
     //    scriptVerifyFlags &= SCRIPT_VERIFY_TAPROOT;
 
+    // peercoin: verify anyprevout after fork
+    if (IsProtocolV15(m_active_chainstate.m_chain.Tip()))
+        scriptVerifyFlags &= SCRIPT_VERIFY_ANYPREVOUT;
+
     // Check input scripts and signatures.
     // This is done last to help prevent CPU exhaustion denial-of-service attacks.
     if (!CheckInputScripts(tx, state, m_view, scriptVerifyFlags, true, false, ws.m_precomputed_txdata)) {
@@ -3664,7 +3668,8 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
     // check for version 2, 3 and 4 upgrades
     if ((block.nVersion < 2 && IsProtocolV06(pindexPrev)) ||
         (block.nVersion < 4 && IsProtocolV12(pindexPrev)) ||
-        (block.nVersion < 5 && IsProtocolV14(pindexPrev))) {
+        (block.nVersion < 5 && IsProtocolV14(pindexPrev)) ||
+        (block.nVersion < 6 && IsProtocolV15(pindexPrev))) {
             return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, strprintf("bad-version(0x%08x)", block.nVersion),
                                  strprintf("rejected nVersion=0x%08x block", block.nVersion));
     }
