@@ -55,7 +55,7 @@ static std::string FormatVersion(int nVersion)
 
 std::string FormatFullVersion()
 {
-    static const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
+    static const std::string CLIENT_BUILD(BUILD_DESC BUILD_SUFFIX);
     return CLIENT_BUILD;
 }
 
@@ -75,9 +75,7 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
             ss << "; " << *it;
         ss << ")";
     }
-    ss << "/";
-    ss << "Patchcoin:" << FormatVersion(PEERCOIN_VERSION);
-    ss << "(" << FormatFullVersion() << ")/";
+    ss << "/" << "Patchcoin:" << FormatFullVersion() << ")/";
     return ss.str();
 }
 

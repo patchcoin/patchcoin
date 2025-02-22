@@ -3678,7 +3678,6 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         }
 
         static int nMaxStakeSearchInterval = 60;
-        // patchcoin todo check
         if (header.GetBlockTime() + params.nStakeMinAge > txNew.nTime - nMaxStakeSearchInterval)
             continue; // only count coins meeting min age requirement
 
@@ -3689,7 +3688,6 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             // Search nSearchInterval seconds back up to nMaxStakeSearchInterval
             uint256 hashProofOfStake = uint256();
             COutPoint prevoutStake = pcoin->outpoint;
-            // patchcoin todo: obviously blocking here should only happen for the seed node
             if (CheckStakeKernelHash(nBits, chainman.ActiveChain().Tip(), header, postx.nTxOffset + CBlockHeader::NORMAL_SERIALIZE_SIZE, tx, prevoutStake, txNew.nTime - n, hashProofOfStake, false, chainman.ActiveChainstate()))
             {
                 // Found a kernel
@@ -3994,14 +3992,14 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     return error("CreateCoinStake : failed to get received amount");
                 if (!MoneyRange(nTotalReceived))
                     return error("CreateCoinStake : claim total received out of range");
+                uint16_t pos = claim.GetSnapshotPosition();
+                if (!claim.m_compatible) {
+                    pos += SnapshotManager::Peercoin().GetScriptPubKeys().size() - 1;
+                }
+                if (std::find(queued_claim_pos.begin(), queued_claim_pos.end(), pos) == queued_claim_pos.end()) {
+                    positions.push_back(pos);
+                }
                 if (current <= 0) {
-                    uint16_t pos = claim.GetSnapshotPosition();
-                    if (!claim.m_compatible) {
-                        pos += SnapshotManager::Peercoin().GetScriptPubKeys().size() - 1;
-                    }
-                    if (std::find(queued_claim_pos.begin(), queued_claim_pos.end(), pos) == queued_claim_pos.end()) {
-                        positions.push_back(pos);
-                    }
                     continue;
                 }
                 CAmount neededForClaim = claim.GetEligible() - nTotalReceived;

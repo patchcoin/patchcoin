@@ -31,14 +31,15 @@
 #include <node/interface_ui.h>
 #include <util/exception.h>
 #include <util/thread.h>
+#include <validation.h>
 #include <wallet/wallet.h>
 #include <wallet/coincontrol.h>
 #include <warnings.h>
 #include <wallet/spend.h>
+#include <wallet/wallet.h>
 
 #include <algorithm>
 #include <claimset.h>
-#include <netmessagemaker.h>
 #include <sendclaimset.h>
 #include <utility>
 
@@ -712,8 +713,7 @@ void PoSMiner(NodeContext& m_node)
                 LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString());
                 try {
                     ProcessBlockFound(pblock, Params(), m_node);
-                    // PublishClaimset(*pwallet, connman);
-                }
+                    }
                 catch (const std::runtime_error &e)
                 {
                     LogPrintf("PeercoinMiner runtime error: %s\n", e.what());

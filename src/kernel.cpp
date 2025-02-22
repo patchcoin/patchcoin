@@ -56,12 +56,12 @@ const unsigned int nProtocolV14TestSwitchTime = 1710720000; // Mon 18 Mar 00:00:
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0xfd11f4e7u )
+    ( 0, 0x0e00670bu )
     ;
 
 static std::map<int, unsigned int> mapStakeModifierTestnetCheckpoints =
     boost::assign::map_list_of
-    ( 0, 0xfd11f4e7u )
+    ( 0, 0x0e00670bu )
     ;
 
 // Whether the given coinstake is subject to new v0.3 protocol
@@ -523,7 +523,6 @@ bool CheckStakeKernelHash(unsigned int nBits, CBlockIndex* pindexPrev, const CBl
     const Consensus::Params& params = Params().GetConsensus();
     unsigned int nTimeBlockFrom = blockFrom.GetBlockTime();
 
-    // patchcoin todo
     if (!pindexPrev->pprev && pindexPrev->nMint == params.genesisValue && blockFrom.GetHash() == params.hashGenesisBlock)
         return true;
 

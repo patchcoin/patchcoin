@@ -24,7 +24,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
+#include <thread>
 
 void MineGenesisBlock(CBlock& genesis)
 {
@@ -33,30 +33,80 @@ void MineGenesisBlock(CBlock& genesis)
     arith_uint256 target;
     target.SetCompact(genesis.nBits);
 
-    for (uint32_t nonce = 0; nonce < UINT32_MAX; ++nonce)
-    {
-        genesis.nNonce = nonce;
-        uint256 hash = genesis.GetHash();
+    const unsigned int num_threads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+    std::atomic<bool> found(false);
+    std::mutex solution_mutex;
+    std::mutex cout_mutex;
 
-        if (UintToArith256(hash) <= target)
-        {
-            std::cout << "Genesis block found!" << '\n';
-            std::cout << "Hash: " << hash.ToString() << '\n';
-            std::cout << "Merkle Root: " << genesis.hashMerkleRoot.ToString() << '\n';
-            std::cout << "Time: " << genesis.nTime << '\n';
-            std::cout << "Nonce: " << genesis.nNonce << '\n';
-            std::cout << "nBits: " << genesis.nBits << '\n';
-            std::cout << "Version: " << genesis.nVersion << '\n' << '\n';
-            exit(0);
+    struct Solution {
+        uint32_t nonce;
+        uint256 hash;
+    };
+    Solution solution;
+    bool solution_found = false;
+
+    const uint64_t total_nonces = static_cast<uint64_t>(UINT32_MAX);
+    const uint64_t per_thread = total_nonces / num_threads;
+    const uint64_t remainder = total_nonces % num_threads;
+
+    for (unsigned int i = 0; i < num_threads; ++i) {
+        uint64_t start = i * per_thread;
+        uint64_t end = start + per_thread - 1;
+
+        if (i == num_threads - 1) {
+            end += remainder;
         }
 
-        if (nonce % 1000000 == 0)
-        {
-            std::cout << "Progress: Nonce = " << nonce << ", Hash = " << hash.ToString() << '\n';
+        if (end >= UINT32_MAX) {
+            end = UINT32_MAX - 1;
         }
+
+        threads.emplace_back([&, start, end]() {
+            CBlock local_block = genesis;
+            for (uint32_t nonce = static_cast<uint32_t>(start); nonce <= static_cast<uint32_t>(end); ++nonce) {
+                if (found) {
+                    return;
+                }
+
+                local_block.nNonce = nonce;
+                uint256 hash = local_block.GetHash();
+
+                if (UintToArith256(hash) <= target) {
+                    std::lock_guard<std::mutex> lock(solution_mutex);
+                    if (!solution_found) {
+                        solution.nonce = nonce;
+                        solution.hash = hash;
+                        solution_found = true;
+                        found = true;
+                    }
+                    return;
+                }
+
+                if (nonce % 1000000 == 0) {
+                    std::lock_guard<std::mutex> cout_lock(cout_mutex);
+                    std::cout << "Progress: Nonce = " << nonce << ", Hash = " << hash.ToString() << '\n';
+                }
+            }
+        });
     }
 
-    std::cerr << "Failed to find a valid genesis block within nonce range!" << '\n';
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    if (solution_found) {
+        genesis.nNonce = solution.nonce;
+        std::cout << "Genesis block found!" << '\n';
+        std::cout << "Hash: " << solution.hash.ToString() << '\n';
+        std::cout << "Merkle Root: " << genesis.hashMerkleRoot.ToString() << '\n';
+        std::cout << "Time: " << genesis.nTime << '\n';
+        std::cout << "Nonce: " << genesis.nNonce << '\n';
+        std::cout << "nBits: " << genesis.nBits << '\n';
+        std::cout << "Version: " << genesis.nVersion << '\n' << '\n';
+    } else {
+        std::cerr << "Failed to find a valid genesis block within nonce range!" << '\n';
+    }
 }
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& nReward, const int& nOutputs)
@@ -96,7 +146,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
 static CBlock CreateGenesisBlock(uint32_t nTimeBlock, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& nReward, const int& nOutputs)
 {
     const char* pszTimestamp = "In the blockchain’s fog, coins drift, a patchwork of dreams — miners rest their picks.";
-    const CScript genesisOutputScript = CScript() << ParseHex("031927287154a0983d617652c79e36766af3cb1a0cbeb3ff9e682e44c06c751f6a") << OP_CHECKSIG;
+    const CScript genesisOutputScript = CScript() << ParseHex("031dd4243e7298ab47d869386f80ce9df58d42bd8d6e8d2180d3a83c8dc252fdd5") << OP_CHECKSIG;
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTimeBlock, nNonce, nBits, nVersion, nReward, nOutputs);
 }
 
@@ -182,7 +232,7 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs); // patchcoin todo
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         // MineGenesisBlock(genesis);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
@@ -190,8 +240,8 @@ public:
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -286,15 +336,15 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
         vFixedSeeds.clear();
@@ -431,15 +481,15 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1729375200, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1732230000, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
         vFixedSeeds.clear();
@@ -547,15 +597,15 @@ public:
 
         consensus.genesisValue = 21000000 * COIN;
         consensus.genesisOutputs = 8750;
-        genesis = CreateGenesisBlock(1737151200 - consensus.nStakeMaxAge /* 1729375200 */, 0u,  0x207fffff, 5, consensus.genesisValue, consensus.genesisOutputs);
+        genesis = CreateGenesisBlock(1740006000 - consensus.nStakeMaxAge /* 1732230000 */, 2421564427u,  0x1d00ffff, 5, consensus.genesisValue, consensus.genesisOutputs);
         assert(consensus.genesisValue == genesis.vtx[0]->GetValueOut());
         assert(consensus.genesisOutputs == static_cast<int>(genesis.vtx[0]->vout.size()));
         consensus.hashGenesisBlock = genesis.GetHash();
         consensus.hashGenesisTx = genesis.vtx[0]->GetHash();
         consensus.genesisPubKey = genesis.vtx[0]->vout[0].scriptPubKey;
         consensus.genesisNTime = genesis.nTime;
-        assert(consensus.hashGenesisBlock == uint256S("0x43ac9fa872333bd6d6e09488926237fdb73903d2155a34b5b8e4a0493e17fd7c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3ad49461af6b7ad05c5213116feb54d9bc5a0eb67de45cd4d064b85af5a83e59"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000008a5cf4e57b15cabc7ef21b10762f766bc1466a6bce2ba753a8f2f3a1"));
+        assert(genesis.hashMerkleRoot == uint256S("0x5758f1c6ff152187c10509e5ac4a9ac3c19c5e178e89463f0a2b4bba17e778bd"));
         consensus.hashPeercoinSnapshot = uint256S("0xf482e77541bb103674f1d53bd6fd634e00411f563e864648999597114c38d0c9");
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
