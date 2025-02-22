@@ -99,7 +99,7 @@ static const bool DEFAULT_SPLIT_COINS = true;
 //! Default for -combinecoins
 static const bool DEFAULT_COMBINE_COINS = true;
 //! Default for -checkgithub
-static const bool DEFAULT_CHECK_GITHUB = true;
+static const bool DEFAULT_CHECK_GITHUB = false;
 static const int MAX_COINSTAKE_INPUTS = 4;
 static const CAmount MIN_TARGET_OUTPUT_AMOUNT = 10*COIN;
 static const int RECOMBINE_DIVISOR = 3;
