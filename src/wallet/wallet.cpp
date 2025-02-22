@@ -3813,7 +3813,10 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                         }
                     }
                 }
-                if (maybe_claim.nTotalReceived < maybe_claim.GetEligible()) {
+                CAmount nTotal = 0;
+                unsigned int outputs = 0;
+                maybe_claim.GetTotalReceived(pindex, nTotal, outputs);
+                if (nTotal < maybe_claim.GetEligible()) {
                     queued_claims.push_back(maybe_claim);
                     queued_claim_pos.push_back(claim_pos_c);
                 }
@@ -3824,11 +3827,17 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         for (const auto& [_, claim] : g_claims) {
             bool isQueued = false;
             for (const auto& c_claim : queued_claims) {
-                if (c_claim.GetSource() == claim.GetSource() && c_claim.nTotalReceived >= c_claim.GetEligible()) {
+                CAmount nTotal = 0;
+                unsigned int outputs = 0;
+                claim.GetTotalReceived(pindex, nTotal, outputs);
+                if (c_claim.GetSource() == claim.GetSource() && nTotal >= c_claim.GetEligible()) {
                     isQueued = true;
                 }
             }
-            if (!isQueued && claim.nTotalReceived < claim.GetEligible())
+            CAmount nTotal = 0;
+            unsigned int outputs = 0;
+            claim.GetTotalReceived(pindex, nTotal, outputs);
+            if (!isQueued && nTotal < claim.GetEligible())
                 claims.push_back(claim);
         }
         // patchcoin todo: wait maybe 10-20 claims on network creation?

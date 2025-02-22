@@ -1596,7 +1596,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     std::vector<Claim> claims;
     g_claimindex->GetAllClaims(claims);
     for (const Claim& claim : claims) {
-        if (!claim.Insert()) {
+        if (!claim.Insert(chainman.ActiveTip())) {
             return false;
         }
     }

@@ -487,6 +487,14 @@ bool Claim::Insert() const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex)
     return inserted && !IsUniqueSource();
 }
 
+bool Claim::Insert(const CBlockIndex* pindex) const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex)
+{
+    nTotalReceived = 0;
+    unsigned int outputs = 0;
+    Claim::GetTotalReceived(pindex, nTotalReceived, outputs);
+    return Claim::Insert();
+}
+
 uint256 Claim::GetHash() const
 {
     return SerializeHash(*this);

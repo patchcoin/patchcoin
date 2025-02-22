@@ -136,6 +136,7 @@ public:
     bool IsUniqueSource() const;
     bool IsUniqueTarget() const;
     bool Insert() const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex);
+    bool Insert(const CBlockIndex* pindex) const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex);
     uint256 GetHash() const;
     unsigned int GetBaseSize() const;
 
