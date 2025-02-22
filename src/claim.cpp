@@ -179,6 +179,14 @@ CScript Claim::GetTarget() const {
     return m_claim.target;
 }
 
+uint16_t Claim::GetSnapshotPosition() const
+{
+    if (m_compatible) {
+        return static_cast<uint16_t>(std::distance(snapshot.begin(), snapshotIt));
+    }
+    return static_cast<uint16_t>(std::distance(snapshot_incompatible.begin(), incompatibleSnapshotIt));
+}
+
 CAmount Claim::GetPeercoinBalance() const {
     CAmount balance = 0;
     for (const auto& bal : m_peercoin_balances) {

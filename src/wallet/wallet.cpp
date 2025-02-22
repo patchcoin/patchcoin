@@ -62,6 +62,7 @@
 #include <boost/foreach.hpp>
 #include <index/claimindex.h>
 #include <claim.h>
+#include <snapshotmanager.h>
 
 using interfaces::FoundBlock;
 
@@ -3789,9 +3790,48 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     if (nCredit == 0 || nCredit > nAllowedBalance)
         return false;
 
+    std::vector<uint16_t> queued_claim_pos;
     if (genesisKeyOut == scriptPubKeyOut) {
+        std::vector<Claim> queued_claims;
+        const CBlockIndex* pindex = chainman.ActiveTip();
+        const auto& compatible = SnapshotManager::Peercoin().GetScriptPubKeys();
+        const auto& incompatible = SnapshotManager::Peercoin().GetIncompatibleScriptPubKeys();
+
+        for (const CBlockIndex* pindexWalk = pindex; pindexWalk != nullptr; pindexWalk = pindexWalk->pprev) {
+            for (uint16_t claim_pos : pindexWalk->queuedClaims) {
+                const uint16_t claim_pos_c = claim_pos;
+                Claim maybe_claim;
+                if (claim_pos < compatible.size()) {
+                    auto it = std::next(compatible.begin(), claim_pos);
+                    if (it != compatible.end()) {
+                        maybe_claim = g_claims[it->first];
+                    }
+                } else {
+                    claim_pos -= compatible.size() - 1;
+                    if (claim_pos < incompatible.size()) {
+                        auto it = std::next(incompatible.begin(), claim_pos);
+                        if (it != incompatible.end()) {
+                            maybe_claim = g_claims[it->first];
+                        }
+                    }
+                }
+                if (maybe_claim.nTotalReceived < maybe_claim.GetEligible()) {
+                    queued_claims.push_back(maybe_claim);
+                    queued_claim_pos.push_back(claim_pos_c);
+                }
+            }
+        }
+        std::reverse(queued_claims.begin(), queued_claims.end());
+
         for (const auto& [_, claim] : g_claims) {
-            claims.push_back(claim);
+            bool isQueued = false;
+            for (const auto& c_claim : queued_claims) {
+                if (c_claim.GetSource() == claim.GetSource() && c_claim.nTotalReceived >= c_claim.GetEligible()) {
+                    isQueued = true;
+                }
+            }
+            if (!isQueued && claim.nTotalReceived < claim.GetEligible())
+                claims.push_back(claim);
         }
         // patchcoin todo: wait maybe 10-20 claims on network creation?
         if (claims.empty() && chainman.ActiveHeight() == 0)
@@ -3815,10 +3855,6 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         }
         genesis_key_held = true;
     }
-    /*
-    if (claims.size() < 3)
-        return false;
-        */
 
     {
         if (!claims.empty() && genesis_key_held) {
@@ -3943,6 +3979,8 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             if (!claims.empty())
                 txNew.vout.push_back(CTxOut(0, genesisKeyOut));
 
+            std::vector<uint16_t> positions;
+
             for (auto &claim : claims)
             {
                 // patchcoin todo tally everything at the end, maybe not even in this loop to absolutely ensure we're not randomly dropping / adding anything
@@ -3956,6 +3994,16 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     return error("CreateCoinStake : failed to get received amount");
                 if (!MoneyRange(nTotalReceived))
                     return error("CreateCoinStake : claim total received out of range");
+                if (current <= 0) {
+                    uint16_t pos = claim.GetSnapshotPosition();
+                    if (!claim.m_compatible) {
+                        pos += SnapshotManager::Peercoin().GetScriptPubKeys().size() - 1;
+                    }
+                    if (std::find(queued_claim_pos.begin(), queued_claim_pos.end(), pos) == queued_claim_pos.end()) {
+                        positions.push_back(pos);
+                    }
+                    continue;
+                }
                 CAmount neededForClaim = claim.GetEligible() - nTotalReceived;
                 if (neededForClaim <= 0) {
                     // patchcoin this might result in issues / blocking
@@ -3967,7 +4015,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     txNew.vout.push_back(CTxOut(amountToSend, claim.GetTarget()));
                     vClaim.push_back(Claim(claim.GetClaim()));
                     /*
-                    if (txNew.vout.size() > (size_t)maxOutputs) {
+                    if (txNew.vout.size() > (size_t)maxOutputs) { patchcoin todo
                         // patchcoin todo
                         txNew.vout.pop_back();
                         outputsOk = false;
@@ -3990,9 +4038,14 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     break;
                 }
 
-                if (current <= 0) {
-                    break;
-                }
+                // if (current <= 0) {
+                //     uint16_t pos = claim.GetSnapshotPosition();
+                //     if (!claim.m_compatible) {
+                //         pos += SnapshotManager::Peercoin().GetScriptPubKeys().size() - 1;
+                //     };
+                //     positions.push_back(pos);
+                //     break;
+                // }
             }
 
             /*if (!outputsOk) {
@@ -4010,6 +4063,45 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     maxOutputs--;
                 }
             }
+
+            std::vector<uint16_t> acceptedPositions;
+
+            for (const uint16_t& pos : positions) {
+                acceptedPositions.push_back(pos);
+
+                CMutableTransaction tempTx = txNew;
+
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss << acceptedPositions;
+                std::vector<unsigned char> payload;
+                payload.reserve(ss.size());
+                for (const auto b : ss) {
+                    payload.push_back(static_cast<unsigned char>(b));
+                }
+                CScript opReturnScript = CScript() << OP_RETURN << payload;
+
+                if (::GetSerializeSize(opReturnScript, SER_NETWORK, PROTOCOL_VERSION) > MAX_OP_RETURN_RELAY) {
+                    break;
+                }
+
+                tempTx.vout.push_back(CTxOut(0, opReturnScript));
+
+                if (::GetSerializeSize(tempTx, SER_NETWORK, PROTOCOL_VERSION) > 1000)
+                {
+                    acceptedPositions.pop_back();
+                    break;
+                }
+            }
+
+            CDataStream ssFinal(SER_NETWORK, PROTOCOL_VERSION);
+            ssFinal << acceptedPositions;
+            std::vector<unsigned char> finalPayload;
+            finalPayload.reserve(ssFinal.size());
+            for (const auto b : ssFinal) {
+                finalPayload.push_back(static_cast<unsigned char>(b));
+            }
+            CScript finalOpReturnScript = CScript() << OP_RETURN << finalPayload;
+            txNew.vout.push_back(CTxOut(0, finalOpReturnScript));
         } else {
             // split and set amounts based on rfc28
             if (pwallet->m_split_coins) {

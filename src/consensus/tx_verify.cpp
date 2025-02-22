@@ -261,72 +261,26 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, 
     return true;
 }
 
-bool CheckClaimOutputFormat(TxValidationState& state, const CCoinsViewCache& view, const Consensus::Params& params, const CTransaction& tx,
-   const CTxOut& txout, const unsigned int pos, const Claim* claim)
+bool IsOpReturn(const CScript& script)
 {
-    // Two allowed output formats:
-    //
-    // Format A (2 outputs):
-    //   [0]: CTxOut(nValue=0, scriptPubKey=)
-    //   [1]: CTxOut(nValue=AllInputs, scriptPubKey=genesis)
-    //
-    // Format B (≥3 outputs):
-    //   [0]: CTxOut(nValue=0, scriptPubKey=)
-    //   [1]: CTxOut(nValue=0, scriptPubKey=genesis)
-    //   [>=2 and < last]: claims (non-genesis)
-    //   [last]: can be genesis or a claim
-
-    if (pos == 0) {
-        if (txout.nValue != 0 || !txout.scriptPubKey.empty()) {
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-first-out",
-                strprintf("%s: first output must be zero value and empty scriptPubKey", __func__));
-        }
-        return true;
+    CScript::const_iterator it = script.begin();
+    opcodetype opcode;
+    if (it != script.end() && script.GetOp(it, opcode))
+    {
+        return opcode == OP_RETURN;
     }
-
-    if (pos == 1) {
-        if (txout.scriptPubKey != params.genesisPubKey) {
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-genesis",
-                strprintf("%s: second output must have genesisPubKey", __func__));
-        }
-        if (tx.vout.size() == 2) {
-            CAmount inputValue = 0;
-            for (const auto& in : tx.vin) {
-                const Coin& coinIn = view.AccessCoin(in.prevout);
-                inputValue += coinIn.out.nValue;
-            }
-            if (txout.nValue != inputValue) {
-                return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-value",
-                    strprintf("%s: second output must carry entire input (%s != %s)", __func__, FormatMoney(txout.nValue), FormatMoney(inputValue)));
-            }
-        } else if (txout.nValue != 0) {
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-second-multi",
-                strprintf("%s: second output must be zero value for multi-output claims", __func__));
-        }
-        return true;
-    }
-
-    if (pos != tx.vout.size() - 1) {
-        if (txout.scriptPubKey == params.genesisPubKey) {
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-genesis",
-                strprintf("%s: additional (non-last) outputs cannot use genesisPubKey", __func__));
-        }
-        if (claim == nullptr) {
-            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-nonlast-claim",
-                strprintf("%s: additional (non-last) output must match a claim script", __func__));
-        }
-        return true;
-    }
-
-    if (txout.scriptPubKey != params.genesisPubKey && claim == nullptr) {
-        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
-            strprintf("%s: last output must be either genesisPubKey or a valid claim script (dest=%s)", __func__,
-                      HexStr(txout.scriptPubKey)));
-    }
-
-    return true;
+    return false;
 }
 
+bool CheckClaimOutputFormat(TxValidationState& state, const Consensus::Params& params,
+                            const CScript& scriptPubKey, const Claim* claim)
+{
+    // patchcoin todo: re-add format verification. the entries that existed here during development were mostly done for sanity checking before committing a block, not for consensus reasons
+    if (scriptPubKey.empty() || claim != nullptr || scriptPubKey == params.genesisPubKey || IsOpReturn(scriptPubKey)) {
+        return true;
+    }
+    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-format");
+}
 
 bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const Claim* claim, const CBlockIndex* pindex,
                               const std::map<const CScript, std::pair<Claim*, CAmount>>& claims, CAmount& nTotalReceived, unsigned int& nOutputs)
@@ -371,7 +325,7 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
 }
 
 bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params,
-    const CTransaction& tx, const unsigned int nTimeTx, const std::vector<CClaim>& vClaim, std::map<const CScript, std::pair<Claim*, CAmount>>& claims)
+    const CTransaction& tx, const unsigned int nTimeTx, const std::vector<CClaim>& vClaim, std::map<const CScript, std::pair<Claim*, CAmount>>& claims, std::vector<uint16_t>& queued_claims)
 {
     if (vClaim.empty()) {
         return true;
@@ -437,11 +391,42 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
             }
         }
 
-        if (!CheckClaimOutputFormat(state, view, params, tx, txout, pos, claim)) {
+        if (!CheckClaimOutputFormat(state, params, txout.scriptPubKey, claim)) {
             return false;
         }
 
         if (claim == nullptr) {
+            if (IsOpReturn(txout.scriptPubKey)) {
+                if (txout.nValue != 0) {
+                    return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-op-return-not-zero");
+                };
+                std::vector<unsigned char> payload;
+                {
+                    opcodetype opcode;
+                    std::vector<unsigned char> data;
+                    CScript::const_iterator it = txout.scriptPubKey.begin();
+
+                    if (!txout.scriptPubKey.GetOp(it, opcode, data) || opcode != OP_RETURN) {
+                        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
+                        strprintf("%s: OP_RETURN not found", __func__));
+                    }
+                    if (!txout.scriptPubKey.GetOp(it, opcode, data)) {
+                        return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-last-out",
+                        strprintf("%s: no payload found after OP_RETURN", __func__));
+                    }
+                    payload = data;
+                }
+
+                CDataStream ds(payload, SER_NETWORK, PROTOCOL_VERSION);
+                ds >> queued_claims;
+                for (const CBlockIndex* pindexWalk = pindex->pprev; pindexWalk != nullptr; pindexWalk = pindexWalk->pprev) {
+                    for (const uint16_t& claim_pos : queued_claims) {
+                        if (std::find(pindexWalk->queuedClaims.begin(), pindexWalk->queuedClaims.end(), claim_pos) != pindexWalk->queuedClaims.end()) {
+                            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-already-queued");
+                        }
+                    }
+                }
+            }
             continue;
         }
 

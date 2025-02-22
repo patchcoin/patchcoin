@@ -4375,7 +4375,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (dummy.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             Misbehaving(*peer, 100, "invalid claim");
             return;
-        };
+        }
 
         LOCK2(cs_main, cs_claims_seen);
         if (GetTime() - claims_seen[dummy.GetSource()] < 1.5 * 60)
@@ -4390,6 +4390,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(g_claims_mutex);
             if (claim.IsUniqueSource()) { // first time we register this thing
+                claim.nTime = GetTime();
                 if (claim.Insert() && g_claimindex->AddClaim(claim)) {
                     if (!peer->m_scack_sent) {
                         m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SCACK));
@@ -4403,64 +4404,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         m_connman.ForEachNode([&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
             AssertLockHeld(cs_main);
-            if (/*!peer->m_peercoin_snapshot_held || */pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
+            if (!peer->m_peercoin_snapshot_held || pnode->fDisconnect || pfrom.GetId() == pnode->GetId()) return;
             const CNetMsgMaker msgMakerNode(pnode->GetCommonVersion());
             m_connman.PushMessage(pnode, msgMakerNode.Make(NetMsgType::CLAIM, claim));
         });
 
-        return;
-    }
-
-    if (msg_type == NetMsgType::GETCLAIMS) { // patchcoin todo network size check
-        std::vector<CScript> request_claims;
-        vRecv >> request_claims;
-
-        std::vector<Claim> found_claims;
-        // {
-            // LOCK(g_claims_mutex);
-            for (const auto& script : request_claims) {
-                for (const auto& [_, claim] : g_claims) {
-                    if (script == claim.GetTarget())
-                        found_claims.push_back(claim);
-                }
-            }
-        // }
-
-        if (!found_claims.empty()) {
-            m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDCLAIMS, found_claims));
-            LogPrint(BCLog::NET, "Responding with %u claims to peer=%d\n", found_claims.size(), pfrom.GetId());
-        }
-        return;
-    }
-
-
-    if (msg_type == NetMsgType::SENDCLAIMS) {
-        std::vector<Claim> incoming_claims;
-        vRecv >> incoming_claims;
-
-        for (const auto& c : incoming_claims) {
-            ScriptError serror;
-            if (c.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
-                Misbehaving(*peer, 10, "invalid-claim");
-                return;
-            }
-            bool inserted_ok{false};
-            {
-                LOCK2(cs_main, g_claims_mutex);
-                if (c.IsUniqueSource()) { // first time we register this thing
-                    // patchcoin todo add to claims seen?
-                    // LOCK2(cs_main, g_claims_mutex);
-                    if (c.Insert() && g_claimindex->AddClaim(c)) {
-                        inserted_ok = true;
-                    }
-                }
-            }
-            if (inserted_ok) {
-                LogPrint(BCLog::NET, "Accepted claim: %s\n", c.GetSourceAddress());
-            } else {
-                LogPrint(BCLog::NET, "THIS CLAIM SUCKS: %s\n", c.GetSourceAddress());
-            }
-        }
         return;
     }
 

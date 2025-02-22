@@ -78,7 +78,7 @@ bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> loc
  */
 bool SequenceLocks(const CTransaction &tx, int flags, std::vector<int>& prevHeights, const CBlockIndex& block);
 
-bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params, const CTransaction& tx, const unsigned int nTimeTx, const std::vector<CClaim>& vClaim, std::map<const CScript, std::pair<Claim*, CAmount>>& claims);
+bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoinsViewCache& view, const Consensus::Params& params, const CTransaction& tx, const unsigned int nTimeTx, const std::vector<CClaim>& vClaim, std::map<const CScript, std::pair<Claim*, CAmount>>& claims, std::vector<uint16_t>& queued_claims);
 
 // peercoin: minimum fee for transaction to be accepted in a blockchain.
 CAmount GetMinFee(const CTransaction& tx, unsigned int nTimeTx);

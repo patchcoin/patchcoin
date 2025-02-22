@@ -271,10 +271,6 @@ extern const char* SENDPEERCOINSNAPSHOT;
 
 extern const char* CLAIM;
 
-extern const char* GETCLAIMS;
-
-extern const char* SENDCLAIMS;
-
 extern const char* CLAIMSET;
 
 extern const char* CLAIMSETPING;

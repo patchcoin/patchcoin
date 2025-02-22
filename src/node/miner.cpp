@@ -805,7 +805,7 @@ void static ThreadCsPub(NodeContext& m_node)
                     }
                 }
 
-                if (has_new_claims || timeout_occurred) {
+                if (has_new_claims/* || timeout_occurred*/) {
                     CClaimSet sendThis;
                     bool success = true;
 

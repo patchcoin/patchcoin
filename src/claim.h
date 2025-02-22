@@ -4,6 +4,7 @@
 #include <map>
 #include <pubkey.h>
 #include <sync.h>
+#include <unordered_set>
 #include <consensus/amount.h>
 #include <script/script.h>
 #include <util/strencodings.h>
@@ -119,6 +120,7 @@ public:
     std::vector<unsigned char> GetSignature() const;
     CScript GetTarget() const;
 
+    uint16_t GetSnapshotPosition() const;
     CAmount GetPeercoinBalance() const;
     CAmount GetEligible() const;
     CAmount GetMaxOutputs() const;

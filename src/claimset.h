@@ -44,7 +44,7 @@ public:
     std::vector<CClaimSetClaim> claims;
     int64_t nTime = GetTime();
     std::vector<unsigned char> vchSig;
-    // patchcoin todo move this to private
+    mutable bool fChecked = false;
 
     CClaimSet() = default;
     ~CClaimSet() = default;
@@ -110,6 +110,9 @@ public:
 
     bool IsValid() const
     {
+        if (fChecked)
+            return true;
+
         if (IsEmpty()) {
             return false;
         }
@@ -143,6 +146,8 @@ public:
                 return false;
             }
         }
+
+        fChecked = true;
 
         return true;
     }

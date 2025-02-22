@@ -67,6 +67,7 @@
 #include <optional>
 #include <kernel.h>
 #include <bignum.h>
+#include <snapshotmanager.h>
 #include <timedata.h>
 #include <wallet/wallet.h>
 
@@ -2126,6 +2127,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     std::vector<PrecomputedTransactionData> txsdata(block.vtx.size());
 
     std::map<const CScript, std::pair<Claim*, CAmount>> claims;
+    std::vector<uint16_t> queued_claims;
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int64_t nValueIn = 0;
@@ -2151,7 +2153,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
-            if (!CheckClaims(tx_state, pindex, view, Params().GetConsensus(), tx, tx.nTime ? tx.nTime : block.nTime, block.vClaim, claims)) {
+            if (!CheckClaims(tx_state, pindex, view, Params().GetConsensus(), tx, tx.nTime ? tx.nTime : block.nTime, block.vClaim, claims, queued_claims)) {
                 state.Invalid(BlockValidationResult::BLOCK_CONSENSUS,
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: CheckClaims: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
@@ -2232,6 +2234,23 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-ms-amount");
     }
 
+    const uint16_t max_pos = SnapshotManager::Peercoin().GetScriptPubKeys().size() + SnapshotManager::Peercoin().GetIncompatibleScriptPubKeys().size() - 2;
+
+    for (const uint16_t& claim_pos : queued_claims) {
+        if (claim_pos > max_pos) {
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-queue",
+                                 strprintf("%s: claim out of range", __func__));
+        }
+    }
+
+    for (const CBlockIndex* pindexWalk = pindex->pprev; pindexWalk != nullptr; pindexWalk = pindexWalk->pprev) {
+        for (const uint16_t& claim_pos : queued_claims) {
+            if (std::find(pindexWalk->queuedClaims.begin(), pindexWalk->queuedClaims.end(), claim_pos) != pindexWalk->queuedClaims.end()) {
+                return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-claim-already-queued");
+            }
+        }
+    }
+
     const auto time_3{SteadyClock::now()};
     time_connect += time_3 - time_2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(),
@@ -2271,6 +2290,9 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
 
     if (!claims.empty())
         assert(g_claimindex);
+
+    pindex->queuedClaims = queued_claims;
+
     for (const auto& [_, p] : claims) {
         p.first->m_seen = true;
         if (p.first->nTime == 0)

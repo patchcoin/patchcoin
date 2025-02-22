@@ -67,27 +67,48 @@ bool BuildAndSignClaimSet(CClaimSet& claimSet, const CWallet& wallet)
 void ApplyClaimSet(const CClaimSet& claimset)
 {
     LOCK2(cs_main, g_claims_mutex);
-    if (!g_claimindex) return;
+    if (!g_claimindex) {
+        return;
+    }
 
     for (const CClaimSetClaim& cClaim : claimset.claims) {
         ScriptError serror;
-        if (cClaim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) return;
-        const Claim claim(cClaim.GetSourceAddress(), cClaim.GetTargetAddress(), cClaim.GetSignatureString());
+        if (cClaim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
+            return;
+        }
+
+        Claim claim(cClaim.GetSourceAddress(), cClaim.GetTargetAddress(), cClaim.GetSignatureString());
         claim.nTime = cClaim.nTime;
-        if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) return;
-        const auto& it = g_claims.find(claim.GetSource());
+
+        if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
+            return;
+        }
+
+        auto it = g_claims.find(claim.GetSource());
         if (it == g_claims.end()) {
             claim.m_seen = true;
-            if (!(claim.Insert() && g_claimindex->AddClaim(claim)))
+            if (!claim.Insert()) {
                 return;
+            }
+            if (!g_claimindex->AddClaim(claim)) {
+                return;
+            }
         } else {
-            it->second.m_seen = true;
-            it->second.nTime = claim.nTime;
-            Claim claim_t;
-            g_claimindex->FindClaim(claim.GetSource(), claim_t);
-            claim_t.nTime = claim.nTime;
-            claim_t.m_seen = true;
-            g_claimindex->AddClaim(claim_t);
+            if (!it->second.m_seen) {
+                it->second.m_seen = true;
+                it->second.nTime = claim.nTime;
+
+                Claim claim_t;
+                if (!g_claimindex->FindClaim(claim.GetSource(), claim_t)) {
+                    return;
+                }
+                claim_t.nTime = claim.nTime;
+                claim_t.m_seen = true;
+
+                if (!g_claimindex->AddClaim(claim_t)) {
+                    return;
+                }
+            }
         }
     }
 }
