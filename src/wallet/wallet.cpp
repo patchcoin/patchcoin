@@ -4090,16 +4090,17 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
                     break;
                 }
             }
-
-            CDataStream ssFinal(SER_NETWORK, PROTOCOL_VERSION);
-            ssFinal << acceptedPositions;
-            std::vector<unsigned char> finalPayload;
-            finalPayload.reserve(ssFinal.size());
-            for (const auto b : ssFinal) {
-                finalPayload.push_back(static_cast<unsigned char>(b));
+            if (acceptedPositions.size()) {
+                CDataStream ssFinal(SER_NETWORK, PROTOCOL_VERSION);
+                ssFinal << acceptedPositions;
+                std::vector<unsigned char> finalPayload;
+                finalPayload.reserve(ssFinal.size());
+                for (const auto b : ssFinal) {
+                    finalPayload.push_back(static_cast<unsigned char>(b));
+                }
+                CScript finalOpReturnScript = CScript() << OP_RETURN << finalPayload;
+                txNew.vout.push_back(CTxOut(0, finalOpReturnScript));
             }
-            CScript finalOpReturnScript = CScript() << OP_RETURN << finalPayload;
-            txNew.vout.push_back(CTxOut(0, finalOpReturnScript));
         } else {
             // split and set amounts based on rfc28
             if (pwallet->m_split_coins) {
