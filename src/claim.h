@@ -139,6 +139,7 @@ public:
     bool Insert(const CBlockIndex* pindex) const EXCLUSIVE_LOCKS_REQUIRED(g_claims_mutex);
     uint256 GetHash() const;
     unsigned int GetBaseSize() const;
+    std::string ToString() const;
 
     friend bool operator==(const Claim& a, const Claim& b) { return a.GetSource() == b.GetSource(); }
     friend bool operator!=(const Claim& a, const Claim& b) { return a.GetSource() != b.GetSource(); }

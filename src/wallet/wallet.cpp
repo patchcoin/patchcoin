@@ -3846,6 +3846,7 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         std::sort(claims.begin(), claims.end(), [](const Claim& a, const Claim& b) {
             return a.nTime < b.nTime;
         });
+        unsigned int upcoming_count = 0;
         for (const auto& claim : claims) {
             ScriptError serror;
             if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK)
@@ -3854,11 +3855,12 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             CAmount nEligible = claim.GetEligible();
             if (!claim.GetReceived(pwallet, nTotalReceived))
                 return error("CreateCoinStake : unable to calculate claim total received");
-            LogPrintf("claim 1: %s\n", FormatMoney(nTotalReceived));
             if (nTotalReceived > nEligible)
                 return error("CreateCoinStake : claim received too many coins");
             if (!(MoneyRange(nEligible) && MoneyRange(nTotalReceived)))
                 return error("CreateCoinStake : claim eligible or total received out of range");
+            if (upcoming_count++ <= 10)
+                LogPrintf("Queued claim %s: %s\n", upcoming_count, claim.ToString());
         }
         genesis_key_held = true;
     }

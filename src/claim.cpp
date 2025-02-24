@@ -504,3 +504,19 @@ unsigned int Claim::GetBaseSize() const
 {
     return ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
 }
+
+std::string Claim::ToString() const
+{
+    std::stringstream s;
+    s << strprintf("Claim(hash=%s, source_address=%s, target_address=%s, eligible=%lld, peercoin_balance=%lld, compatible=%s, init=%s, snapshotPos=%u)\n",
+        GetHash().ToString(),
+        m_source_address,
+        m_target_address,
+        m_eligible,
+        GetPeercoinBalance(),
+        m_compatible ? "true" : "false",
+        m_init ? "true" : "false",
+        GetSnapshotPosition());
+    s << "Signature: " << m_signature_string << "\n";
+    return s.str();
+}
