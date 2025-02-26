@@ -166,10 +166,12 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
+    /*
     if (m_mempool) {
         LOCK(m_mempool->cs);
         addPackageTxs(*m_mempool, nPackagesSelected, nDescendantsUpdated, pblock->nTime);
     }
+    */
 
     const auto time_1{SteadyClock::now()};
 
