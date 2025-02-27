@@ -3573,7 +3573,7 @@ double SecurityToOptimalFraction(double security, bool isTestnet) {
 
 // peercoin: create coin stake transaction
 typedef std::vector<unsigned char> valtype;
-bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, std::vector<Claim>& vClaim, CTxDestination destination, CAmount nFees)
+bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwallet, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, std::vector<Claim>& vClaim, CTxDestination destination, CAmount nFees, const uint64_t& nBlockTx)
 {
     bool bDebug = (gArgs.GetBoolArg("-debug", false) && gArgs.GetBoolArg("-printcoinstake", false));
 
@@ -3788,8 +3788,11 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
     if (nCredit == 0 || nCredit > nAllowedBalance)
         return false;
 
-    std::vector<uint16_t> queued_claim_pos;
     if (genesisKeyOut == scriptPubKeyOut) {
+        genesis_key_held = true;
+    }
+    std::vector<uint16_t> queued_claim_pos;
+    if (nBlockTx == 0 && genesis_key_held) {
         std::vector<Claim> queued_claims;
         const CBlockIndex* pindex = chainman.ActiveTip();
         const auto& compatible = SnapshotManager::Peercoin().GetScriptPubKeys();
@@ -3862,7 +3865,6 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
             if (upcoming_count++ <= 10)
                 LogPrintf("Queued claim %s: %s\n", upcoming_count, claim.ToString());
         }
-        genesis_key_held = true;
     }
 
     {

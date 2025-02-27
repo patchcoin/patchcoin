@@ -166,12 +166,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
-    /*
-    if (m_mempool) {
+    if (pindexPrev->pprev && pindexPrev->pprev->nClaims.size() && pindexPrev->pprev->pprev && pindexPrev->pprev->pprev->nClaims.size() && m_mempool) {
         LOCK(m_mempool->cs);
         addPackageTxs(*m_mempool, nPackagesSelected, nDescendantsUpdated, pblock->nTime);
     }
-    */
 
     const auto time_1{SteadyClock::now()};
 
@@ -203,7 +201,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         int64_t nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
         {
-            if (pwallet->CreateCoinStake(*m_node->chainman, pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake, vClaim, destination, nFees))
+            if (pwallet->CreateCoinStake(*m_node->chainman, pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake, vClaim, destination, nFees, nBlockTx))
             {
                 if (txCoinStake.nTime >= std::max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - (IsProtocolV09(pindexPrev->GetBlockTime()) ? MAX_FUTURE_BLOCK_TIME : MAX_FUTURE_BLOCK_TIME_PREV9)))
                 {   // make sure coinstake would meet timestamp protocol
