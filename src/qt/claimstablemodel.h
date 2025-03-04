@@ -14,6 +14,15 @@ struct ClaimData {
     double received;
     double eligible;
     double original;
+    bool operator==(const ClaimData& other) const {
+        return queued == other.queued &&
+               sourceAddress == other.sourceAddress &&
+               targetAddress == other.targetAddress &&
+               time == other.time &&
+               received == other.received &&
+               eligible == other.eligible &&
+               original == other.original;
+    }
 };
 
 class ClaimsTableModel : public QAbstractTableModel

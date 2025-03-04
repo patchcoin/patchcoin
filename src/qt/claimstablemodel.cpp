@@ -100,9 +100,7 @@ Qt::ItemFlags ClaimsTableModel::flags(const QModelIndex &index) const
 
 void ClaimsTableModel::updateData(const std::vector<Claim>& claims)
 {
-    beginResetModel();
-    m_claims.clear();
-
+    std::vector<ClaimData> claims_data{};
     for (const auto& c : claims) {
         ClaimData data;
         data.queued = QString::fromStdString(c.m_seen ? "✔️" : "❌"); // lol
@@ -116,8 +114,14 @@ void ClaimsTableModel::updateData(const std::vector<Claim>& claims)
         data.original = c.GetPeercoinBalance(); // patchcoin todo
         data.eligible = c.GetEligible();
 
-        m_claims.push_back(data);
+        claims_data.push_back(data);
     }
 
+    if (m_claims == claims_data) {
+        return;
+    }
+
+    beginResetModel();
+    m_claims = std::move(claims_data);
     endResetModel();
 }
