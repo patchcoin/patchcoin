@@ -166,7 +166,19 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
-    if (pindexPrev->pprev && pindexPrev->pprev->nClaims.size() && pindexPrev->pprev->pprev && pindexPrev->pprev->pprev->nClaims.size() && m_mempool) {
+    bool shouldAddPackageTxs = false;
+
+    if (m_mempool) {
+        if (genesis_key_held) {
+            if (pindexPrev->pprev && pindexPrev->pprev->pprev && pindexPrev->pprev->nClaims.size() && pindexPrev->pprev->pprev->nClaims.size()) {
+                shouldAddPackageTxs = true;
+            }
+        } else {
+            shouldAddPackageTxs = true;
+        }
+    }
+
+    if (shouldAddPackageTxs) {
         LOCK(m_mempool->cs);
         addPackageTxs(*m_mempool, nPackagesSelected, nDescendantsUpdated, pblock->nTime);
     }
