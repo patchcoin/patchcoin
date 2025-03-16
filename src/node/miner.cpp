@@ -170,7 +170,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     if (m_mempool) {
         if (genesis_key_held) {
-            if (pindexPrev->pprev && pindexPrev->pprev->pprev && pindexPrev->pprev->nClaims.size() && pindexPrev->pprev->pprev->nClaims.size()) {
+            if (pindexPrev->pprev && pindexPrev->nClaims.size() && pindexPrev->pprev->nClaims.size()) {
                 shouldAddPackageTxs = true;
             }
         } else {

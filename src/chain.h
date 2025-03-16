@@ -278,8 +278,8 @@ public:
     }
 // peercoin end
 
-    std::map<CScript, uint64_t> nClaims;
-    std::vector<uint16_t> queuedClaims;
+    std::map<CScript, uint64_t> nClaims{};
+    std::vector<uint16_t> queuedClaims{};
 
     std::vector<std::shared_ptr<Claim>> GetClaims() const {
         std::vector<std::shared_ptr<Claim>> claims;
