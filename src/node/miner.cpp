@@ -172,6 +172,15 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         if (genesis_key_held) {
             if (pindexPrev->pprev && pindexPrev->nClaims.size() && pindexPrev->pprev->nClaims.size()) {
                 shouldAddPackageTxs = true;
+            } else {
+                bool allClaimsProcessed = true;
+                for (const auto& [_, claim] : g_claims) {
+                    if (claim.nTotalReceived < claim.GetEligible()) {
+                        allClaimsProcessed = false;
+                        break;
+                    }
+                }
+                shouldAddPackageTxs = allClaimsProcessed;
             }
         } else {
             shouldAddPackageTxs = true;
