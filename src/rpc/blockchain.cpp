@@ -476,6 +476,7 @@ static RPCHelpMan getdifficulty()
                 RPCResult{
                     RPCResult::Type::OBJ, "", "",
                         {
+                            {RPCResult::Type::NUM, "stake-spacing", "coinstake spacing"},
                             {RPCResult::Type::NUM, "search-interval", "the last coinstake search interval"},
                             {RPCResult::Type::NUM, "proof-of-stake", "the difficulty as a multiple of the minimum difficulty of proof of stake blocks"},
                             {RPCResult::Type::NUM, "proof-of-stake-next", "the difficulty as a multiple of the minimum difficulty of the next proof of stake block"},
@@ -494,12 +495,14 @@ static RPCHelpMan getdifficulty()
     auto formatDifficulty = [](double difficulty) -> UniValue {
         return std::isinf(difficulty) ? UniValue(std::numeric_limits<double>::max()) : UniValue(difficulty);
     };
+    const unsigned int stakeSpacing = std::max(Params().GetConsensus().nStakeTargetSpacing, gArgs.GetIntArg("-staketargetspacing", Params().GetConsensus().nStakeTargetSpacing));
     const double proofOfStake     = GetDifficulty(GetLastBlockIndex(pindex, true), pindex);
-    const double proofOfStakeNext = CalculateDifficulty(GetNextTargetRequired(pindex, true, chainman.GetConsensus()));
+    const double proofOfStakeNext = CalculateDifficulty(GetNextTargetRequired(pindex, true, chainman.GetConsensus(), stakeSpacing));
     const double proofOfWork      = GetDifficulty(nullptr, pindex);
     const double proofOfWorkNext  = CalculateDifficulty(GetNextTargetRequired(pindex, false, chainman.GetConsensus()));
 
     UniValue obj(UniValue::VOBJ);
+    obj.pushKV("stake-spacing",        stakeSpacing);
     obj.pushKV("search-interval",      (int)nLastCoinStakeSearchInterval);
     obj.pushKV("proof-of-stake",       formatDifficulty(proofOfStake));
     obj.pushKV("proof-of-stake-next",  formatDifficulty(proofOfStakeNext));

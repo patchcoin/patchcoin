@@ -33,7 +33,7 @@ GetNextASERTWorkRequired(const CBlockIndex *pindexPrev,
                          const Consensus::Params &params,
                          const CBlockIndex *pindexAnchorBlock) noexcept;
 
-unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake, const Consensus::Params& params, unsigned int multiplier = 1);
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake, const Consensus::Params& params, int64_t cStakeTargetSpacing = 0);
 
 /** Check whether a block hash satisfies the proof-of-work requirement specified by nBits */
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&);
