@@ -39,6 +39,7 @@
 #include <wallet/wallet.h>
 
 #include <algorithm>
+#include <bignum.h>
 #include <claimset.h>
 #include <sendclaimset.h>
 #include <utility>
@@ -216,7 +217,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (pwallet)  // attemp to find a coinstake
     {
         *pfPoSCancel = true;
-        pblock->nBits = GetNextTargetRequired(pindexPrev, true, chainparams.GetConsensus());
+        pblock->nBits = GetNextTargetRequired(pindexPrev, true, chainparams.GetConsensus(), gArgs.GetIntArg("-difficultymultiplier", 1));
         std::vector<Claim> vClaim;
         CMutableTransaction txCoinStake;
         int64_t nSearchTime = txCoinStake.nTime; // search to current time

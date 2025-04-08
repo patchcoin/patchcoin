@@ -264,7 +264,7 @@ arith_uint256 CalculateASERT(const arith_uint256 &refTarget,
     return nextTarget;
 }
 
-unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake, const Consensus::Params& params)
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake, const Consensus::Params& params, const unsigned int multiplier)
 {
     if (!fProofOfStake)
         return UintToArith256(uint256S("0000000000000000000000000000000000000000000000000000000000000000")).GetCompact();
@@ -290,6 +290,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
         const int64_t nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
         bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
         bnNew /= ((nInterval + 1) * nTargetSpacing);
+        bnNew /= multiplier;
     }
 
     if (bnNew > CBigNum(params.powLimit))
