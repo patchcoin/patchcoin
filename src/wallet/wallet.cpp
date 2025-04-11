@@ -3981,14 +3981,13 @@ bool CWallet::CreateCoinStake(ChainstateManager& chainman, const CWallet* pwalle
         // Assume success
         bool outputsOk = true;
 
-        if (genesis_key_held) {
+        if (genesis_key_held && !claims.empty()) {
             CAmount current = nCredit - nMinFee;
             if (current < 0) {
                 return error("CreateCoinStake : not enough balance to cover fee");
             }
 
-            if (!claims.empty())
-                txNew.vout.push_back(CTxOut(0, genesisKeyOut));
+            txNew.vout.push_back(CTxOut(0, genesisKeyOut));
 
             std::vector<uint16_t> positions;
 
