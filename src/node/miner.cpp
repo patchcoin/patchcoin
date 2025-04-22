@@ -583,6 +583,7 @@ void PoSMiner(NodeContext& m_node)
     std::string strMintSyncMessage = _("Info: Minting suspended while synchronizing wallet.").translated;
     std::string strMintDisabledMessage = _("Info: Minting disabled by 'nominting' option.").translated;
     std::string strMintBlockMessage = _("Info: Minting suspended due to block creation failure.").translated;
+    std::string strMintDelayMessage = _("Minting suspended - waiting for minimum time since last block").translated;
     std::string strMintEmpty = "";
     if (!gArgs.GetBoolArg("-minting", true) || !gArgs.GetBoolArg("-staking", true))
     {
@@ -590,6 +591,9 @@ void PoSMiner(NodeContext& m_node)
         LogPrintf("proof-of-stake minter disabled\n");
         return;
     }
+
+    int64_t nBlockDelayMin    = gArgs.GetIntArg("-blockdelay", 0);
+    int64_t nBlockDelaySec    = nBlockDelayMin * 60;
 
     CConnman* connman = m_node.connman.get();
     CWallet* pwallet;
@@ -674,6 +678,19 @@ void PoSMiner(NodeContext& m_node)
                     fNeedToClear = true;
                     if (!connman->interruptNet.sleep_for(std::chrono::seconds(10)))
                             return;
+                }
+
+                if (nBlockDelaySec > 0) {
+                    while (true) {
+                        int64_t now = GetTime();
+                        int64_t lastTime = pindexPrev->GetBlockTime();
+                        int64_t age = now - lastTime;
+                        if (age >= nBlockDelaySec) break;
+                        int64_t wait = nBlockDelaySec - age;
+                        LogPrintf("Delaying PoS mining: last block %llds old, waiting %llds\n", age, wait);
+                        if (!connman->interruptNet.sleep_for(std::chrono::seconds(wait)))
+                            return;
+                    }
                 }
             }
             if (fNeedToClear) {
