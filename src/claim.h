@@ -72,6 +72,7 @@ private:
     CClaim m_claim;
 
     std::string m_source_address;
+    std::string m_bitcoin_source_address;
     std::string m_target_address;
     std::string m_signature_string;
 
@@ -88,6 +89,8 @@ public:
     unsigned int MAX_OUTPUTS = 0;
     bool m_init = false;
     bool m_compatible = false;
+    bool m_is_btc = false;
+    mutable bool m_electrum_result = false;
     // patchcoin todo do we want these mutable?
     mutable int64_t nTime = 0;
     mutable bool m_seen = false;
@@ -101,7 +104,9 @@ public:
     bool SnapshotIsValid() const;
 
     static CScript GetScriptFromAddress(const std::string& address);
+    static CScript GetScriptFromBtcAddress(const std::string& address);
     static std::string GetAddressFromScript(const CScript& script);
+    static std::string GetBtcAddressFromScript(const CScript& script);
 
     SERIALIZE_METHODS(Claim, obj)
     {
@@ -112,6 +117,7 @@ public:
     }
 
     std::string GetSourceAddress() const;
+    std::string GetBtcSourceAddress() const;
     std::string GetTargetAddress() const;
     std::string GetSignatureString() const;
 
@@ -122,6 +128,7 @@ public:
 
     uint16_t GetSnapshotPosition() const;
     CAmount GetPeercoinBalance() const;
+    CAmount GetBitcoinBalance() const;
     CAmount GetEligible() const;
     CAmount GetMaxOutputs() const;
     bool GetReceived(const wallet::CWallet* pwallet, CAmount& received) const;

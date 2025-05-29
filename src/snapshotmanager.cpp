@@ -265,6 +265,31 @@ bool SnapshotManager::CalculateEligible(const CAmount& balance, CAmount& eligibl
     return true;
 }
 
+
+bool SnapshotManager::CalculateEligibleBTC(const CAmount& balance, CAmount& eligible)
+{
+    static constexpr CAmount COIN_BTC = 100000000;
+    static constexpr CAmount MAX_BTC_SATOSHI = 21000000 * COIN_BTC;
+    if (balance < 0 || balance > MAX_BTC_SATOSHI) {
+        eligible = 0;
+        return false;
+    }
+
+    constexpr CAmount kMaxMultBalance = MAX_CLAIM_REWARD / 50;
+    if (balance > kMaxMultBalance) {
+        eligible = MAX_CLAIM_REWARD;
+    } else {
+        eligible = balance * 50;
+    }
+
+    if (!MoneyRange(eligible)) {
+        eligible = 0;
+        return false;
+    }
+
+    return true;
+}
+
 bool SnapshotManager::CalculateReceived(const wallet::CWallet* pwallet, const CScript& target, CAmount& nTotalReceived)
 {
     if (!pwallet) return false;

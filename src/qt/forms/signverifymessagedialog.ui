@@ -403,14 +403,28 @@
           </spacer>
          </item>
          <item>
-          <widget class="QCheckBox" name="peercoinMessageCheckbox_SM">
-           <property name="toolTip">
-            <string>Verify Peercoin Message</string>
-           </property>
-           <property name="text">
-            <string>Peercoin</string>
-           </property>
-          </widget>
+          <layout class="QVBoxLayout" name="verticalLayout_Checkboxes">
+           <item>
+            <widget class="QCheckBox" name="peercoinMessageCheckbox_SM">
+             <property name="toolTip">
+              <string>Verify Peercoin Message</string>
+             </property>
+             <property name="text">
+              <string>Peercoin</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="bitcoinMessageCheckbox_SM">
+             <property name="toolTip">
+              <string>Verify Bitcoin Message (requires network)</string>
+             </property>
+             <property name="text">
+              <string>Bitcoin</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>

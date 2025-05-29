@@ -272,6 +272,11 @@ bool IsOpReturn(const CScript& script)
     return false;
 }
 
+bool IsBtcAccepted(const Consensus::Params& params, const unsigned int nTimeTx)
+{
+    return nTimeTx - params.genesisNTime > (params.nStakeGenesisLockTime / 2);
+}
+
 bool CheckClaimOutputFormat(TxValidationState& state, const Consensus::Params& params,
                             const CScript& scriptPubKey, const Claim* claim)
 {
@@ -298,7 +303,7 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
                              strprintf("%s: invalid claim found %s", __func__, ScriptErrorString(serror)));
     }
 
-    if (!claim->GetTotalReceived(pindex->pprev, nTotalReceived, nOutputs)) {
+    if (!(claim->m_is_btc && !claim->m_electrum_result) && !claim->GetTotalReceived(pindex->pprev, nTotalReceived, nOutputs)) {
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-total-check",
                              strprintf("%s: failed to get claim total received amount", __func__));
     }
@@ -311,9 +316,13 @@ bool CheckClaimEligibility(TxValidationState& state, const CTxOut& txout, const 
     }
 
     nTotalReceived += txout.nValue;
-    if (!MoneyRange(nTotalReceived)) {
+    if (!MoneyRange(nTotalReceived) || nTotalReceived > 50000 * COIN) { // ref snapshotmanager.h
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-out-of-range",
                              strprintf("%s: claim total received out of range", __func__));
+    }
+
+    if (claim->m_is_btc && !claim->m_electrum_result) {
+        return true;
     }
 
     if (nTotalReceived > claim->GetEligible()) { // this is the real check
@@ -373,7 +382,10 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
         }
         if (maybe_valid.IsUnique() && !maybe_valid.Insert()) {
             return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-no-insert");
-        };
+        }
+        if (maybe_valid.m_is_btc && !IsBtcAccepted(params, nTimeTx)) {
+            return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-btc-time");
+        }
     }
 
     std::map<CScript, CAmount> total_received;
@@ -399,7 +411,10 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
             if (IsOpReturn(txout.scriptPubKey)) {
                 if (txout.nValue != 0) {
                     return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-claim-op-return-not-zero");
-                };
+                }
+                if (IsBtcAccepted(params, nTimeTx)) {
+                    continue;
+                }
                 std::vector<unsigned char> payload;
                 {
                     opcodetype opcode;
@@ -439,7 +454,7 @@ bool CheckClaims(TxValidationState& state, const CBlockIndex* pindex, const CCoi
         claims[claim->GetSource()] = std::make_pair(claim, txout.nValue);
 
         LogPrintf("%s: Claim processed: source=%s target=%s amount=%s total=%s/%s outputs=%u%s\n", __func__,
-                  claim->GetSourceAddress(),
+                  claim->m_is_btc ? claim->GetBtcSourceAddress() : claim->GetSourceAddress(),
                   claim->GetTargetAddress(),
                   FormatMoney(txout.nValue),
                   FormatMoney(nTotalReceived),

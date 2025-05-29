@@ -8,8 +8,12 @@
 #include <qt/walletmodel.h>
 #include <qt/claimstablemodel.h>
 
+class ClaimsTableModel;
+class QProgressBar;
+class QSortFilterProxyModel;
 class QTableView;
 class QLabel;
+class PlatformStyle;
 
 namespace Ui {
     class BuildClaimSetWidget;
@@ -20,21 +24,23 @@ class BuildClaimSetWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit BuildClaimSetWidget(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
+    explicit BuildClaimSetWidget(const PlatformStyle* platformStyle, QWidget* parent = nullptr);
     ~BuildClaimSetWidget();
 
+public Q_SLOTS:
     void filterClaims(const QString& searchString);
 
 private Q_SLOTS:
-    void onClaimsIndexUpdated();
     void refreshClaimsTable();
-    void populateClaimsTableFromModel();
+    void onClaimsIndexUpdated();
 
 private:
-    ClaimsTableModel* m_claimsModel;
-    QTimer* m_refreshTimer;
+    void populateClaimsTableFromModel();
+
     const PlatformStyle* m_platformStyle;
-    QLabel* infoLabel;
+    ClaimsTableModel* m_claimsModel;
+    QSortFilterProxyModel* m_proxyModel;
+    QTimer* m_refreshTimer;
     QProgressBar* progressBar;
     QTableView* claimsTableView;
 };

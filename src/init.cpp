@@ -97,6 +97,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <bitcoinaddresslookup.h>
 #include <snapshotmanager.h>
 #include <boost/signals2/signal.hpp>
 #include <index/claimindex.h>
@@ -637,6 +638,8 @@ void SetupServerArgs(ArgsManager& argsman)
 
     gArgs.AddArg("-reservebalance=<amt>", "Reserve this many coins", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     gArgs.AddArg("-minting", "Enable minting (default: true)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+
+    gArgs.AddArg("-btcbalances=<file>", "Optional SQLite file for fast bitcoin address→balance lookups", ArgsManager::ALLOW_ANY, OptionsCategory::HIDDEN);
 
     // Add the hidden options
     argsman.AddHiddenArgs(hidden_args);
@@ -1588,6 +1591,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         uiInterface.InitMessage(_("Unable to load peercoin utxo snapshot.").translated);
     }
 
+    if (!BitcoinAddressLookup::InitializeGlobal()) return false;
+
     g_claimindex = std::make_unique<ClaimIndex>(interfaces::MakeChain(node), cache_sizes.claim_index, false, fReindex);
     if (!g_claimindex->Start()) {
         LogPrintf("Failed to start ClaimIndex.\n");
@@ -1913,9 +1918,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 #endif
 #ifdef ENABLE_WALLET
 {
-    if (!gArgs.GetBoolArg("-miningrequirespeers", Params().MiningRequiresPeers())) {
-        PublishClaimset(node);
-    }
+    // if (!gArgs.GetBoolArg("-miningrequirespeers", Params().MiningRequiresPeers())) {
+    //     PublishClaimset(node);
+    // }
     MintStake(node);
 }
 #endif

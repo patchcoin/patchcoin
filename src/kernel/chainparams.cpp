@@ -216,8 +216,8 @@ public:
 
         consensus.SegwitHeight = 0;
 
-        consensus.nMinimumChainWork = uint256S("0x"); // 750000
-        consensus.defaultAssumeValid = uint256S("0x");  // 750000
+        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000baeb42ea0dcfc"); // 10000
+        consensus.defaultAssumeValid = uint256S("0x98c1f76dae58283e62531d3065a36ec9d3db2ebaad1893c74fc59f1f672af077");  // 10000
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -276,7 +276,8 @@ public:
 
         checkpointData = {
             {
-                {     0, uint256S("0x40024c648fa673e6fbb0bc49a2c76964c7bae667af6c742b3ba22df8ec14834d")},
+                {     0, uint256S("00000000ac42d8edb3d3998251a90bde339d0d715c0987e2947a8d7e47de7280")},
+                {     10000, uint256S("98c1f76dae58283e62531d3065a36ec9d3db2ebaad1893c74fc59f1f672af077")},
             }
         };
 
@@ -285,13 +286,33 @@ public:
         };
 
         chainTxData = ChainTxData{
-            // Data as of block 0fc7bf7f0e830eea0bc367c76f9dcfc70d42d5625d93b056354dc23049de6e29 (height 770396).
-            0, // * UNIX timestamp of last known number of transactions
-            0,    // * total number of transactions between genesis and that timestamp
+            // Data as of block 09f26371f330d37b8147b2af35063ebbb8740d80f90ea1e959a3402fd7868477 (height 11868).
+            1748558118, // * UNIX timestamp of last known number of transactions
+            23787,    // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the ChainStateFlushed debug.log lines)
-            0.0 // * estimated number of transactions per second after that timestamp
+            0.002813646543873775 // * estimated number of transactions per second after that timestamp
                         //   2551705/(1727128008-1345400356) = 0.006684622
         };
+
+    }
+};
+
+class CBitcoinMainParams : public CChainParams {
+public:
+    CBitcoinMainParams() {
+        strNetworkID = "bitcoin main";
+        pchMessageStart[0] = 0xf9;
+        pchMessageStart[1] = 0xbe;
+        pchMessageStart[2] = 0xb4;
+        pchMessageStart[3] = 0xd9;
+
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
+        base58Prefixes[SECRET_KEY]     = std::vector<unsigned char>(1,128);
+        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
+        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
+
+        bech32_hrp = "bc";
     }
 };
 
@@ -667,6 +688,11 @@ std::unique_ptr<const CChainParams> CChainParams::RegTest(const RegTestOptions& 
 std::unique_ptr<const CChainParams> CChainParams::Main()
 {
     return std::make_unique<const CMainParams>();
+}
+
+std::unique_ptr<const CChainParams> CChainParams::BitcoinMain()
+{
+    return std::make_unique<const CBitcoinMainParams>();
 }
 
 std::unique_ptr<const CChainParams> CChainParams::TestNet()

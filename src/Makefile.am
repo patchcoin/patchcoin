@@ -350,7 +350,8 @@ BITCOIN_CORE_H = \
   primitives/claim.h \
   claim.h \
   snapshotmanager.h \
-  sendclaimset.h
+  sendclaimset.h \
+  bitcoinaddresslookup.h
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj

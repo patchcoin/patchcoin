@@ -159,6 +159,7 @@ public:
     static std::unique_ptr<const CChainParams> RegTest(const RegTestOptions& options);
     static std::unique_ptr<const CChainParams> SigNet(const SigNetOptions& options);
     static std::unique_ptr<const CChainParams> Main();
+    static std::unique_ptr<const CChainParams> BitcoinMain();
     static std::unique_ptr<const CChainParams> TestNet();
 
 protected:

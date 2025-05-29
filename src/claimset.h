@@ -58,7 +58,7 @@ public:
 
     bool AddClaim(const Claim& claim)
     {
-        CClaimSetClaim claimSetClaim(claim.GetSourceAddress(), claim.GetTargetAddress(), claim.GetSignatureString());
+        CClaimSetClaim claimSetClaim(claim.m_is_btc ? claim.GetBtcSourceAddress() : claim.GetSourceAddress(), claim.GetTargetAddress(), claim.GetSignatureString());
         claimSetClaim.nTime = claim.nTime;
         // claimSetClaim.m_outs = claim.m_outs; // patchcoin todo
         ScriptError serror;

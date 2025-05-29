@@ -6,6 +6,7 @@
 #define BITCOIN_QT_SIGNVERIFYMESSAGEDIALOG_H
 
 #include <QDialog>
+#include <QNetworkReply>
 
 class PlatformStyle;
 class ClientModel;
@@ -50,8 +51,12 @@ private Q_SLOTS:
     void on_clearButton_SM_clicked();
     /* verify message */
     void on_addressBookButton_VM_clicked();
+    void onCryptoCheckboxToggled(bool checked);
     bool on_verifyMessageButton_VM_clicked();
     void on_publishClaimButton_SM_clicked();
+    void handleVerifyReply(QNetworkReply* reply);
+    void displayAmount(const QJsonObject& obj, const QString& messageTemplate);
+    void showStatus(const QString& text, bool success);
     void on_clearButton_VM_clicked();
 };
 

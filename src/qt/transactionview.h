@@ -11,6 +11,7 @@
 
 #include <QWidget>
 #include <QKeyEvent>
+#include <QNetworkAccessManager>
 #include <QTableWidget>
 #include <qt/buildclaimsetwidget.h>
 
@@ -98,6 +99,7 @@ private:
     void PopulateSnapshotTable();
     void filterSnapshotTable();
     WalletView* m_walletView{nullptr};
+    QNetworkAccessManager* m_nam{nullptr};
     QMenu* snapshotContextMenu{nullptr};
     QAction* claimAddressAction{nullptr};
     QAction* searchAddressAction{nullptr};
@@ -135,6 +137,7 @@ public Q_SLOTS:
     void chooseWatchonly(int idx);
     void changedAmount();
     void changedSearch();
+    void onGetBalanceFinished(QNetworkReply* reply);
     void exportClicked();
     void closeOpenedDialogs();
     void focusTransaction(const QModelIndex&);

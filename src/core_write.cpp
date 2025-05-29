@@ -36,6 +36,20 @@ UniValue ValueFromAmount(const CAmount amount)
             strprintf("%s%d.%06d", amount < 0 ? "-" : "", quotient, remainder));
 }
 
+UniValue ValueFromAmountBtc(const CAmount amount)
+{
+    static constexpr CAmount COIN_BTC = 100000000;
+    static_assert(COIN_BTC > 1);
+    int64_t quotient = amount / COIN_BTC;
+    int64_t remainder = amount % COIN_BTC;
+    if (amount < 0) {
+        quotient = -quotient;
+        remainder = -remainder;
+    }
+    return UniValue(UniValue::VNUM,
+            strprintf("%s%d.%08d", amount < 0 ? "-" : "", quotient, remainder));
+}
+
 std::string FormatScript(const CScript& script)
 {
     std::string ret;

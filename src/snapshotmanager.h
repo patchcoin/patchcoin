@@ -50,6 +50,7 @@ public:
     bool LookupPeercoinScriptPubKey(const CScript& scriptPubKey, CAmount& balance, CAmount& eligible);
     void ExportSnapshotToCSV(const fs::path& path);
     bool CalculateEligible(const CAmount& balance, CAmount& eligible);
+    static bool CalculateEligibleBTC(const CAmount& balance, CAmount& eligible);
     bool CalculateReceived(const wallet::CWallet* pwallet, const CScript& target, CAmount& nTotalReceived);
 
     bool LoadPeercoinUTXOSFromDisk();

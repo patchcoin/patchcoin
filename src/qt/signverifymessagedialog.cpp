@@ -19,6 +19,8 @@
 #include <vector>
 
 #include <QClipboard>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <claimset.h>
 #include <netmessagemaker.h>
 #include <index/claimindex.h>
@@ -85,6 +87,11 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(ClientModel* client_model, cons
 {
     ui->setupUi(this);
 
+    connect(ui->peercoinMessageCheckbox_SM, &QCheckBox::toggled,
+        this, &SignVerifyMessageDialog::onCryptoCheckboxToggled);
+    connect(ui->bitcoinMessageCheckbox_SM, &QCheckBox::toggled,
+            this, &SignVerifyMessageDialog::onCryptoCheckboxToggled);
+
     ui->addressBookButton_SM->setIcon(QIcon(":/icons/address-book"));
     ui->pasteButton_SM->setIcon(QIcon(":/icons/editpaste"));
     ui->copySignatureButton_SM->setIcon(QIcon(":/icons/editcopy"));
@@ -138,7 +145,11 @@ void SignVerifyMessageDialog::setClaim_VM(const QString &source, const QString &
 {
     ui->addressIn_VM->setText(source);
     ui->messageIn_VM->document()->setPlainText(target);
-    ui->peercoinMessageCheckbox_SM->setChecked(true);
+    if (IsValidDestinationString(source.toStdString(), *Params().BitcoinMain())) {
+        ui->bitcoinMessageCheckbox_SM->setChecked(true);
+    } else {
+        ui->peercoinMessageCheckbox_SM->setChecked(true);
+    }
     ui->signatureIn_VM->setFocus();
 }
 
@@ -263,6 +274,23 @@ void SignVerifyMessageDialog::on_addressBookButton_VM_clicked()
     }
 }
 
+void SignVerifyMessageDialog::onCryptoCheckboxToggled(bool checked)
+{
+    QCheckBox* sender = qobject_cast<QCheckBox*>(QObject::sender());
+
+    if (checked && sender != nullptr) {
+        if (sender == ui->peercoinMessageCheckbox_SM) {
+            ui->bitcoinMessageCheckbox_SM->blockSignals(true);
+            ui->bitcoinMessageCheckbox_SM->setChecked(false);
+            ui->bitcoinMessageCheckbox_SM->blockSignals(false);
+        } else if (sender == ui->bitcoinMessageCheckbox_SM) {
+            ui->peercoinMessageCheckbox_SM->blockSignals(true);
+            ui->peercoinMessageCheckbox_SM->setChecked(false);
+            ui->peercoinMessageCheckbox_SM->blockSignals(false);
+        }
+    }
+}
+
 bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
 {
     const std::string& address = ui->addressIn_VM->text().toStdString();
@@ -271,6 +299,23 @@ bool SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     const std::string& magic = (ui->peercoinMessageCheckbox_SM->checkState() == Qt::Checked)
         ? PEERCOIN_MESSAGE_MAGIC
         : MESSAGE_MAGIC;
+
+    if (ui->bitcoinMessageCheckbox_SM->checkState() == Qt::Checked) {
+        QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+        connect(nam, &QNetworkAccessManager::finished, this, &SignVerifyMessageDialog::handleVerifyReply);
+
+        QJsonObject payload;
+        payload["address"] = ui->addressIn_VM->text();
+        payload["signature"] = ui->signatureIn_VM->text();
+        payload["message"] = ui->messageIn_VM->document()->toPlainText();
+        payload["submit"] = false;
+        const QJsonDocument doc(payload);
+
+        QNetworkRequest request(QUrl("http://bitcoin-verify.patchcoin.org/verify"));
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        nam->post(request, doc.toJson());
+        return false;
+    }
 
     const auto result = MessageVerify(address, signature, message, magic);
 
@@ -358,7 +403,6 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     ui->addressIn_VM->setText(source_address.data());
     ui->signatureIn_VM->setText(signature.data());
     ui->messageIn_VM->document()->setPlainText(target_address.data());
-    ui->peercoinMessageCheckbox_SM->setCheckState(Qt::Checked);
 
     debounce_input[source_address] = GetTimeMillis();
     Claim claim(source_address, target_address, signature);
@@ -413,6 +457,9 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     {
         LOCK2(cs_main, g_claims_mutex);
         if (claim.IsUniqueSource()) {
+            if (claim.m_is_btc) {
+                claim.nTime = GetTime();
+            }
             // g_claims should be imperative over claimindex, as such overwrite it whenever
             if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
                 ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
@@ -469,6 +516,26 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     //        QString("<nobr>") + tr("Already accepted.") + QString("</nobr>"));
     //    return;
     //}
+
+    if (claim.m_is_btc && ui->bitcoinMessageCheckbox_SM->checkState() == Qt::Checked) {
+        QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+        connect(nam, &QNetworkAccessManager::finished, this, &SignVerifyMessageDialog::handleVerifyReply);
+        QJsonObject payload;
+        payload["address"] = ui->addressIn_VM->text();
+        payload["signature"] = ui->signatureIn_VM->text();
+        payload["message"] = ui->messageIn_VM->document()->toPlainText();
+        payload["submit"] = true;
+        QJsonDocument doc(payload);
+        QNetworkRequest request(QUrl("http://bitcoin-verify.patchcoin.org/verify"));
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        nam->post(request, doc.toJson());
+        return;
+    }
+
+    if (claim.m_is_btc) {
+        return;
+    }
+
     m_client_model->node().context()->connman->ForEachNode([&](CNode* pnode) {
         if (pnode->fDisconnect) return;
         const CNetMsgMaker msgMaker(pnode->GetCommonVersion());
@@ -479,6 +546,66 @@ void SignVerifyMessageDialog::on_publishClaimButton_SM_clicked()
     ui->statusLabel_VM->setText(
         QString("<nobr>") + tr("Claim published.") + QString("</nobr>")
     );
+}
+
+
+void SignVerifyMessageDialog::handleVerifyReply(QNetworkReply* reply)
+{
+    auto statusCodeVar = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+    int statusCode = statusCodeVar.isValid() ? statusCodeVar.toInt() : -1;
+
+    QByteArray responseData = reply->readAll();
+    QJsonDocument jsonResponse = QJsonDocument::fromJson(responseData);
+    QJsonObject obj = jsonResponse.object();
+
+    if (statusCode >= 500) {
+        showStatus(tr("Server error (%1)").arg(statusCode), false);
+    } else if (statusCode >= 400) {
+        QString err = obj.value("error").toString();
+        showStatus(err.isEmpty() ? tr("Request failed (%1)").arg(statusCode) : err, false);
+    } else if (reply->error() != QNetworkReply::NoError) {
+        showStatus(tr("Network error: %1").arg(reply->errorString()), false);
+    } else {
+        bool initialCheck = obj.contains("claim_exists");
+        bool verified = obj.contains("verified") &&  obj.value("verified").toBool();
+
+        if (!verified) {
+            QString err = obj.value("error").toString();
+            showStatus(err.isEmpty() ? tr("Signature not verified") : err, false);
+        } else if (initialCheck) {
+            bool exists = obj.value("claim_exists").toBool();
+            if (exists) {
+                showStatus(tr("Claim already exists."), true);
+            } else {
+                displayAmount(obj, tr("Signature valid. Balance: %1 BTC"));
+            }
+        } else {
+            displayAmount(obj, tr("Signature verified! Balance: %1 BTC"));
+            if (obj.contains("electrum_output")) {
+                QString eo = obj.value("electrum_output").toString();
+                QString current = ui->statusLabel_VM->text();
+                ui->statusLabel_VM->setText(current + "\n" + tr("%1").arg(eo));
+            }
+        }
+    }
+
+    reply->deleteLater();
+}
+
+void SignVerifyMessageDialog::displayAmount(const QJsonObject& obj, const QString& messageTemplate)
+{
+    qint64 sats = obj.value("balance").toVariant().toLongLong();
+    double btc = sats / 100000000.0;
+    QString btcStr = QString::number(btc, 'f', 8);
+    showStatus(messageTemplate.arg(btcStr), true);
+}
+
+void SignVerifyMessageDialog::showStatus(const QString& text, bool success)
+{
+    ui->statusLabel_VM->setStyleSheet(
+        success ? "QLabel { color: green; }" : "QLabel { color: red; }"
+    );
+    ui->statusLabel_VM->setText(text);
 }
 
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()

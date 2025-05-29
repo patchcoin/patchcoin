@@ -4,6 +4,7 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QProgressBar>
+#include <QSortFilterProxyModel>
 #include <QStyledItemDelegate>
 #include <QTableView>
 #include <QVBoxLayout>
@@ -14,9 +15,9 @@
 BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWidget* parent)
     : QWidget(parent)
     , m_claimsModel(new ClaimsTableModel(this))
+    , m_proxyModel(new QSortFilterProxyModel(this))
     , m_refreshTimer(new QTimer(this))
     , m_platformStyle(platformStyle)
-    , infoLabel(new QLabel(this))
     , progressBar(new QProgressBar(this))
     , claimsTableView(new QTableView(this))
 {
@@ -31,10 +32,11 @@ BuildClaimSetWidget::BuildClaimSetWidget(const PlatformStyle* platformStyle, QWi
     progressBar->setStyleSheet("QProgressBar { background-color: transparent; text-align: center; color: #002600; border: 1px solid #666666; } QProgressBar::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #00db98, stop:0.5 #00ff92, stop:1 #a4ffa3); margin: 0px; }");
     mainLayout->addWidget(progressBar);
 
-    // infoLabel->setText("Total claimed:");
-    // mainLayout->addWidget(infoLabel);
+    m_proxyModel->setSourceModel(m_claimsModel);
+    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    m_proxyModel->setFilterKeyColumn(-1);
 
-    claimsTableView->setModel(m_claimsModel);
+    claimsTableView->setModel(m_proxyModel);
     claimsTableView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     claimsTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     claimsTableView->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -129,19 +131,5 @@ void BuildClaimSetWidget::populateClaimsTableFromModel()
 
 void BuildClaimSetWidget::filterClaims(const QString& searchString)
 {
-    if (!m_claimsModel) {
-        return;
-    }
-
-    for (int i = 0; i < m_claimsModel->rowCount(); ++i) {
-        bool matches = false;
-        for (int j = 0; j < m_claimsModel->columnCount(); ++j) {
-            QModelIndex index = m_claimsModel->index(i, j);
-            if (index.data().toString().contains(searchString, Qt::CaseInsensitive)) {
-                matches = true;
-                break;
-            }
-        }
-        claimsTableView->setRowHidden(i, !matches);
-    }
+    m_proxyModel->setFilterFixedString(searchString);
 }

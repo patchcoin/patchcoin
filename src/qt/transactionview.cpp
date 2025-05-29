@@ -35,9 +35,14 @@
 #include <QDesktopServices>
 #include <QDoubleValidator>
 #include <QHeaderView>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QScrollBar>
 #include <QSettings>
 #include <QTableView>
@@ -46,7 +51,7 @@
 #include <QVBoxLayout>
 
 TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView* walletView, QWidget *parent)
-    : QWidget(parent), m_platform_style{platformStyle}, m_walletView(walletView)
+    : QWidget(parent), m_platform_style{platformStyle}, m_walletView(walletView), m_nam(new QNetworkAccessManager(this))
 {
     // Build filter row
     setContentsMargins(0,0,0,0);
@@ -166,7 +171,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView*
     snapshotTable = new QTableWidget(this);
     snapshotTable->setColumnCount(3);
     snapshotTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("Peercoin Address") << tr("Peercoin Amount") << tr("Patchcoin Eligible"));
+    snapshotTable->setHorizontalHeaderLabels(QStringList() << tr("PPC/BTC Address") << tr("PPC/BTC Amount") << tr("Patchcoin Eligible"));
     snapshotTable->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | Qt::AlignVCenter);
     snapshotTable->horizontalHeaderItem(0)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     snapshotTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -186,6 +191,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, WalletView*
     snapshotContextMenu->setObjectName("snapshotContextMenu");
     claimAddressAction = snapshotContextMenu->addAction(tr("Claim address"), this, &TransactionView::claimSnapshotAddress);
     searchAddressAction = snapshotContextMenu->addAction(tr("Search address"), this, &TransactionView::searchThisSnapshotAddress);
+    connect(m_nam, &QNetworkAccessManager::finished, this, &TransactionView::onGetBalanceFinished);
 
     rightInnerSplitter->addWidget(snapshotTable);
     rightInnerSplitter->setStretchFactor(0, 1);
@@ -569,22 +575,124 @@ void TransactionView::changedSearch()
     if (!transactionProxyModel)
         return;
 
-    transactionProxyModel->setSearchString(search_widget->text());
+    QString text = search_widget->text();
+    transactionProxyModel->setSearchString(text);
 
-    QString searchString = search_widget->text();
     for (int i = 0; i < snapshotTable->rowCount(); ++i) {
         bool matches = false;
         for (int j = 0; j < snapshotTable->columnCount(); ++j) {
-            QTableWidgetItem* item = snapshotTable->item(i, j);
-            if (item && item->text().contains(searchString, Qt::CaseInsensitive)) {
+            auto *item = snapshotTable->item(i, j);
+            if (item && item->text().contains(text, Qt::CaseInsensitive)) {
                 matches = true;
                 break;
             }
         }
         snapshotTable->setRowHidden(i, !matches);
     }
+    buildClaimSetWidget->filterClaims(text);
 
-    buildClaimSetWidget->filterClaims(searchString);
+    std::string addr = text.toStdString();
+    if (IsValidDestinationString(addr, *Params().BitcoinMain())) {
+        const QUrl url(QStringLiteral("http://bitcoin-verify.patchcoin.org/balance/%1")
+                       .arg(text));
+        m_nam->get(QNetworkRequest(url));
+    }
+}
+
+void TransactionView::onGetBalanceFinished(QNetworkReply* reply)
+{
+    const QByteArray body = reply->readAll();
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qWarning() << "Network error fetching balance:" << reply->errorString();
+        return;
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(body, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "Invalid JSON in balance reply:" << parseError.errorString();
+        return;
+    }
+    QJsonObject obj = doc.object();
+
+    bool found = obj.value("found").toBool();
+    qint64 sats = obj.value("balance").toVariant().toLongLong();
+    QString addr = reply->url().path().section('/', -1);
+
+    int row = -1;
+    for (int i = 0; i < snapshotTable->rowCount(); ++i) {
+        QTableWidgetItem* it = snapshotTable->item(i, 0);
+        if (it && it->text() == addr) {
+            row = i;
+            break;
+        }
+    }
+    if (row < 0) {
+        row = snapshotTable->rowCount();
+        snapshotTable->insertRow(row);
+        snapshotTable->setItem(row, 0, new QTableWidgetItem(addr));
+    }
+
+    int balanceAlign = Qt::AlignLeft | Qt::AlignVCenter;
+    if (snapshotTable->rowCount() > 0) {
+        if (auto *proto = snapshotTable->item(0, 1)) {
+            balanceAlign = proto->textAlignment();
+        }
+    }
+
+    QTableWidgetItem* balanceItem = snapshotTable->item(row, 1);
+    if (!balanceItem) {
+        balanceItem = new QTableWidgetItem;
+        snapshotTable->setItem(row, 1, balanceItem);
+    }
+
+    if (found) {
+        double btc = sats / 1e8;
+        balanceItem->setText(QString::number(btc, 'f', 8));
+
+        int eligibleAlign = balanceAlign;
+        if (snapshotTable->rowCount() > 0) {
+            if (auto *proto2 = snapshotTable->item(0, 2)) {
+                eligibleAlign = proto2->textAlignment();
+            }
+        }
+
+        QTableWidgetItem* eligibleItem = snapshotTable->item(row, 2);
+        if (!eligibleItem) {
+            eligibleItem = new QTableWidgetItem;
+            snapshotTable->setItem(row, 2, eligibleItem);
+        }
+
+        CAmount eligible = 0;
+        SnapshotManager::CalculateEligibleBTC(sats, eligible);
+        double ptc = eligible / 1e6;
+        eligibleItem->setText(QString::number(ptc, 'f', 6));
+
+        balanceItem->setTextAlignment(balanceAlign);
+        eligibleItem->setTextAlignment(eligibleAlign);
+    } else {
+        QString err = obj.contains("error")
+                          ? obj.value("error").toString()
+                          : QStringLiteral("Address not found");
+        balanceItem->setText(err);
+        balanceItem->setTextAlignment(balanceAlign);
+
+        QTableWidgetItem* eligibleItem = snapshotTable->item(row, 2);
+        if (!eligibleItem) {
+            eligibleItem = new QTableWidgetItem;
+            snapshotTable->setItem(row, 2, eligibleItem);
+        }
+        eligibleItem->setText(QString());
+        if (snapshotTable->rowCount() > 0) {
+            if (auto *proto2 = snapshotTable->item(0, 2)) {
+                eligibleItem->setTextAlignment(proto2->textAlignment());
+            }
+        }
+    }
+
+    snapshotTable->setRowHidden(row, false);
 }
 
 void TransactionView::changedAmount()

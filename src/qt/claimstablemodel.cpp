@@ -71,7 +71,7 @@ QVariant ClaimsTableModel::headerData(int section, Qt::Orientation orientation, 
             switch (section)
             {
                 case 0: return tr("  ");
-                case 1: return tr("PPC Address");
+                case 1: return tr("PPC/BTC Address");
                 case 2: return tr("PTC Address");
                 case 3: return tr("Date");
                 case 4: return tr("Received");
@@ -104,15 +104,18 @@ void ClaimsTableModel::updateData(const std::vector<Claim>& claims)
     for (const auto& c : claims) {
         ClaimData data;
         data.queued = QString::fromStdString(c.m_seen ? "✔️" : "❌"); // lol
-        data.sourceAddress = QString::fromStdString(c.GetSourceAddress());
+        data.sourceAddress = QString::fromStdString(c.m_is_btc ? c.GetBtcSourceAddress() : c.GetSourceAddress());
         data.targetAddress = QString::fromStdString(c.GetTargetAddress());
 
         QDateTime dt = QDateTime::fromSecsSinceEpoch(c.nTime);
         data.time = GUIUtil::dateTimeStr(dt);
 
         data.received = c.nTotalReceived;
-        data.original = c.GetPeercoinBalance(); // patchcoin todo
+        data.original = c.m_is_btc ? c.GetBitcoinBalance() : c.GetPeercoinBalance(); // patchcoin todo
         data.eligible = c.GetEligible();
+        if (c.m_is_btc && !c.m_electrum_result) {
+            data.eligible = c.nTotalReceived;
+        }
 
         claims_data.push_back(data);
     }

@@ -3,6 +3,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <claim.h>
+#include <bitcoinaddresslookup.h>
+#include <index/claimindex.h>
+
 #include <key.h>
 #include <key_io.h>
 #include <rpc/protocol.h>
@@ -61,6 +65,87 @@ static RPCHelpMan verifymessage()
     };
 }
 
+static RPCHelpMan queueclaim()
+{
+    return RPCHelpMan{"queueclaim",
+        "Verify a signed message using Electrum and return address balance.",
+        {
+            {"address", RPCArg::Type::STR, RPCArg::Optional::NO, "The bitcoin address to use for the signature."},
+            {"signature", RPCArg::Type::STR, RPCArg::Optional::NO, "The signature provided by the signer in base 64 encoding (see signmessage)."},
+            {"message", RPCArg::Type::STR, RPCArg::Optional::NO, "The message that was signed."},
+        },
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::BOOL, "verification", "Result of signature verification (always false if balance == 0)"},
+                {RPCResult::Type::NUM,  "balance",      "Balance of the address from SQLite database (in satoshis)"},
+                {RPCResult::Type::STR,  "electrum_output", "Raw output from Electrum verification command (empty if skipped)"},
+            }
+        },
+        RPCExamples{
+            "\nVerify the signature using Electrum and get address balance\n"
+            + HelpExampleCli("queueclaim", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XX\" \"signature\" \"my message\"") +
+            "\nAs a JSON-RPC call\n"
+            + HelpExampleRpc("queueclaim", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XX\", \"signature\", \"my message\"")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        {
+            std::string strAddress = request.params[0].get_str();
+            std::string strSign    = request.params[1].get_str();
+            std::string strMessage = request.params[2].get_str();
+
+            UniValue result(UniValue::VOBJ);
+
+            CAmount balance = 0;
+            auto lookup = BitcoinAddressLookup::Get();
+            if (lookup && lookup->isEnabled()) {
+                balance = lookup->getBalance(strAddress);
+            }
+            result.pushKV("balance", balance);
+
+            if (balance == 0) {
+                result.pushKV("verification", false);
+                result.pushKV("electrum_output", "");
+                return result;
+            }
+
+            std::string electrumOutput;
+            bool electrumResult = false;
+            try {
+                ElectrumInterface electrum;
+                auto [output, success] = electrum.VerifyMessage(strAddress, strSign, strMessage);
+                electrumOutput = std::move(output);
+                electrumResult = success;
+
+                while (!electrumOutput.empty() &&
+                       (electrumOutput.back() == '\n' || electrumOutput.back() == '\r' || electrumOutput.back() == ' ')) {
+                    electrumOutput.pop_back();
+                }
+            } catch (const std::exception& e) {
+                electrumOutput = std::string("Error: ") + e.what();
+                electrumResult = false;
+            }
+
+            result.pushKV("verification", electrumResult);
+            result.pushKV("electrum_output", electrumOutput);
+
+            if (electrumResult && balance > 0) {
+                LOCK2(cs_main, g_claims_mutex);
+                Claim claim(strAddress, strMessage, strSign);
+                if (claim.IsUniqueSource()) {
+                    claim.nTime = GetTime();
+                    if (!(claim.Insert() && g_claimindex->AddClaim(claim))) {
+                        ScriptError serror;
+                        claim.IsValid(&serror);
+                    }
+                }
+            }
+
+            return result;
+        },
+    };
+}
+
 static RPCHelpMan signmessagewithprivkey()
 {
     return RPCHelpMan{"signmessagewithprivkey",
@@ -106,6 +191,7 @@ void RegisterSignMessageRPCCommands(CRPCTable& t)
     static const CRPCCommand commands[]{
         {"util", &verifymessage},
         {"util", &signmessagewithprivkey},
+        {"util", &queueclaim},
     };
     for (const auto& c : commands) {
         t.appendCommand(c.name, &c);

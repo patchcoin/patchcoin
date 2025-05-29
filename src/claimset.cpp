@@ -77,7 +77,7 @@ void ApplyClaimSet(const CClaimSet& claimset)
             return;
         }
 
-        Claim claim(cClaim.GetSourceAddress(), cClaim.GetTargetAddress(), cClaim.GetSignatureString());
+        Claim claim(cClaim.m_is_btc ? cClaim.GetBtcSourceAddress() : cClaim.GetSourceAddress(), cClaim.GetTargetAddress(), cClaim.GetSignatureString());
         claim.nTime = cClaim.nTime;
 
         if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {

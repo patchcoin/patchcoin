@@ -4371,6 +4371,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         Claim dummy;
         if (!dummy.SnapshotIsValid()) return;
         vRecv >> dummy;
+        if (dummy.m_is_btc) {
+            Misbehaving(*peer, 100, "btc claim not allowed via network");
+            return;
+        }
+
         ScriptError serror;
         if (dummy.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             Misbehaving(*peer, 100, "invalid claim");
@@ -4382,7 +4387,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         claims_seen[dummy.GetSource()] = GetTime();
 
-        Claim claim(dummy.GetSourceAddress(), dummy.GetTargetAddress(), dummy.GetSignatureString());
+        Claim claim(dummy.m_is_btc ? dummy.GetBtcSourceAddress() : dummy.GetSourceAddress(), dummy.GetTargetAddress(), dummy.GetSignatureString());
+        if (claim.m_is_btc) {
+            Misbehaving(*peer, 100, "btc claim not allowed via network");
+            return;
+        }
         if (claim.IsValid(&serror) != Claim::ClaimVerificationResult::OK) {
             Misbehaving(*peer, 100, "invalid claim");
             return;

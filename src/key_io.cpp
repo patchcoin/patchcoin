@@ -291,15 +291,31 @@ std::string EncodeDestination(const CTxDestination& dest)
     return std::visit(DestinationEncoder(Params()), dest);
 }
 
+std::string EncodeDestination_BTC(const CTxDestination& dest)
+{
+    return std::visit(DestinationEncoder(*Params().BitcoinMain()), dest);
+}
+
 CTxDestination DecodeDestination(const std::string& str, std::string& error_msg, std::vector<int>* error_locations)
 {
     return DecodeDestination(str, Params(), error_msg, error_locations);
+}
+
+CTxDestination DecodeDestination_BTC(const std::string& str, std::string& error_msg, std::vector<int>* error_locations)
+{
+    return DecodeDestination(str, *Params().BitcoinMain(), error_msg, error_locations);
 }
 
 CTxDestination DecodeDestination(const std::string& str)
 {
     std::string error_msg;
     return DecodeDestination(str, error_msg);
+}
+
+CTxDestination DecodeDestination_BTC(const std::string& str)
+{
+    std::string error_msg;
+    return DecodeDestination_BTC(str, error_msg);
 }
 
 bool IsValidDestinationString(const std::string& str, const CChainParams& params)

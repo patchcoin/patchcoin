@@ -250,13 +250,21 @@ UniValue blockToJSON(BlockManager& blockman, const CBlock& block, const CBlockIn
     for (const CClaim& plain_claim : block.vClaim) {
         const Claim& claim = g_claims[plain_claim.source];
         UniValue claim_obj(UniValue::VOBJ);
-        claim_obj.pushKV("peercoin_address", claim.GetSourceAddress());
+        std::string srcAddr  = claim.m_is_btc ? claim.GetBtcSourceAddress() : claim.GetSourceAddress();
+        std::string srcCoin  = claim.m_is_btc ? "bitcoin" : "peercoin";
+        const CAmount srcBal = claim.m_is_btc ? claim.GetBitcoinBalance() : claim.GetPeercoinBalance();
+        claim_obj.pushKV("source_coin",       srcCoin);
+        claim_obj.pushKV("source_address",    srcAddr);
         claim_obj.pushKV("patchcoin_address", claim.GetTargetAddress());
-        claim_obj.pushKV("signature", claim.GetSignatureString());
-        claim_obj.pushKV("peercoin_balance", ValueFromAmount(claim.GetPeercoinBalance()));
+        claim_obj.pushKV("signature",         claim.GetSignatureString());
+        if (claim.m_is_btc) {
+            claim_obj.pushKV("source_balance", ValueFromAmountBtc(srcBal));
+        } else {
+            claim_obj.pushKV("source_balance", ValueFromAmount(srcBal));
+        }
         claim_obj.pushKV("patchcoin_eligible", ValueFromAmount(claim.GetEligible()));
-        claim_obj.pushKV("total_received", ValueFromAmount(claim.nTotalReceived));
-        claim_obj.pushKV("nTime", static_cast<uint64_t>(claim.nTime));
+        claim_obj.pushKV("total_received",     ValueFromAmount(claim.nTotalReceived));
+        claim_obj.pushKV("nTime",              static_cast<uint64_t>(claim.nTime));
         claims_arr.push_back(claim_obj);
     }
     result.pushKV("claims", claims_arr);
@@ -2799,14 +2807,16 @@ static RPCHelpMan getclaims()
 {
     return RPCHelpMan{
         "getclaims",
-        "\nRetrieve a list of claims with details such as Peercoin and Patchcoin addresses, balances, and signatures.\n"
+        "\nRetrieve a list of claims with details such as source (Peercoin or Bitcoin) and Patchcoin addresses, balances, and signatures.\n"
         "Optionally, you can filter claims by:\n"
-        "- Providing a single address using the address parameter (partial matches allowed, case-insensitive).\n"
+        "- Providing a single address using the address parameter (partial matches allowed, case-insensitive) against the source or Patchcoin addresses.\n"
         "- Limiting the number of results using the limit parameter.\n"
         "If no parameters are provided, all claims will be returned.\n",
         {
-            {"address", RPCArg::Type::STR, RPCArg::DefaultHint{"all addresses"}, "Search for claims with this single address or partial match (case-insensitive, matches both Peercoin and Patchcoin addresses)."},
-            {"limit", RPCArg::Type::NUM, RPCArg::DefaultHint{100}, "Maximum number of claims to return (0 for no limit).",
+            {"address", RPCArg::Type::STR, RPCArg::DefaultHint{"all addresses"},
+             "Search for claims with this single address or partial match (case-insensitive), matching either source (Peercoin or Bitcoin) or Patchcoin addresses."},
+            {"limit",   RPCArg::Type::NUM, RPCArg::DefaultHint{100},
+             "Maximum number of claims to return (0 for no limit).",
                 RPCArgOptions{
                     .skip_type_check = true,
                     .type_str = {"", "string or numeric"},
@@ -2817,25 +2827,27 @@ static RPCHelpMan getclaims()
             {
                 {RPCResult::Type::OBJ, "", "A claim object",
                     {
-                        {RPCResult::Type::STR,       "peercoin_address",  "Peercoin address"},
-                        {RPCResult::Type::STR,       "patchcoin_address", "Patchcoin address"},
-                        {RPCResult::Type::STR_HEX,   "signature",         "Hex-encoded signature of the claim"},
-                        {RPCResult::Type::STR_AMOUNT,"peercoin_balance",  "Balance at snapshot height in Peercoin"},
+                        {RPCResult::Type::STR,       "source_coin",      "Coin type of source address ('peercoin' or 'bitcoin')"},
+                        {RPCResult::Type::STR,       "source_address",   "Original address (Peercoin or Bitcoin)"},
+                        {RPCResult::Type::STR,       "patchcoin_address","Patchcoin address"},
+                        {RPCResult::Type::STR_HEX,   "signature",        "Hex-encoded signature of the claim"},
+                        {RPCResult::Type::STR_AMOUNT,"source_balance",   "Balance at snapshot height in source coin"},
                         {RPCResult::Type::STR_AMOUNT,"patchcoin_eligible","Eligible amount for distribution in Patchcoin"},
-                        {RPCResult::Type::STR_AMOUNT,"total_received",    "Amount total received so far in Patchcoin"},
-                        {RPCResult::Type::NUM,       "nTime",             "Claim timestamp"},
+                        {RPCResult::Type::STR_AMOUNT,"total_received",   "Amount total received so far in Patchcoin"},
+                        {RPCResult::Type::NUM,       "nTime",            "Claim timestamp"},
                     }
                 }
             }
         },
         RPCExamples{
-            HelpExampleCli("getclaims", R"("address" 10)") +
-            HelpExampleCli("getclaims", R"("" 5)") +
-            HelpExampleRpc("getclaims", R"({"address": "address", "limit": 10})")
+            HelpExampleCli("getclaims", R"("PeercoinAddr" 10)") +
+            HelpExampleCli("getclaims", R"("1BitcoinAddr" 5)") +
+            HelpExampleCli("getclaims", R"("" 20)") +
+            HelpExampleRpc("getclaims", R"({"address": "patchAddr", "limit": 10})")
         },
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
-    const std::string address{request.params[0].isNull() ? "" : request.params[0].get_str()};
+    const std::string address{request.params[0].isNull() ? "" : ToLower(request.params[0].get_str())};
     int limit = 100;
 
     if (request.params[1].isNum()) {
@@ -2852,20 +2864,12 @@ static RPCHelpMan getclaims()
     sorted.reserve(g_claims.size());
 
     for (const auto& [_, claim] : g_claims) {
-        const std::string& peercoinAddr = ToLower(claim.GetSourceAddress());
-        const std::string& patchcoinAddr = ToLower(claim.GetTargetAddress());
+        const std::string srcAddr = ToLower(claim.m_is_btc ? claim.GetBtcSourceAddress() : claim.GetSourceAddress());
+        const std::string patchcoinAddr = ToLower(claim.GetTargetAddress());
 
-        bool match = false;
-
-        if (!address.empty() &&
-            (peercoinAddr.find(address) != std::string::npos ||
-             patchcoinAddr.find(address) != std::string::npos)) {
-            match = true;
-        }
-
-        if (address.empty()) {
-            match = true;
-        }
+        bool match = address.empty()
+            || srcAddr.find(address) != std::string::npos
+            || patchcoinAddr.find(address) != std::string::npos;
 
         if (match) {
             sorted.push_back(claim);
@@ -2885,14 +2889,23 @@ static RPCHelpMan getclaims()
             if (limit > 0 && count >= limit) break;
 
             const Claim& claim = c.get();
+            std::string srcAddr  = claim.m_is_btc ? claim.GetBtcSourceAddress() : claim.GetSourceAddress();
+            std::string srcCoin  = claim.m_is_btc ? "bitcoin" : "peercoin";
+            const CAmount srcBal = claim.m_is_btc ? claim.GetBitcoinBalance() : claim.GetPeercoinBalance();
+
             UniValue claimObj(UniValue::VOBJ);
-            claimObj.pushKV("peercoin_address", claim.GetSourceAddress());
+            claimObj.pushKV("source_coin",       srcCoin);
+            claimObj.pushKV("source_address",    srcAddr);
             claimObj.pushKV("patchcoin_address", claim.GetTargetAddress());
-            claimObj.pushKV("signature", claim.GetSignatureString());
-            claimObj.pushKV("peercoin_balance", ValueFromAmount(claim.GetPeercoinBalance()));
+            claimObj.pushKV("signature",         claim.GetSignatureString());
+            if (claim.m_is_btc) {
+                claimObj.pushKV("source_balance", ValueFromAmountBtc(srcBal));
+            } else {
+                claimObj.pushKV("source_balance", ValueFromAmount(srcBal));
+            }
             claimObj.pushKV("patchcoin_eligible", ValueFromAmount(claim.GetEligible()));
-            claimObj.pushKV("total_received", ValueFromAmount(claim.nTotalReceived));
-            claimObj.pushKV("nTime", (uint64_t)claim.nTime);
+            claimObj.pushKV("total_received",     ValueFromAmount(claim.nTotalReceived));
+            claimObj.pushKV("nTime",              (uint64_t)claim.nTime);
             claimsArr.push_back(claimObj);
 
             count++;
