@@ -14,6 +14,10 @@
 #include <logging.h>
 #include <util/system.h>
 
+#if !defined(_WIN32)
+#  include <sys/wait.h>
+#endif
+
 class ElectrumInterface {
 private:
     std::string m_electrum_path;
@@ -40,7 +44,13 @@ private:
             result += buffer.data();
         }
 
-        int status = WEXITSTATUS(pclose(pipe.release()));
+        int raw = pclose(pipe.release());
+#if defined(WEXITSTATUS)
+        int status = WEXITSTATUS(raw);
+#else
+        int status = raw;
+#endif
+
         LogPrintf("ElectrumInterface: Command result (status %d): %s\n", status, result.c_str());
         return {result, status};
     }
