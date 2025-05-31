@@ -583,7 +583,6 @@ void PoSMiner(NodeContext& m_node)
     std::string strMintSyncMessage = _("Info: Minting suspended while synchronizing wallet.").translated;
     std::string strMintDisabledMessage = _("Info: Minting disabled by 'nominting' option.").translated;
     std::string strMintBlockMessage = _("Info: Minting suspended due to block creation failure.").translated;
-    std::string strMintDelayMessage = _("Minting suspended - waiting for minimum time since last block").translated;
     std::string strMintEmpty = "";
     if (!gArgs.GetBoolArg("-minting", true) || !gArgs.GetBoolArg("-staking", true))
     {
@@ -591,9 +590,6 @@ void PoSMiner(NodeContext& m_node)
         LogPrintf("proof-of-stake minter disabled\n");
         return;
     }
-
-    int64_t nBlockDelayMin    = gArgs.GetIntArg("-blockdelay", 0);
-    int64_t nBlockDelaySec    = nBlockDelayMin * 60;
 
     CConnman* connman = m_node.connman.get();
     CWallet* pwallet;
@@ -607,6 +603,11 @@ void PoSMiner(NodeContext& m_node)
     util::ThreadRename("peercoin-stake-minter");
 
     unsigned int nExtraNonce = 0;
+
+    int64_t nBlockFindingDelay = gArgs.GetIntArg("-blockdelay", 0) * 60;
+    if (nBlockFindingDelay > 0) {
+        LogPrintf("Block finding delay set to %d seconds (%d minutes)\n", nBlockFindingDelay, nBlockFindingDelay / 60);
+    }
 
     CTxDestination dest;
     // Compute timeout for pos as sqrt(numUTXO)
@@ -680,16 +681,17 @@ void PoSMiner(NodeContext& m_node)
                             return;
                 }
 
-                if (nBlockDelaySec > 0) {
-                    while (true) {
-                        int64_t now = GetTime();
-                        int64_t lastTime = pindexPrev->GetBlockTime();
-                        int64_t age = now - lastTime;
-                        if (age >= nBlockDelaySec) break;
-                        int64_t wait = nBlockDelaySec - age;
-                        LogPrintf("Delaying PoS mining: last block %llds old, waiting %llds\n", age, wait);
-                        if (!connman->interruptNet.sleep_for(std::chrono::seconds(wait)))
+                if (nBlockFindingDelay > 0 && pindexPrev) {
+                    int64_t nCurrentTime = GetTime();
+                    int64_t nTimeSinceLastBlock = nCurrentTime - pindexPrev->GetBlockTime();
+
+                    if (nTimeSinceLastBlock < nBlockFindingDelay) {
+                        int64_t nWaitTime = nBlockFindingDelay - nTimeSinceLastBlock;
+                        LogPrintf("Waiting %d seconds before attempting next block (last block was %d seconds ago)\n",
+                                 nWaitTime, nTimeSinceLastBlock);
+                        if (!connman->interruptNet.sleep_for(std::chrono::seconds(nWaitTime)))
                             return;
+                        continue;
                     }
                 }
             }
