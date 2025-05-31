@@ -297,6 +297,7 @@ bool SnapshotManager::CalculateReceived(const wallet::CWallet* pwallet, const CS
     LOCK(m_snapshot_mutex);
     nTotalReceived = 0;
     for (const auto& [_, wtx] : pwallet->mapWallet) {
+        if (wtx.isAbandoned()) continue;
         for (const CTxOut& txout : wtx.tx->vout) {
             if (txout.scriptPubKey == target) {
                 if (!MoneyRange(nTotalReceived + txout.nValue)) return false;
