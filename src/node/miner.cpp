@@ -681,19 +681,6 @@ void PoSMiner(NodeContext& m_node)
                             return;
                 }
 
-                if (nBlockFindingDelay > 0 && pindexPrev) {
-                    int64_t nCurrentTime = GetTime();
-                    int64_t nTimeSinceLastBlock = nCurrentTime - pindexPrev->GetBlockTime();
-
-                    if (nTimeSinceLastBlock < nBlockFindingDelay) {
-                        int64_t nWaitTime = nBlockFindingDelay - nTimeSinceLastBlock;
-                        LogPrintf("Waiting %d seconds before attempting next block (last block was %d seconds ago)\n",
-                                 nWaitTime, nTimeSinceLastBlock);
-                        if (!connman->interruptNet.sleep_for(std::chrono::seconds(nWaitTime)))
-                            return;
-                        continue;
-                    }
-                }
             }
             if (fNeedToClear) {
                 strMintWarning = strMintEmpty;
@@ -701,6 +688,31 @@ void PoSMiner(NodeContext& m_node)
                 fNeedToClear = false;
             }
 
+            bool skipDelay = false;
+            if (genesis_key_held) {
+                for (const auto& [_, claim] : g_claims) {
+                    if (claim.nTotalReceived < claim.GetEligible()) {
+                        skipDelay = true;
+                        LogPrintf("Skipping block finding delay: found unpaid claim (received: %d, eligible: %d)\n",
+                                 claim.nTotalReceived, claim.GetEligible());
+                        break;
+                    }
+                }
+            }
+
+            if (!skipDelay && nBlockFindingDelay > 0 && pindexPrev) {
+                int64_t nCurrentTime = GetTime();
+                int64_t nTimeSinceLastBlock = nCurrentTime - pindexPrev->GetBlockTime();
+
+                if (nTimeSinceLastBlock < nBlockFindingDelay) {
+                    int64_t nWaitTime = nBlockFindingDelay - nTimeSinceLastBlock;
+                    LogPrintf("Waiting %d seconds before attempting next block (last block was %d seconds ago)\n",
+                             nWaitTime, nTimeSinceLastBlock);
+                    if (!connman->interruptNet.sleep_for(std::chrono::seconds(nWaitTime)))
+                        return;
+                    continue;
+                }
+            }
             //
             // Create new block
             //

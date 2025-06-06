@@ -60,7 +60,7 @@ const unsigned int nProtocolV15TestSwitchTime = 1734004800; // Thu 12 Dec 12:00:
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
     ( 0, 0xfd11f4e7u )
-    // (  10000, 0x67f305d7u )
+    (  10000, 0x67f305d7u )
     ;
 
 static std::map<int, unsigned int> mapStakeModifierTestnetCheckpoints =
